@@ -169,6 +169,11 @@ def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTask
 @router.delete("/{card_id}", status_code=204)
 def delete_card(card_id: int, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
+    if not card.besessen:
+        raise HTTPException(
+            status_code=400,
+            detail="Nicht-besessene Karten (Pokédex-Platzhalter) können nicht gelöscht werden.",
+        )
     db.delete(card)
     db.commit()
 

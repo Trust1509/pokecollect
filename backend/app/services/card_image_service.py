@@ -22,9 +22,9 @@ log = logging.getLogger(__name__)
 # ── Set-Code Mapping: unser Kürzel → pokemon.com interner Code ───────────────
 # Kürzel wird aus set_edition-Feld extrahiert: "Paldeas Schicksale (PAF)" → "PAF"
 POKEMON_COM_SET_CODES: dict[str, str] = {
-    # SV-Ära (Scharlachrot & Violett)
+    # SV-Ära — internationale Releases haben synchronisierte Kartennummern ✓
     "SVI":   "SV01",     # Scharlachrot & Violett Basis
-    "PAL":   "SV02",     # Paldea Entwicklungen
+    "PAL":   "SV02",     # Paldea Entwicklungen / Paldea Evolved
     "OBF":   "SV03",     # Obsidian Flammen
     "MEW":   "SV3PT5",   # Pokémon 151
     "151":   "SV3PT5",   # Pokémon 151 (alternatives Kürzel)
@@ -34,47 +34,19 @@ POKEMON_COM_SET_CODES: dict[str, str] = {
     "TWM":   "SV06",     # Masken der Wandlung
     "SFA":   "SV6PT5",   # Schicksalsfunken
     "SCR":   "SV07",     # Sternenglanz
-    "SSP":   "SV08",     # Strahlende Seltenheit
+    "SSP":   "SV08",     # Strahlende Seltenheit / Surging Sparks ✓ verifiziert
     "PRE":   "SV8PT5",   # Prismatische Entwicklungen ✓ verifiziert
-    "JTG":   "SV09",     # Reisegefährten / Journey Together
+    "JTG":   "SV09",     # Reisegefährten / Journey Together ✓ verifiziert
     "DRI":   "SV10",     # Ewige Rivalen / Destined Rivals ✓ verifiziert
     "SVE":   "SVE",      # SV Energie-Karten
-    # SWSH-Ära (Schwert & Schild)
-    "SSH":   "SWSH1",    # Schwert & Schild Basis
-    "RCL":   "SWSH2",    # Aufziehen des Sturms
-    "DAA":   "SWSH3",    # Drachenwandel
-    "VIV":   "SWSH4",    # Strahlende Sterne
-    "SHF":   "SWSH4PT5", # Shining Fates
-    "BST":   "SWSH5",    # Kampf-Stile
-    "CRE":   "SWSH6",    # Chilling Reign
-    "EVS":   "SWSH7",    # Evolving Skies
-    "BLK":   "SWSH7",    # Schwarze Blitze ✓ verifiziert
-    "CEL":   "SWSH7PT5", # Celebrations
-    "FST":   "SWSH8",    # Fusion Strike
-    "BRS":   "SWSH9",    # Brilliant Stars
-    "WHT":   "SWSH9",    # Weiße Flammen ✓ verifiziert
-    "ASR":   "SWSH10",   # Astral Radiance
-    "ASC":   "SWSH10",   # Erhabene Helden ✓ verifiziert
-    "PGO":   "SWSH10PT5",# Pokémon GO
-    "LOR":   "SWSH11",   # Lost Origin
-    "PFL":   "SWSH11",   # Fatale Flammen ✓ verifiziert
-    "SIT":   "SWSH12",   # Silver Tempest
-    "CRZ":   "SWSH12PT5",# Crown Zenith
-    # XY-Ära
-    "XY":    "XY1",      # XY Basis
-    "FLF":   "XY2",      # Flashfire
-    "FFI":   "XY3",      # Furious Fists
-    "PHF":   "XY4",      # Phantom Forces
-    "PRC":   "XY5",      # Primal Clash
-    "DCR":   "XY5PT5",   # Double Crisis
-    "ROS":   "XY6",      # Roaring Skies
-    "AOR":   "XY7",      # Ancient Origins
-    "BKT":   "XY8",      # BREAKthrough
-    "MEG":   "XY8",      # Mega-Entwicklung ✓ verifiziert
-    "BKP":   "XY9",      # BREAKpoint
-    "FAC":   "XY10",     # Fates Collide
-    "STS":   "XY11",     # Steam Siege
-    "EVO":   "XY12",     # Evolutions
+    # SWSH/XY-Ära: NUR englische Sets mit identischer DE-Nummerierung
+    # WARNUNG: Deutsche Sets (ASC, PFL, BLK, BRS, MEG usw.) sind Subsets
+    # mit ANDEREN Kartennummern → zeigen falsche Karten → absichtlich ausgelassen
+    "SSH":   "SWSH1",    # Schwert & Schild Basis (EN-Nummerierung)
+    "BST":   "SWSH5",    # Battle Styles (EN)
+    "CEL":   "SWSH7PT5", # Celebrations (EN)
+    "PGO":   "SWSH10PT5",# Pokémon GO (EN)
+    "CRZ":   "SWSH12PT5",# Crown Zenith (EN)
 }
 
 # Locale-Mapping: unsere Sprachkürzel → pokemon.com locale

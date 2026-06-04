@@ -265,7 +265,9 @@ export default function CardDetailPage() {
               ) : (
                 <button onClick={() => setEditing(true)} className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">Bearbeiten</button>
               )}
-              <button onClick={handleDelete} className="bg-red-900 text-red-300 text-sm px-3 py-1.5 rounded hover:bg-red-800">Löschen</button>
+              {card.besessen && (
+                <button onClick={handleDelete} className="bg-red-900 text-red-300 text-sm px-3 py-1.5 rounded hover:bg-red-800">Löschen</button>
+              )}
             </div>
           </div>
 
