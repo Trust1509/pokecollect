@@ -2,6 +2,28 @@
 import { useEffect, useRef, useState } from "react";
 import { RARITY_MAP } from "@/components/RarityBadge";
 
+function PromoSymbol({ size = 28 }: { size?: number }) {
+  // Stern: outer r=45, inner r=19, center (50,50)
+  const star = "M50,5 L61.8,33.8 L92.8,36.1 L69,56.2 L76.4,86.4 L50,70 L23.6,86.4 L31,56.2 L7.2,36.1 L38.2,33.8 Z";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" className="inline-block shrink-0">
+      <path d={star} fill="black" />
+      <text
+        x="50" y="56"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="white"
+        fontSize="19"
+        fontWeight="900"
+        fontFamily="Arial Black, Arial, sans-serif"
+        letterSpacing="0.5"
+      >
+        PROMO
+      </text>
+    </svg>
+  );
+}
+
 const EASTERN = new Set(["JP", "CN"]);
 
 type Props = {
@@ -25,7 +47,10 @@ export default function RaritySelect({ value, onChange, options, language, label
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const isPromo = (rarity: string) => !isEastern && rarity === "Promo";
+
   const getSymbol = (rarity: string) => {
+    if (isPromo(rarity)) return null; // SVG rendert separat
     const def = RARITY_MAP[rarity];
     if (!def) return "";
     return (isEastern && def.jpCode) ? def.jpCode : def.symbol;
@@ -47,8 +72,11 @@ export default function RaritySelect({ value, onChange, options, language, label
       >
         {selected ? (
           <>
-            <span className={`text-base w-8 text-center leading-none ${getCls(selected)}`}>
-              {getSymbol(selected)}
+            <span className="w-8 flex items-center justify-center shrink-0">
+              {isPromo(selected)
+                ? <PromoSymbol size={22} />
+                : <span className={`text-base leading-none ${getCls(selected)}`}>{getSymbol(selected)}</span>
+              }
             </span>
             <span className="text-white">{selected}</span>
           </>
@@ -79,8 +107,13 @@ export default function RaritySelect({ value, onChange, options, language, label
                 className={`px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-gray-800 ${isSelected ? "bg-gray-800" : ""}`}
               >
                 {/* Symbol — groß und prominent */}
-                <span className={`text-lg w-10 text-center leading-none font-medium shrink-0 ${cls}`}>
-                  {sym || <span className="text-gray-600 text-xs">—</span>}
+                <span className="w-10 flex items-center justify-center shrink-0">
+                  {isPromo(rarity)
+                    ? <PromoSymbol size={30} />
+                    : sym
+                      ? <span className={`text-lg leading-none font-medium ${cls}`}>{sym}</span>
+                      : <span className="text-gray-600 text-xs">—</span>
+                  }
                 </span>
                 <span className="text-white text-sm">{rarity}</span>
                 {isSelected && <span className="ml-auto text-green-400 text-xs">✓</span>}

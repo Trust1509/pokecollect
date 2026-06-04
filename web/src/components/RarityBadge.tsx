@@ -3,6 +3,20 @@
 // Sprachen die JP/CN-Codes statt grafische Symbole verwenden
 const EASTERN = new Set(["JP", "CN"]);
 
+function PromoSymbol({ size = 16 }: { size?: number }) {
+  const star = "M50,5 L61.8,33.8 L92.8,36.1 L69,56.2 L76.4,86.4 L50,70 L23.6,86.4 L31,56.2 L7.2,36.1 L38.2,33.8 Z";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" className="inline-block">
+      <path d={star} fill="black" />
+      <text x="50" y="56" textAnchor="middle" dominantBaseline="middle"
+        fill="white" fontSize="19" fontWeight="900"
+        fontFamily="Arial Black, Arial, sans-serif" letterSpacing="0.5">
+        PROMO
+      </text>
+    </svg>
+  );
+}
+
 type RarityDef = {
   symbol: string;   // DE/EN grafisches Symbol (Unicode)
   cls: string;      // Tailwind-Klassen
@@ -43,9 +57,19 @@ export default function RarityBadge({ rarity, language, size = "xs", showLabel =
   if (!def) return <span className="text-gray-500 text-xs">{rarity}</span>;
 
   const isEastern = language ? EASTERN.has(language) : false;
+  const isPromo = !isEastern && rarity === "Promo";
   const display = isEastern && def.jpCode ? def.jpCode : def.symbol;
-  if (!display) return null;
 
+  if (isPromo) {
+    return (
+      <span className="inline-flex items-center gap-1" title={rarity}>
+        <PromoSymbol size={size === "xs" ? 14 : 18} />
+        {showLabel && <span className="text-gray-400 text-xs font-normal">Promo</span>}
+      </span>
+    );
+  }
+
+  if (!display) return null;
   const textSize = size === "xs" ? "text-xs" : "text-sm";
 
   return (
