@@ -1,0 +1,85 @@
+# Compose-Spec – kein "version:"-Key
+#
+# Aktuell: lokaler Build (build: ./backend / build: ./web)
+# Ab v1.0.0: image:-Zeilen einkommentieren, build:-Zeilen auskommentieren
+# und Images vorher via SSH pullen:
+#   docker pull ghcr.io/OWNER/pokecollect-api:1.0.0
+#   docker pull ghcr.io/OWNER/pokecollect-web:1.0.0
+
+services:
+  api:
+    build: ./backend
+    # image: ghcr.io/OWNER/pokecollect-api:1.0.0
+    user: "3010:3010"
+    ports:
+      - "3010:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - CARDMARKET_APP_TOKEN=${CARDMARKET_APP_TOKEN}
+      - CARDMARKET_APP_SECRET=${CARDMARKET_APP_SECRET}
+      - CARDMARKET_ACCESS_TOKEN=${CARDMARKET_ACCESS_TOKEN}
+      - CARDMARKET_ACCESS_SECRET=${CARDMARKET_ACCESS_SECRET}
+      - POKEMONTCG_API_KEY=${POKEMONTCG_API_KEY}
+      - APP_USERNAME=${APP_USERNAME:-admin}
+      - APP_PASSWORD_HASH=${APP_PASSWORD_HASH}
+    volumes:
+      - /mnt/HDDs/Applications/pokecollect/images:/app/images
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - pokecollect
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3010}
+    # image: ghcr.io/OWNER/pokecollect-web:1.0.0
+    user: "3010:3010"
+    ports:
+      - "3011:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3010}
+    depends_on:
+      - api
+    networks:
+      - pokecollect
+    restart: unless-stopped
+
+  db:
+    image: postgres:16.3-alpine
+    user: "3010:3010"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      # pgdata/ Unterordner nötig weil ZFS-Mount-Root .zfs-Einträge enthält
+      - /mnt/HDDs/Applications/pokecollect/db/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pokecollect
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    user: "3010:3010"
+    volumes:
+      - /mnt/HDDs/Applications/pokecollect/cache:/data
+    networks:
+      - pokecollect
+    restart: unless-stopped
+
+networks:
+  pokecollect:
+    driver: bridge

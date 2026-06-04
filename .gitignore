@@ -1,0 +1,16 @@
+.env
+CLAUDE.md
+notion_export/
+migrations/cards.csv
+migrations/notion_export*.csv
+.local
+android/local.properties
+android/.gradle/
+**/__pycache__/
+**/*.pyc
+node_modules/
+.next/
+*.egg-info/
+dist/
+build/
+.DS_Store

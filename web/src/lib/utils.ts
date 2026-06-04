@@ -1,0 +1,24 @@
+export function generation(pokedexNr: number | null): number | null {
+  if (!pokedexNr) return null;
+  const ranges: [number, number][] = [
+    [1, 151], [152, 251], [252, 386], [387, 493],
+    [494, 649], [650, 721], [722, 809], [810, 905], [906, 1025],
+  ];
+  for (let i = 0; i < ranges.length; i++) {
+    const [lo, hi] = ranges[i];
+    if (pokedexNr >= lo && pokedexNr <= hi) return i + 1;
+  }
+  return null;
+}
+
+export function formatEur(value: string | null | undefined): string {
+  if (!value) return "–";
+  return new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" }).format(
+    parseFloat(value)
+  );
+}
+
+export function imageUrl(path: string | null | undefined, apiBase: string): string | null {
+  if (!path) return null;
+  return `${apiBase}/images/${path.replace(/^.*\/images\//, "")}`;
+}

@@ -1,0 +1,18 @@
+# PokéCollect – Caddyfile-Snippet
+# An das bestehende Caddyfile anhängen, dann: caddy reload
+#
+# Ersetze "pokecollect.yourdomain.local" durch deine Domain.
+# Ersetze "192.168.x.x" durch die IP deines Servers.
+
+pokecollect.yourdomain.local {
+    # API
+    handle /api/* {
+        reverse_proxy 192.168.x.x:3010
+    }
+    # Static images served by API
+    handle /images/* {
+        reverse_proxy 192.168.x.x:3010
+    }
+    # Web-Frontend (catch-all)
+    reverse_proxy 192.168.x.x:3011
+}
