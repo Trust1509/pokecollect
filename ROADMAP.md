@@ -20,133 +20,89 @@
 - NEXT_PUBLIC_API_URL korrekt als Docker Build-Arg
 
 ## ✅ v0.2.0 — Settings-Seite
-- `/settings`-Seite mit 5 Sektionen:
-  - 🖼️ Anzeige (Platzhalter-Toggle, Karten/Seite, Sortierung)
-  - 💰 Preise (Auto-Update, Uhrzeit, Quelle)
-  - 📦 Sammlung (Standard-Sprache & -Zustand)
-  - 🔑 API-Keys (Cardmarket OAuth, PokémonTCG.io)
-  - 👤 Konto (Passwort ändern)
-- Versionsanzeige in der Navbar (v0.x.x)
+- `/settings`-Seite mit 5 Sektionen (Anzeige, Preise, Sammlung, API-Keys, Konto)
+- Versionsanzeige in der Navbar
 - Settings in PostgreSQL gespeichert (key/value)
 
-## ✅ v0.2.1 — Auth (zurückgenommen)
-- Login-Seite, Middleware, Backend-Absicherung gebaut
-- Entschieden: Auth wird von Authelia übernommen, nicht in-app
-
 ## ✅ v0.2.2 — Auth-Architektur: Authelia
-- In-App-Auth vollständig entfernt (kein Login, kein Middleware)
-- Authelia-Konfiguration vorbereitet (`deploy/authelia/`)
-- Caddy-Snippet mit `forward_auth` für externen Zugriff
-- Intern (192.168.2.x): offen
-- Extern (yourdomain.com): Authelia-Login erzwungen
+- In-App-Auth entfernt; Authelia-Config vorbereitet
+- Intern offen, extern via Caddy + Authelia geschützt
+
+## ✅ v0.3.1 — Automatische Kartenbilder (pokemon.com)
+- SV-Era Sets automatisch mit korrekten Kartenbildern (80/96 besessene Karten = 83%)
+- Backfill-Endpoint + Auto-Fetch bei Anlage
+- Löschen nur für besessene Karten
+- SWSH/XY DE-Subsets deaktiviert (Nummerierung weicht ab → würden falsche Bilder zeigen)
 
 ---
 
-## ✅ v0.3.0 — Automatische Kartenbilder (pokemon.com)
+## 🔄 v0.4.0 — Set-Stammdaten + Karte anlegen/bearbeiten (in Arbeit)
+> **Ziel:** Set/Edition als strukturierte Daten statt Freitext — verhindert Tippfehler,
+> ermöglicht korrekte Kartenbilder und Nummernvalidierung.
 
-> **Ziel:** Für jede gesammelte Karte automatisch das exakte Kartenbild laden —
-> kein eigenes Foto nötig, solange Set + Kartennummer + Sprache bekannt sind.
+- [x] Backend: `pokemon_sets` Tabelle (code, name, max_card_nr, pokemon_com_code)
+- [x] Backend: `GET/POST/PUT /api/v1/sets` Endpunkte
+- [x] Frontend: `PokemonSet` Typ + `setsApi` in api.ts
+- [ ] Frontend: Karte anlegen (`/cards/new`) — Set-Dropdown mit Suche (Kürzel + Name)
+- [ ] Frontend: Karte bearbeiten (`/cards/[id]`) — gleiches Dropdown
+- [ ] Frontend: Karten-Nr. Feld mit Format-Hinweis (`001/132`) und Max-Validierung aus Set
+- [ ] Option: neues Set direkt im Dropdown anlegen ("+")
+- [ ] FilterSidebar: Set-Filter ebenfalls auf Stammdaten umstellen
 
-### URL-System (verifiziert)
-```
-https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web/{SET_CODE}/{SET_CODE}_{LANG}_{NR}.png
-```
+## 🔄 v0.4.1 — Sprach-Toggle DE/EN
+> **Ziel:** Komplette UI auf Deutsch und Englisch umschaltbar.
 
-- `{locale}` → z.B. `de-de`, `en-us`
-- `{SET_CODE}` → pokemon.com interner Code (≠ unser Kürzel, Mapping nötig)
-- `{NR}` → Kartennummer ohne führende Nullen, ohne `/XXX`-Suffix (z.B. `"007/091"` → `"7"`)
-
-### Set-Code Mapping (manuell verifiziert)
-| Unser Kürzel | pokemon.com Code | Set |
-|---|---|---|
-| PAF | SV4PT5 | Paldeas Schicksale |
-| SVI | SV01 | Scharlachrot & Violett Basis |
-| OBF | SV03 | Obsidian Flames |
-| TEF | SV05 | Temporal Forces |
-| 151 | SV3PT5 | Pokémon 151 |
-| PRE | SV8PT5 | Prismatische Entwicklungen |
-| MEG | XY8 | Mega-Entwicklung |
-| ASC | SWSH10 | Erhabene Helden |
-| … | … | (weitere nach Bedarf ergänzen) |
-
-> PAL, PAR und weitere → auf pokemon.com DE nicht verfügbar → Fallback PokémonTCG.io
-
-### Bild-Priorität in der App
-1. **Eigenes Scan-Foto** (`bild_karte_pfad`) — immer bevorzugt
-2. **pokemon.com** — automatisch aus Set + Nr. + Sprache konstruiert, HEAD-Check ob vorhanden
-3. **PokémonTCG.io API** — Fallback für fehlende Sets
-4. **Pokédex-Artwork** — letzter Fallback, immer verfügbar für alle 1025 Pokémon
-
-### Aufgaben
-- [x] Backend-Service `card_image_service.py` mit HEAD-verifizierter URL-Konstruktion
-- [x] Set-Code-Mapping (50+ Sets, alle manuell verifiziert)
-- [x] `bild_karte_url` Feld in DB (Migration 002)
-- [x] Backfill-Endpoint `/api/v1/cards/meta/backfill-images` (nur besessene Karten)
-- [x] Auto-Fetch bei Karte anlegen/bearbeiten (Background Task)
-- [x] Frontend: Bildpriorität eigenes Foto → manuelle URL → pokemon.com → Pokédex-Artwork
-- [x] "pokemon.com"-Label in Detailansicht
-- [x] Backfill-Buttons in Settings-Seite
-- **Ergebnis: SV-Era Sets (~60%) korrekt; SWSH/XY-era DE-Sets auf Pokédex-Artwork**
-- Kernproblem erkannt: URL-Nummer ≠ aufgedruckte Kartennummer (außer SV-Era)
-- SWSH/XY deutsche Subsets haben eigene Nummerierung → falsche Bilder → bewusst deaktiviert
-- SV-Era funktioniert weil internationale Simultanveröffentlichung → Nummerierung identisch
-- Manuelle URL über "Bild-URL hinterlegen" als Workaround für SWSH/XY
-- [ ] Korrekte Lösung via PokémonTCG.io API (v0.7.0)
+- [x] i18n-Context (`I18nProvider`) und `Navbar`-Komponente angelegt
+- [ ] Übersetzungs-Dictionary DE/EN für alle Labels, Buttons, Statusmeldungen
+- [ ] Toggle in Navbar, Präferenz in localStorage
+- [ ] Alle bestehenden Seiten auf i18n umstellen
 
 ---
 
-## 🔲 v0.4.0 — Authelia + Externer Zugriff
+## 🔲 v0.5.0 — Karten-Grid Verbesserungen
+> **Ziel:** Mehr Information auf einen Blick, physischen Binder vergleichbar machen.
+
+- [ ] Pokédex-Nummer auf jeder Kachel anzeigen (klein, unter dem Kartennamen)
+- [ ] **Binder-Ansicht** als eigene Seite `/binder`:
+  - Konfigurierbar: Karten pro Reihe (3er = 9/Seite, 4er = 12/Seite, 5er = 15/Seite)
+  - Seitenweise durchblättern (‹ / ›) — entspricht physischem Binder
+  - Filter: nur besessene Karten, nur bestimmtes Set
+  - Ideal zum Vergleich mit physischem Binder
+- [ ] Karten pro Seite in Settings: Binder-freundliche Voreinstellungen
+  (9 = 3×3, 12 = 3×4, 18 = 3×6, 20 = 4×5, 24 = 4×6)
+
+> **Empfehlung:** Binder-Ansicht als separate Seite ist besser als nur "Karten pro Seite" ändern —
+> so bleibt die Hauptübersicht flexibel und die Binder-Ansicht ist für den physischen Vergleich optimiert.
+
+## 🔲 v0.6.0 — Authelia + Externer Zugriff
 - [ ] Authelia als Portainer-Stack deployen (siehe `deploy/README.md`)
-- [ ] DNS-Eintrag `auth.yourdomain.com` setzen
-- [ ] DNS-Eintrag `pokecollect.yourdomain.com` setzen
+- [ ] DNS-Einträge `auth.yourdomain.com` + `pokecollect.yourdomain.com` setzen
 - [ ] Caddy-Config mit Authelia `forward_auth` aktivieren
-- [ ] Authelia-User anlegen, Hash generieren
 - [ ] Externen Zugriff testen (Web + Android)
 
-## 🔲 v0.5.0 — Android App
-- [ ] Android-App auf Gerät testen
-- [ ] Typo "Besossen" in Android-Code fixen (CardDetailScreen.kt Zeile 64, ScanScreen.kt)
-- [ ] API-URL in App konfigurierbar machen (intern vs. extern via Authelia)
-- [ ] Basis-Funktionen testen: Karten scannen, Status setzen, Detailansicht
+## 🔲 v0.7.0 — Android App
+- [ ] App auf Gerät testen
+- [ ] Typo "Besossen" fixen (CardDetailScreen.kt Zeile 64, ScanScreen.kt)
+- [ ] API-URL konfigurierbar (intern vs. extern)
 
-## 🔲 v0.6.0 — Wunschkarten
-> **Ziel:** Eigene Wunschliste führen — welche exakten Karten (Set + Nr. + Version) will ich noch sammeln?
+## 🔲 v0.8.0 — Wunschkarten
+- [ ] DB-Tabelle `wunschkarten`
+- [ ] `/wishlist`-Seite: gewünschte Karten eintragen, filtern, Preise anzeigen
+- [ ] "Erhalten" → automatisch in Sammlung übertragen
+- [ ] CSV-Export für Cardmarket-Suche
 
-- [ ] Neue DB-Tabelle `wunschkarten` (verknüpft mit `pokemon_cards` oder eigenständig)
-- [ ] `/wishlist`-Seite im Web: Liste der gewünschten Karten
-- [ ] Karte aus Sammlung zur Wunschliste hinzufügen (Button in Detailansicht)
-- [ ] Karte manuell zur Wunschliste hinzufügen (Set + Nr. + Version + Sprache)
-- [ ] Wunschkarte als "erhalten" markieren → automatisch in Sammlung übertragen
-- [ ] Filter: besessen / nicht besessen / auf Wunschliste
-- [ ] Preis-Anzeige auf Wunschliste (Cardmarket-Wert der gewünschten Karte)
-- [ ] Export Wunschliste als CSV (für Cardmarket-Suche)
+## 🔲 v0.9.0 — PokémonTCG.io Integration
+- [ ] API-Key aus Settings verwenden
+- [ ] Korrekte Bilder für SWSH/XY DE-Sets (ASC, PFL, BLK, BRS, WHT, MEG)
+- [ ] Fallback-Kette: eigenes Foto → manuelle URL → pokemon.com → PokémonTCG.io → Pokédex-Artwork
 
-## 🔲 v0.7.0 — PokémonTCG.io Integration (korrekte Kartenbilder)
+## 🔲 v1.0.0 — Cardmarket + Daten
+- [ ] Cardmarket OAuth 1.0a (Keys aus Settings)
+- [ ] Preisabruf + Preishistorie
+- [ ] CSV-Export/Import
+- [ ] Statistiken: Wert-Entwicklung, Set-Vollständigkeit
 
-> **Ziel:** Korrekte Kartenbilder auch für SWSH/XY-era deutsche Sets via PokémonTCG.io API.
-> Die pokemon.com URL-Nummer ≠ aufgedruckte Kartennummer bei deutschen Subsets →
-> PokémonTCG.io hat die tatsächlichen sprachspezifischen Kartendaten.
-
-- [ ] PokémonTCG.io API-Key aus Settings-Seite verwenden
-- [ ] Lookup: Set-Kürzel + Kartennummer + Sprache → korrekte Card-ID → Bild-URL
-- [ ] Fehlende Sets nachfüllen (ASC, PFL, BLK, BRS, WHT, MEG)
-- [ ] Fallback-Kette: eigenes Foto → manuelle URL → pokemon.com (SV) → PokémonTCG.io → Pokédex-Artwork
-
-## 🔲 v0.8.0 — Cardmarket-Integration
-- [ ] Cardmarket OAuth 1.0a testen (Keys via Settings-Seite eintragen)
-- [ ] Preisabruf für einzelne Karte manuell triggern
-- [ ] Preishistorie-Anzeige verbessern
-- [ ] Preis-Quelle (30-Tage-Ø vs. Tagespreis) aktivieren
-- [ ] Wunschlisten-Preise automatisch abrufen
-
-## 🔲 v0.8.0 — Daten & Qualität
-- [ ] CSV-Export (vollständige Sammlung als Backup)
-- [ ] CSV-Import mit Duplikat-Erkennung
-- [ ] Massenhafte Bild-URL-Zuweisung (alle Karten eines Sets auf einmal)
-- [ ] Statistiken erweitern: Wert-Entwicklung, Set-Vollständigkeit
-
-## 🔲 v1.0.0 — Production Release
-- [ ] Docker Images auf ghcr.io pushen
-- [ ] `docker-compose.yml`: `image:` statt `build:` verwenden
-- [ ] Vollständige Test-Abdeckung kritischer Endpunkte
+## 🔲 v1.1.0 — Production Release
+- [ ] Docker Images auf ghcr.io
+- [ ] `image:` statt `build:` in docker-compose.yml
 - [ ] Öffentliche Dokumentation
