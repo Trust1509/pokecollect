@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from app.api.deps import require_auth
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -121,7 +122,7 @@ def get_card(card_id: int, db: Session = Depends(get_db)):
     return _card_or_404(card_id, db)
 
 
-@router.post("", response_model=CardResponse, status_code=201)
+@router.post("", response_model=CardResponse, status_code=201, dependencies=[Depends(require_auth)])
 def create_card(data: CardCreate, db: Session = Depends(get_db)):
     card = PokemonCard(**data.model_dump())
     db.add(card)
@@ -130,7 +131,7 @@ def create_card(data: CardCreate, db: Session = Depends(get_db)):
     return card
 
 
-@router.put("/{card_id}", response_model=CardResponse)
+@router.put("/{card_id}", response_model=CardResponse, dependencies=[Depends(require_auth)])
 def update_card(card_id: int, data: CardUpdate, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -140,7 +141,7 @@ def update_card(card_id: int, data: CardUpdate, db: Session = Depends(get_db)):
     return card
 
 
-@router.delete("/{card_id}", status_code=204)
+@router.delete("/{card_id}", status_code=204, dependencies=[Depends(require_auth)])
 def delete_card(card_id: int, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
     db.delete(card)
@@ -149,7 +150,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 # ── Bilder ──────────────────────────────────────────────────────────────────
 
-@router.post("/{card_id}/image", response_model=CardResponse)
+@router.post("/{card_id}/image", response_model=CardResponse, dependencies=[Depends(require_auth)])
 async def upload_image(
     card_id: int,
     file: UploadFile = File(...),
@@ -178,7 +179,7 @@ async def upload_image(
     return card
 
 
-@router.delete("/{card_id}/image", response_model=CardResponse)
+@router.delete("/{card_id}/image", response_model=CardResponse, dependencies=[Depends(require_auth)])
 def delete_image(card_id: int, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
     for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad"):
