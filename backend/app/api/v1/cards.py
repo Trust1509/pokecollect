@@ -143,6 +143,22 @@ async def _trigger_image_fetch(card_id: int):
 
 @router.post("", response_model=CardResponse, status_code=201)
 def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    # Wenn besessen + pokedex_nr gesetzt: vorhandenen Platzhalter übernehmen statt Duplikat anlegen
+    if data.besessen and data.pokedex_nr:
+        placeholder = db.scalars(
+            select(PokemonCard)
+            .where(PokemonCard.pokedex_nr == data.pokedex_nr)
+            .where(PokemonCard.besessen == False)
+        ).first()
+        if placeholder:
+            for field, value in data.model_dump().items():
+                setattr(placeholder, field, value)
+            placeholder.bild_karte_url = None  # wird neu abgerufen
+            db.commit()
+            db.refresh(placeholder)
+            background_tasks.add_task(_trigger_image_fetch, placeholder.id)
+            return placeholder
+
     card = PokemonCard(**data.model_dump())
     db.add(card)
     db.commit()
@@ -174,7 +190,30 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
             status_code=400,
             detail="Nicht-besessene Karten (Pokédex-Platzhalter) können nicht gelöscht werden.",
         )
+    # Pokédex-Daten vor dem Löschen sichern
+    pokedex_nr     = card.pokedex_nr
+    kartenname     = card.kartenname
+    englischer_name = card.englischer_name
+    bild_pokedex_url = card.bild_pokedex_url
+
     db.delete(card)
+    db.flush()  # Löschung sichtbar machen, Transaktion noch offen
+
+    # Wenn keine weitere Karte für diese Pokédex-Nr. existiert → Platzhalter neu anlegen
+    if pokedex_nr:
+        remaining = db.scalar(
+            select(func.count(PokemonCard.id))
+            .where(PokemonCard.pokedex_nr == pokedex_nr)
+        )
+        if remaining == 0:
+            db.add(PokemonCard(
+                pokedex_nr=pokedex_nr,
+                kartenname=kartenname,
+                englischer_name=englischer_name,
+                bild_pokedex_url=bild_pokedex_url,
+                besessen=False,
+            ))
+
     db.commit()
 
 
