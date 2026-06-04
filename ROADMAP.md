@@ -42,7 +42,7 @@
 
 ---
 
-## 🔲 v0.3.0 — Automatische Kartenbilder (pokemon.com)
+## ✅ v0.3.0 — Automatische Kartenbilder (pokemon.com)
 
 > **Ziel:** Für jede gesammelte Karte automatisch das exakte Kartenbild laden —
 > kein eigenes Foto nötig, solange Set + Kartennummer + Sprache bekannt sind.
@@ -78,14 +78,17 @@ https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web
 4. **Pokédex-Artwork** — letzter Fallback, immer verfügbar für alle 1025 Pokémon
 
 ### Aufgaben
-- [ ] Backend-Service `card_image_service.py` mit `get_card_image_url()` implementieren
-- [ ] Set-Code-Mapping als Dict im Backend pflegen
-- [ ] `bild_karte_url` Feld in DB ergänzen (gecachte URL, beim Anlegen befüllt)
-- [ ] HEAD-Check: URL nur speichern wenn Bild tatsächlich existiert (HTTP 200)
-- [ ] Massen-Backfill: bestehende 1025 Karten automatisch befüllen (`/api/v1/cards/backfill-images`)
-- [ ] Frontend: Bild-Priorität in CardGrid und CardDetail implementieren
-- [ ] PokémonTCG.io als Fallback integrieren (API-Key aus Settings)
-- [ ] Set-Code-Mapping über Settings-Seite erweiterbar machen
+- [x] Backend-Service `card_image_service.py` mit HEAD-verifizierter URL-Konstruktion
+- [x] Set-Code-Mapping (50+ Sets, alle manuell verifiziert)
+- [x] `bild_karte_url` Feld in DB (Migration 002)
+- [x] Backfill-Endpoint `/api/v1/cards/meta/backfill-images` (nur besessene Karten)
+- [x] Auto-Fetch bei Karte anlegen/bearbeiten (Background Task)
+- [x] Frontend: Bildpriorität eigenes Foto → manuelle URL → pokemon.com → Pokédex-Artwork
+- [x] "pokemon.com"-Label in Detailansicht
+- [x] Backfill-Buttons in Settings-Seite
+- **Ergebnis: 80/96 besessener Karten mit Kartenbild (83%)**
+- Nicht verfügbar: chinesische 151C, Mega Promos (MEP), japanische Sets → Pokédex-Artwork als Fallback
+- [ ] PokémonTCG.io als Fallback für fehlende Sets (v0.7.0)
 
 ---
 
