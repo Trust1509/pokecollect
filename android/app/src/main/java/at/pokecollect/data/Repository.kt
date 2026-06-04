@@ -73,4 +73,12 @@ class CardRepository @Inject constructor(
         dao.upsertAll(listOf(result.toEntity()))
         dao.getById(cardId)
     }
+
+    suspend fun enums(): CardEnums? = withContext(Dispatchers.IO) {
+        runCatching { api.enums() }.getOrNull()
+    }
+
+    suspend fun sets(): List<PokemonSet> = withContext(Dispatchers.IO) {
+        runCatching { api.sets() }.getOrDefault(emptyList())
+    }
 }

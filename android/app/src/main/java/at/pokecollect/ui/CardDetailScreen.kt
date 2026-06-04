@@ -30,12 +30,53 @@ fun CardDetailScreen(
     LaunchedEffect(cardId) { vm.load(cardId) }
     val card by vm.card.collectAsState()
     val busy by vm.busy.collectAsState()
+    val message by vm.message.collectAsState()
+    val enums by vm.enums.collectAsState()
+    val sets by vm.sets.collectAsState()
+
     var editing by remember { mutableStateOf(false) }
     var showUrlDialog by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { vm.uploadPhoto(it) } }
+
+    LaunchedEffect(message) {
+        message?.let { snackbar.showSnackbar(it); vm.clearMessage() }
+    }
+
+    // Editierbare Felder – hochgezogen, damit der schwebende Speichern-Button sie lesen kann.
+    val c0 = card
+    var name by remember(c0) { mutableStateOf(c0?.kartenname ?: "") }
+    var eng by remember(c0) { mutableStateOf(c0?.englischer_name ?: "") }
+    var pdex by remember(c0) { mutableStateOf(c0?.pokedex_nr?.toString() ?: "") }
+    var setEd by remember(c0) { mutableStateOf(c0?.set_edition ?: "") }
+    var kartenNr by remember(c0) { mutableStateOf(c0?.karten_nr ?: "") }
+    var seltenheit by remember(c0) { mutableStateOf(c0?.seltenheit ?: "") }
+    var version by remember(c0) { mutableStateOf(c0?.kartenversion ?: "") }
+    var folierung by remember(c0) { mutableStateOf(c0?.folierung ?: "") }
+    var sprache by remember(c0) { mutableStateOf(c0?.sprache ?: "DE") }
+    var zustand by remember(c0) { mutableStateOf(c0?.zustand ?: "") }
+    var wert by remember(c0) { mutableStateOf(c0?.wert_eur ?: "") }
+    var notizen by remember(c0) { mutableStateOf(c0?.notizen ?: "") }
+    var besessen by remember(c0) { mutableStateOf(c0?.besessen ?: false) }
+
+    fun fieldsMap(): Map<String, Any?> = mapOf(
+        "kartenname" to name.trim(),
+        "englischer_name" to eng.ifBlank { null },
+        "pokedex_nr" to pdex.toIntOrNull(),
+        "set_edition" to setEd.ifBlank { null },
+        "karten_nr" to kartenNr.ifBlank { null },
+        "seltenheit" to seltenheit.ifBlank { null },
+        "kartenversion" to version.ifBlank { null },
+        "folierung" to folierung.ifBlank { null },
+        "sprache" to sprache.ifBlank { "DE" },
+        "zustand" to zustand.ifBlank { null },
+        "wert_eur" to wert.ifBlank { null },
+        "notizen" to notizen.ifBlank { null },
+        "besessen" to besessen,
+    )
 
     Scaffold(
         topBar = {
@@ -54,7 +95,15 @@ fun CardDetailScreen(
                     }
                 },
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+        floatingActionButton = {
+            if (card != null && editing) {
+                ExtendedFloatingActionButton(
+                    onClick = { vm.save(fieldsMap()) { editing = false } },
+                ) { Text(if (busy) "…" else "Speichern") }
+            }
+        },
     ) { padding ->
         val c = card
         if (c == null) {
@@ -99,23 +148,43 @@ fun CardDetailScreen(
                     )
                 }
 
-                // Bild-Aktionen
-                FlowImageActions(
-                    hasPhoto = c.bild_karte_pfad != null,
-                    hasUrl = c.bild_pokedex_url != null,
-                    busy = busy,
-                    onUploadPhoto = { photoPicker.launch("image/*") },
-                    onSetUrl = { showUrlDialog = true },
-                    onDeletePhoto = { vm.deletePhoto() },
-                    onClearUrl = { vm.setImageUrl(null) },
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { photoPicker.launch("image/*") }, enabled = !busy) { Text("Foto") }
+                    OutlinedButton(onClick = { showUrlDialog = true }, enabled = !busy) { Text("Bild-URL") }
+                }
+                if (c.bild_karte_pfad != null || c.bild_pokedex_url != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (c.bild_karte_pfad != null) {
+                            TextButton(onClick = { vm.deletePhoto() }, enabled = !busy) { Text("Foto entfernen") }
+                        }
+                        if (c.bild_pokedex_url != null) {
+                            TextButton(onClick = { vm.setImageUrl(null) }, enabled = !busy) { Text("URL entfernen") }
+                        }
+                    }
+                }
 
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
 
                 HorizontalDivider()
 
                 if (editing) {
-                    EditFields(c, busy) { fields -> vm.save(fields) { editing = false } }
+                    EditRow("Kartenname", name) { name = it }
+                    EditRow("Englischer Name", eng) { eng = it }
+                    EditRow("Pokédex-Nr.", pdex, KeyboardType.Number) { pdex = it }
+                    DropdownField("Set", setEd, sets.map { "${it.name} (${it.code})" }) { setEd = it }
+                    EditRow("Karten-Nr. (NNN/MAX)", kartenNr) { kartenNr = it }
+                    DropdownField("Seltenheit", seltenheit, enums?.seltenheit ?: emptyList()) { seltenheit = it }
+                    DropdownField("Kartenversion", version, enums?.kartenversion ?: emptyList()) { version = it }
+                    DropdownField("Folierung", folierung, enums?.folierung ?: emptyList()) { folierung = it }
+                    DropdownField("Sprache", sprache, enums?.sprache ?: emptyList()) { sprache = it }
+                    DropdownField("Zustand", zustand, enums?.zustand ?: emptyList()) { zustand = it }
+                    EditRow("Wert (€)", wert, KeyboardType.Decimal) { wert = it }
+                    EditRow("Notizen", notizen) { notizen = it }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = besessen, onCheckedChange = { besessen = it })
+                        Text("Besessen")
+                    }
+                    Spacer(Modifier.height(80.dp)) // Platz für den schwebenden Button
                 } else {
                     InfoTable(c)
                 }
@@ -131,28 +200,6 @@ fun CardDetailScreen(
                     },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun FlowImageActions(
-    hasPhoto: Boolean,
-    hasUrl: Boolean,
-    busy: Boolean,
-    onUploadPhoto: () -> Unit,
-    onSetUrl: () -> Unit,
-    onDeletePhoto: () -> Unit,
-    onClearUrl: () -> Unit,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onUploadPhoto, enabled = !busy) { Text("Foto") }
-        OutlinedButton(onClick = onSetUrl, enabled = !busy) { Text("Bild-URL") }
-    }
-    if (hasPhoto || hasUrl) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (hasPhoto) TextButton(onClick = onDeletePhoto, enabled = !busy) { Text("Foto entfernen") }
-            if (hasUrl) TextButton(onClick = onClearUrl, enabled = !busy) { Text("URL entfernen") }
         }
     }
 }
@@ -180,71 +227,6 @@ private fun InfoTable(c: CardEntity) {
 }
 
 @Composable
-private fun EditFields(
-    card: CardEntity,
-    busy: Boolean,
-    onSave: (Map<String, Any?>) -> Unit,
-) {
-    var name by remember(card) { mutableStateOf(card.kartenname) }
-    var eng by remember(card) { mutableStateOf(card.englischer_name ?: "") }
-    var pdex by remember(card) { mutableStateOf(card.pokedex_nr?.toString() ?: "") }
-    var setEd by remember(card) { mutableStateOf(card.set_edition ?: "") }
-    var kartenNr by remember(card) { mutableStateOf(card.karten_nr ?: "") }
-    var seltenheit by remember(card) { mutableStateOf(card.seltenheit ?: "") }
-    var version by remember(card) { mutableStateOf(card.kartenversion ?: "") }
-    var folierung by remember(card) { mutableStateOf(card.folierung ?: "") }
-    var sprache by remember(card) { mutableStateOf(card.sprache) }
-    var zustand by remember(card) { mutableStateOf(card.zustand ?: "") }
-    var wert by remember(card) { mutableStateOf(card.wert_eur ?: "") }
-    var notizen by remember(card) { mutableStateOf(card.notizen ?: "") }
-    var besessen by remember(card) { mutableStateOf(card.besessen) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EditRow("Kartenname", name) { name = it }
-        EditRow("Englischer Name", eng) { eng = it }
-        EditRow("Pokédex-Nr.", pdex, KeyboardType.Number) { pdex = it }
-        EditRow("Set", setEd) { setEd = it }
-        EditRow("Karten-Nr.", kartenNr) { kartenNr = it }
-        EditRow("Seltenheit", seltenheit) { seltenheit = it }
-        EditRow("Kartenversion", version) { version = it }
-        EditRow("Folierung", folierung) { folierung = it }
-        EditRow("Sprache", sprache) { sprache = it }
-        EditRow("Zustand", zustand) { zustand = it }
-        EditRow("Wert (€)", wert, KeyboardType.Decimal) { wert = it }
-        EditRow("Notizen", notizen) { notizen = it }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = besessen, onCheckedChange = { besessen = it })
-            Text("Besessen")
-        }
-
-        Button(
-            onClick = {
-                onSave(
-                    mapOf(
-                        "kartenname" to name.trim(),
-                        "englischer_name" to eng.ifBlank { null },
-                        "pokedex_nr" to pdex.toIntOrNull(),
-                        "set_edition" to setEd.ifBlank { null },
-                        "karten_nr" to kartenNr.ifBlank { null },
-                        "seltenheit" to seltenheit.ifBlank { null },
-                        "kartenversion" to version.ifBlank { null },
-                        "folierung" to folierung.ifBlank { null },
-                        "sprache" to sprache.ifBlank { "DE" },
-                        "zustand" to zustand.ifBlank { null },
-                        "wert_eur" to wert.ifBlank { null },
-                        "notizen" to notizen.ifBlank { null },
-                        "besessen" to besessen,
-                    )
-                )
-            },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Speichern") }
-    }
-}
-
-@Composable
 private fun EditRow(
     label: String,
     value: String,
@@ -261,6 +243,35 @@ private fun EditRow(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DropdownField(
+    label: String,
+    value: String,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text("—") }, onClick = { onSelect(""); expanded = false })
+            options.forEach { opt ->
+                DropdownMenuItem(text = { Text(opt) }, onClick = { onSelect(opt); expanded = false })
+            }
+        }
+    }
+}
+
 @Composable
 private fun UrlDialog(
     initial: String,
@@ -268,19 +279,32 @@ private fun UrlDialog(
     onSave: (String) -> Unit,
 ) {
     var url by remember { mutableStateOf(initial) }
+    val trimmed = url.trim()
+    val base = trimmed.substringBefore("?").lowercase()
+    val isImage = base.endsWith(".png") || base.endsWith(".jpg") || base.endsWith(".jpeg")
+    val valid = trimmed.isEmpty() || isImage
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Bild-URL hinterlegen") },
         text = {
-            OutlinedTextField(
-                value = url,
-                onValueChange = { url = it },
-                label = { Text("https://…") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("https://….png / .jpg") },
+                    singleLine = true,
+                    isError = !valid,
+                    supportingText = {
+                        if (!valid) Text("Nur direkte Bildlinks (.png, .jpg, .jpeg).")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
-        confirmButton = { TextButton(onClick = { onSave(url) }) { Text("Speichern") } },
+        confirmButton = {
+            TextButton(onClick = { onSave(trimmed) }, enabled = valid) { Text("Speichern") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen") } },
     )
 }

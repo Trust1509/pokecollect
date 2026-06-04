@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,9 +35,11 @@ fun CardListScreen(
     onSearch: (String) -> Unit,
     onCardClick: (Int) -> Unit,
     onScanClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     apiBase: String,
 ) {
     var viewMode by rememberSaveable { mutableStateOf(ViewMode.ALBUM) }
+    val apiConfigured = !apiBase.contains("x.x")
 
     Scaffold(
         topBar = {
@@ -51,11 +54,31 @@ fun CardListScreen(
                     IconButton(onClick = onScanClick) {
                         Icon(Icons.Default.Add, contentDescription = "Scannen")
                     }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Einstellungen")
+                    }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+            if (!apiConfigured) {
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "API-URL nicht gesetzt – tippe oben aufs Zahnrad und trage die Adresse ein.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        TextButton(onClick = onSettingsClick) { Text("Zu den Einstellungen") }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = query,
                 onValueChange = onSearch,
@@ -202,11 +225,16 @@ fun cardImageUrl(
     karteUrl: String?,
     pokedexNr: Int?,
 ): String? = when {
-    localPfad != null -> "$apiBase/images/${localPfad.substringAfterLast("/images/")}"
+    // Server-Bilder liegen unter <root>/images/… (OHNE /api/v1).
+    localPfad != null -> "${serverRoot(apiBase)}/images/${localPfad.substringAfterLast("/images/")}"
     pokedexUrl != null -> pokedexUrl
     karteUrl != null -> karteUrl
     else -> pokemonPlaceholderUrl(pokedexNr)
 }
+
+/** Server-Wurzel ohne das API-Präfix /api/v1 (für Bild-Auslieferung). */
+fun serverRoot(apiBase: String): String =
+    apiBase.removeSuffix("/").removeSuffix("/api/v1").removeSuffix("/")
 
 /** Offizielles Pokédex-Artwork von pokemon.com als Platzhalter (Pokédex 1–1025). */
 fun pokemonPlaceholderUrl(pokedexNr: Int?): String? {

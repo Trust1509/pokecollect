@@ -55,8 +55,12 @@ private fun AppNavigation() {
                 onSearch = vm::search,
                 onCardClick = { navController.navigate("detail/$it") },
                 onScanClick = { navController.navigate("scan") },
+                onSettingsClick = { navController.navigate("settings") },
                 apiBase = vm.apiBase,
             )
+        }
+        composable("settings") {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
         composable("scan") {
             ScanScreen(

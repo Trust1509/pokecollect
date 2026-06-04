@@ -53,6 +53,20 @@ data class CardCreate(
 data class LoginRequest(val username: String, val password: String)
 data class TokenResponse(val access_token: String, val token_type: String)
 
+data class CardEnums(
+    val seltenheit: List<String> = emptyList(),
+    val kartenversion: List<String> = emptyList(),
+    val folierung: List<String> = emptyList(),
+    val sprache: List<String> = emptyList(),
+    val zustand: List<String> = emptyList(),
+)
+
+data class PokemonSet(
+    val code: String,
+    val name: String,
+    val max_card_nr: Int? = null,
+)
+
 interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body req: LoginRequest): TokenResponse
@@ -87,4 +101,10 @@ interface ApiService {
         @Path("id") id: Int,
         @Part file: MultipartBody.Part,
     ): Card
+
+    @GET("cards/meta/enums")
+    suspend fun enums(): CardEnums
+
+    @GET("sets")
+    suspend fun sets(): List<PokemonSet>
 }
