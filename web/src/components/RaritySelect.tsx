@@ -3,21 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { RARITY_MAP } from "@/components/RarityBadge";
 
 function PromoSymbol({ size = 28 }: { size?: number }) {
-  // Stern: outer r=45, inner r=19, center (50,50)
   const star = "M50,5 L61.8,33.8 L92.8,36.1 L69,56.2 L76.4,86.4 L50,70 L23.6,86.4 L31,56.2 L7.2,36.1 L38.2,33.8 Z";
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" className="inline-block shrink-0">
+      <path d={star} fill="white" transform="scale(1.08) translate(-4,-4)" />
       <path d={star} fill="black" />
-      <text
-        x="50" y="56"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="white"
-        fontSize="19"
-        fontWeight="900"
-        fontFamily="Arial Black, Arial, sans-serif"
-        letterSpacing="0.5"
-      >
+      <text x="50" y="56" textAnchor="middle" dominantBaseline="middle"
+        fill="white" fontSize="19" fontWeight="900"
+        fontFamily="Arial Black, Arial, sans-serif" letterSpacing="0.5">
         PROMO
       </text>
     </svg>
@@ -75,7 +68,7 @@ export default function RaritySelect({ value, onChange, options, language, label
             <span className="w-8 flex items-center justify-center shrink-0">
               {isPromo(selected)
                 ? <PromoSymbol size={22} />
-                : <span className={`text-base leading-none ${getCls(selected)}`}>{getSymbol(selected)}</span>
+                : <span className={`text-base leading-none ${getCls(selected)}`} style={RARITY_MAP[selected]?.style}>{getSymbol(selected)}</span>
               }
             </span>
             <span className="text-white">{selected}</span>
@@ -111,7 +104,7 @@ export default function RaritySelect({ value, onChange, options, language, label
                   {isPromo(rarity)
                     ? <PromoSymbol size={30} />
                     : sym
-                      ? <span className={`text-lg leading-none font-medium ${cls}`}>{sym}</span>
+                      ? <span className={`text-lg leading-none font-medium ${cls}`} style={RARITY_MAP[rarity]?.style}>{sym}</span>
                       : <span className="text-gray-600 text-xs">—</span>
                   }
                 </span>
