@@ -4,9 +4,11 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-import asyncio
+import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
+
+log = logging.getLogger(__name__)
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -124,22 +126,19 @@ def get_card(card_id: int, db: Session = Depends(get_db)):
     return _card_or_404(card_id, db)
 
 
-def _trigger_image_fetch(card_id: int):
+async def _trigger_image_fetch(card_id: int):
     """Holt die pokemon.com URL im Hintergrund und speichert sie."""
-    async def _run():
-        db = SessionLocal()
-        try:
-            card = db.get(PokemonCard, card_id)
-            if not card or card.bild_karte_pfad or card.bild_pokedex_url:
-                return  # eigenes Foto / manuelle URL hat Vorrang
-            url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
-            if url:
-                card.bild_karte_url = url
-                db.commit()
-        finally:
-            db.close()
-
-    asyncio.run(_run())
+    db = SessionLocal()
+    try:
+        card = db.get(PokemonCard, card_id)
+        if not card or card.bild_karte_pfad or card.bild_pokedex_url:
+            return  # eigenes Foto / manuelle URL hat Vorrang
+        url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
+        if url:
+            card.bild_karte_url = url
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.post("", response_model=CardResponse, status_code=201)
@@ -291,33 +290,30 @@ def get_enums():
 
 # ── Bilder Backfill ───────────────────────────────────────────────────────────
 
-def _backfill_images_task(force: bool = False):
+async def _backfill_images_task(force: bool = False):
     """
     Holt pokemon.com URLs für alle Karten die noch kein Bild haben.
     force=True überschreibt auch bereits vorhandene bild_karte_url.
     """
-    async def _run():
-        db = SessionLocal()
-        try:
-            q = select(PokemonCard)
-            if not force:
-                q = q.where(PokemonCard.bild_karte_url.is_(None))
-                q = q.where(PokemonCard.bild_karte_pfad.is_(None))
-                q = q.where(PokemonCard.bild_pokedex_url.is_(None))
-            cards = db.scalars(q).all()
-            log.info(f"Backfill gestartet: {len(cards)} Karten")
-            ok = 0
-            for card in cards:
-                url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
-                if url:
-                    card.bild_karte_url = url
-                    ok += 1
-            db.commit()
-            log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Bilder gefunden")
-        finally:
-            db.close()
-
-    asyncio.run(_run())
+    db = SessionLocal()
+    try:
+        q = select(PokemonCard)
+        if not force:
+            q = q.where(PokemonCard.bild_karte_url.is_(None))
+            q = q.where(PokemonCard.bild_karte_pfad.is_(None))
+            q = q.where(PokemonCard.bild_pokedex_url.is_(None))
+        cards = db.scalars(q).all()
+        log.info(f"Backfill gestartet: {len(cards)} Karten")
+        ok = 0
+        for card in cards:
+            url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
+            if url:
+                card.bild_karte_url = url
+                ok += 1
+        db.commit()
+        log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Bilder gefunden")
+    finally:
+        db.close()
 
 
 @router.post("/meta/backfill-images")
