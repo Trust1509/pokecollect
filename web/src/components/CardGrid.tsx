@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
 import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
+import RarityBadge from "@/components/RarityBadge";
 
 type Props = {
   cards: Card[];
@@ -10,20 +11,24 @@ type Props = {
   placeholderEnabled?: boolean;
 };
 
-const RARITY_COLOR: Record<string, string> = {
-  "Common": "border-gray-500",
-  "Uncommon": "border-green-500",
-  "Rare": "border-blue-500",
-  "Holo Rare": "border-blue-400",
-  "Double Rare": "border-indigo-400",
-  "Ultra Rare": "border-purple-500",
-  "Secret Rare": "border-yellow-400",
-  "Full Art": "border-pink-400",
-  "Illustration Rare": "border-rose-400",
+const RARITY_BORDER: Record<string, string> = {
+  "Common":                    "border-gray-500",
+  "Uncommon":                  "border-green-500",
+  "Rare":                      "border-blue-400",
+  "Holo Rare":                 "border-blue-400",
+  "Double Rare":               "border-indigo-400",
+  "Ultra Rare":                "border-purple-500",
+  "Full Art":                  "border-purple-400",
+  "Secret Rare":               "border-yellow-400",
+  "Illustration Rare":         "border-rose-400",
   "Special Illustration Rare": "border-orange-400",
-  "Rainbow Rare": "border-rainbow",
-  "Hyper Rare": "border-amber-300",
-  "Promo": "border-teal-400",
+  "Hyper Rare":                "border-amber-300",
+  "Mega Hyper Rare":           "border-yellow-300",
+  "ACE SPEC Rare":             "border-pink-400",
+  "Shiny Rare":                "border-yellow-300",
+  "Shiny Ultra Rare":          "border-yellow-300",
+  "Rainbow Rare":              "border-pink-300",
+  "Promo":                     "border-teal-400",
 };
 
 export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: Props) {
@@ -41,11 +46,11 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
         const imgSrc =
           card.bild_thumbnail_pfad
             ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
-            : card.bild_pokedex_url     // manuell gesetzte URL
-            ?? card.bild_karte_url      // auto: pokemon.com
+            : card.bild_pokedex_url
+            ?? card.bild_karte_url
             ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
         const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
-        const borderColor = card.seltenheit ? (RARITY_COLOR[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
+        const borderColor = card.seltenheit ? (RARITY_BORDER[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 
         return (
           <Link key={card.id} href={`/cards/${card.id}`}>
@@ -84,9 +89,12 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
               </div>
               <div className="p-1.5">
                 <p className="text-xs text-white font-medium truncate">{card.kartenname}</p>
-                <p className="text-xs text-gray-400 truncate">
-                  {card.set_edition ?? "–"} {card.karten_nr ? `· ${card.karten_nr}` : ""}
-                </p>
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <p className="text-xs text-gray-400 truncate flex-1">
+                    {card.set_edition ?? "–"}{card.karten_nr ? ` · ${card.karten_nr}` : ""}
+                  </p>
+                  <RarityBadge rarity={card.seltenheit} language={card.sprache} size="xs" />
+                </div>
                 {card.wert_eur && (
                   <p className="text-xs text-yellow-400 mt-0.5">{formatEur(card.wert_eur)}</p>
                 )}

@@ -1,6 +1,7 @@
 "use client";
 import { Enums } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { rarityOptionLabel } from "@/components/RarityBadge";
 
 export type Filters = {
   besessen?: boolean;
@@ -90,7 +91,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
         >
           <option value="">{t.filter_all}</option>
           {(enums?.seltenheit ?? []).map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>{rarityOptionLabel(s)}</option>
           ))}
         </select>
       </div>

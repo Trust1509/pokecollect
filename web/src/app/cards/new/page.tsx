@@ -7,6 +7,7 @@ import { cardApi, Enums, PokemonSet, setsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames } from "@/lib/pokedex";
+import { rarityOptionLabel } from "@/components/RarityBadge";
 
 export default function NewCardPage() {
   const router = useRouter();
@@ -111,7 +112,11 @@ export default function NewCardPage() {
         className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
       >
         <option value="">–</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {key === "seltenheit" ? rarityOptionLabel(o) : o}
+          </option>
+        ))}
       </select>
     </div>
   );

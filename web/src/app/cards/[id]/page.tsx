@@ -6,6 +6,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, pricesApi, Card, Enums, PokemonSet, setsApi } from "@/lib/api";
 import { fetchPokemonNames } from "@/lib/pokedex";
+import RarityBadge, { rarityOptionLabel } from "@/components/RarityBadge";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
@@ -178,6 +179,7 @@ export default function CardDetailPage() {
       );
     }
     if (type === "select" && options) {
+      const isRarity = key === "seltenheit";
       return (
         <div key={key}>
           <label className="text-gray-500 text-xs block">{label}</label>
@@ -187,7 +189,11 @@ export default function CardDetailPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
           >
             <option value="">–</option>
-            {options.map((o) => <option key={o} value={o}>{o}</option>)}
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {isRarity ? rarityOptionLabel(o, card.sprache) : o}
+              </option>
+            ))}
           </select>
         </div>
       );
@@ -391,7 +397,19 @@ export default function CardDetailPage() {
               </div>
             )}
 
-            {field("seltenheit", t.field_rarity, "select", enums?.seltenheit)}
+            {editing ? (
+              field("seltenheit", t.field_rarity, "select", enums?.seltenheit)
+            ) : (
+              <div key="seltenheit">
+                <dt className="text-gray-500 text-xs">{t.field_rarity}</dt>
+                <dd className="text-white flex items-center gap-2">
+                  {card.seltenheit ?? "–"}
+                  {card.seltenheit && (
+                    <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
+                  )}
+                </dd>
+              </div>
+            )}
             {field("kartenversion", t.field_card_version, "select", enums?.kartenversion)}
             {field("folierung", t.field_foiling, "select", enums?.folierung)}
             {field("sprache", t.field_language, "select", enums?.sprache)}

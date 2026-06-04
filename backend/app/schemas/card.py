@@ -6,9 +6,12 @@ from pydantic import BaseModel
 
 
 SELTENHEIT_VALUES = [
-    "Common", "Uncommon", "Rare", "Holo Rare", "Double Rare",
-    "Ultra Rare", "Secret Rare", "Full Art", "Illustration Rare",
-    "Special Illustration Rare", "Rainbow Rare", "Hyper Rare", "Promo",
+    "Common", "Uncommon", "Rare", "Double Rare",
+    "Ultra Rare", "Secret Rare",
+    "Illustration Rare", "Special Illustration Rare",
+    "Hyper Rare", "Mega Hyper Rare",
+    "ACE SPEC Rare", "Shiny Rare", "Shiny Ultra Rare",
+    "Rainbow Rare", "Promo",
 ]
 
 KARTENVERSION_VALUES = [
