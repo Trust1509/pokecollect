@@ -33,8 +33,8 @@ type RarityDef = {
 };
 
 export const RARITY_MAP: Record<string, RarityDef> = {
-  "Common":                    { symbol: "●",    cls: "text-gray-400",                                                                       jpCode: "C"     },
-  "Uncommon":                  { symbol: "◆",    cls: "text-gray-300",                                                                       jpCode: "U"     },
+  "Common":                    { symbol: "●",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "C"     },
+  "Uncommon":                  { symbol: "◆",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "U"     },
   "Rare":                      { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "R"     },
   "Double Rare":               { symbol: "★★",   cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "RR"    },
   "Ultra Rare":                { symbol: "★★",   cls: "text-white bg-gray-900 rounded px-0.5 leading-none",                                  jpCode: "SR"    },
