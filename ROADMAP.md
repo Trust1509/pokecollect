@@ -86,9 +86,12 @@ https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web
 - [x] Frontend: Bildpriorität eigenes Foto → manuelle URL → pokemon.com → Pokédex-Artwork
 - [x] "pokemon.com"-Label in Detailansicht
 - [x] Backfill-Buttons in Settings-Seite
-- **Ergebnis: 80/96 besessener Karten mit Kartenbild (83%)**
-- Nicht verfügbar: chinesische 151C, Mega Promos (MEP), japanische Sets → Pokédex-Artwork als Fallback
-- [ ] PokémonTCG.io als Fallback für fehlende Sets (v0.7.0)
+- **Ergebnis: SV-Era Sets (~60%) korrekt; SWSH/XY-era DE-Sets auf Pokédex-Artwork**
+- Kernproblem erkannt: URL-Nummer ≠ aufgedruckte Kartennummer (außer SV-Era)
+- SWSH/XY deutsche Subsets haben eigene Nummerierung → falsche Bilder → bewusst deaktiviert
+- SV-Era funktioniert weil internationale Simultanveröffentlichung → Nummerierung identisch
+- Manuelle URL über "Bild-URL hinterlegen" als Workaround für SWSH/XY
+- [ ] Korrekte Lösung via PokémonTCG.io API (v0.7.0)
 
 ---
 
@@ -118,7 +121,18 @@ https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web
 - [ ] Preis-Anzeige auf Wunschliste (Cardmarket-Wert der gewünschten Karte)
 - [ ] Export Wunschliste als CSV (für Cardmarket-Suche)
 
-## 🔲 v0.7.0 — Cardmarket-Integration
+## 🔲 v0.7.0 — PokémonTCG.io Integration (korrekte Kartenbilder)
+
+> **Ziel:** Korrekte Kartenbilder auch für SWSH/XY-era deutsche Sets via PokémonTCG.io API.
+> Die pokemon.com URL-Nummer ≠ aufgedruckte Kartennummer bei deutschen Subsets →
+> PokémonTCG.io hat die tatsächlichen sprachspezifischen Kartendaten.
+
+- [ ] PokémonTCG.io API-Key aus Settings-Seite verwenden
+- [ ] Lookup: Set-Kürzel + Kartennummer + Sprache → korrekte Card-ID → Bild-URL
+- [ ] Fehlende Sets nachfüllen (ASC, PFL, BLK, BRS, WHT, MEG)
+- [ ] Fallback-Kette: eigenes Foto → manuelle URL → pokemon.com (SV) → PokémonTCG.io → Pokédex-Artwork
+
+## 🔲 v0.8.0 — Cardmarket-Integration
 - [ ] Cardmarket OAuth 1.0a testen (Keys via Settings-Seite eintragen)
 - [ ] Preisabruf für einzelne Karte manuell triggern
 - [ ] Preishistorie-Anzeige verbessern
