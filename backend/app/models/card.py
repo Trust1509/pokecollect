@@ -25,6 +25,7 @@ class PokemonCard(Base):
     notizen = Column(Text, nullable=True)
     zustand = Column(Text, nullable=True)
     bild_pokedex_url = Column(Text, nullable=True)
+    bild_karte_url = Column(Text, nullable=True)   # auto: pokemon.com
     bild_karte_pfad = Column(Text, nullable=True)
     bild_thumbnail_pfad = Column(Text, nullable=True)
     hinzugefuegt_am = Column(DateTime, default=datetime.utcnow)

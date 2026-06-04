@@ -69,6 +69,7 @@ class CardUpdate(BaseModel):
 class CardResponse(CardBase):
     id: int
     wert_aktualisiert: Optional[datetime] = None
+    bild_karte_url: Optional[str] = None
     bild_karte_pfad: Optional[str] = None
     bild_thumbnail_pfad: Optional[str] = None
     hinzugefuegt_am: Optional[datetime] = None

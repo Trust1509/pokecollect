@@ -37,9 +37,11 @@ export default function CardDetailPage() {
   const imgSrc =
     card.bild_karte_pfad
       ? `${API_BASE}/images/${card.bild_karte_pfad.replace(/^.*\/images\//, "")}`
-      : card.bild_pokedex_url
+      : card.bild_pokedex_url          // manuell gesetzte URL
+      ?? card.bild_karte_url           // auto: pokemon.com
       ?? pokemonPlaceholderUrl(card.pokedex_nr);
-  const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !!imgSrc;
+  const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
+  const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
 
   const handleSave = async () => {
     try {
@@ -192,6 +194,11 @@ export default function CardDetailPage() {
                   fill
                   className={isPlaceholder ? "object-contain p-4 opacity-75" : "object-cover"}
                 />
+                {isAutoCard && (
+                  <div className="absolute bottom-0 inset-x-0 bg-black/60 text-center text-blue-400 text-xs py-1">
+                    pokemon.com
+                  </div>
+                )}
                 {isPlaceholder && (
                   <div className="absolute bottom-0 inset-x-0 bg-black/60 text-center text-gray-400 text-xs py-1">
                     Pokédex-Platzhalter

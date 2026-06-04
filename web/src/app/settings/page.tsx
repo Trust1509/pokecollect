@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, AppSettings } from "@/lib/api";
+import { settingsApi, cardApi, AppSettings } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 
 const SECTION = "bg-pokemon-card rounded-lg p-5 space-y-4";
@@ -206,6 +206,36 @@ export default function SettingsPage() {
             API-Keys speichern
           </button>
         </div>
+      </Section>
+
+      {/* Bilder */}
+      <Section title="🖼️ Kartenbilder (pokemon.com)">
+        <p className="text-gray-400 text-xs">
+          Lädt automatisch das exakte Kartenbild von pokemon.com für alle Karten ohne eigenes Foto oder manuelle URL.
+          Priorität: Eigenes Foto → Manuelle URL → pokemon.com → Pokédex-Artwork.
+        </p>
+        <div className="flex gap-3 pt-1 flex-wrap">
+          <button
+            onClick={async () => {
+              try { await cardApi.backfillImages(false); toast.success("Backfill gestartet — läuft im Hintergrund"); }
+              catch { toast.error("Fehler beim Starten"); }
+            }}
+            className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600"
+          >
+            Fehlende Bilder abrufen
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm("Alle vorhandenen pokemon.com URLs neu abrufen?")) return;
+              try { await cardApi.backfillImages(true); toast.success("Vollständiger Backfill gestartet"); }
+              catch { toast.error("Fehler beim Starten"); }
+            }}
+            className="bg-gray-700 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-600"
+          >
+            Alle Bilder neu abrufen
+          </button>
+        </div>
+        <p className="text-gray-600 text-xs">API-Logs zeigen den Fortschritt: <code>docker logs pokecollect-api-1 -f</code></p>
       </Section>
 
       {/* Konto */}

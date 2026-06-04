@@ -4,13 +4,16 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import asyncio
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, SessionLocal
+from app.services.card_image_service import fetch_card_image_url
 from app.models.card import PokemonCard, PreisHistorie
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
@@ -121,20 +124,44 @@ def get_card(card_id: int, db: Session = Depends(get_db)):
     return _card_or_404(card_id, db)
 
 
+def _trigger_image_fetch(card_id: int):
+    """Holt die pokemon.com URL im Hintergrund und speichert sie."""
+    async def _run():
+        db = SessionLocal()
+        try:
+            card = db.get(PokemonCard, card_id)
+            if not card or card.bild_karte_pfad or card.bild_pokedex_url:
+                return  # eigenes Foto / manuelle URL hat Vorrang
+            url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
+            if url:
+                card.bild_karte_url = url
+                db.commit()
+        finally:
+            db.close()
+
+    asyncio.run(_run())
+
+
 @router.post("", response_model=CardResponse, status_code=201)
-def create_card(data: CardCreate, db: Session = Depends(get_db)):
+def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = PokemonCard(**data.model_dump())
     db.add(card)
     db.commit()
     db.refresh(card)
+    background_tasks.add_task(_trigger_image_fetch, card.id)
     return card
 
 
 @router.put("/{card_id}", response_model=CardResponse)
-def update_card(card_id: int, data: CardUpdate, db: Session = Depends(get_db)):
+def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updated = data.model_dump(exclude_unset=True)
+    for field, value in updated.items():
         setattr(card, field, value)
+    # Bild neu abrufen wenn relevante Felder geändert wurden
+    if any(k in updated for k in ("set_edition", "karten_nr", "sprache")):
+        card.bild_karte_url = None  # wird neu gesetzt
+        background_tasks.add_task(_trigger_image_fetch, card.id)
     db.commit()
     db.refresh(card)
     return card
@@ -260,3 +287,47 @@ def get_enums():
         sprache=SPRACHE_VALUES,
         zustand=ZUSTAND_VALUES,
     )
+
+
+# ── Bilder Backfill ───────────────────────────────────────────────────────────
+
+def _backfill_images_task(force: bool = False):
+    """
+    Holt pokemon.com URLs für alle Karten die noch kein Bild haben.
+    force=True überschreibt auch bereits vorhandene bild_karte_url.
+    """
+    async def _run():
+        db = SessionLocal()
+        try:
+            q = select(PokemonCard)
+            if not force:
+                q = q.where(PokemonCard.bild_karte_url.is_(None))
+                q = q.where(PokemonCard.bild_karte_pfad.is_(None))
+                q = q.where(PokemonCard.bild_pokedex_url.is_(None))
+            cards = db.scalars(q).all()
+            log.info(f"Backfill gestartet: {len(cards)} Karten")
+            ok = 0
+            for card in cards:
+                url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
+                if url:
+                    card.bild_karte_url = url
+                    ok += 1
+            db.commit()
+            log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Bilder gefunden")
+        finally:
+            db.close()
+
+    asyncio.run(_run())
+
+
+@router.post("/meta/backfill-images")
+def backfill_images(
+    background_tasks: BackgroundTasks,
+    force: bool = False,
+):
+    """
+    Startet einen Hintergrund-Job der pokemon.com Bilder für alle Karten abruft.
+    force=True: auch Karten mit vorhandener bild_karte_url neu abrufen.
+    """
+    background_tasks.add_task(_backfill_images_task, force)
+    return {"detail": "Backfill gestartet – läuft im Hintergrund."}

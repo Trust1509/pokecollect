@@ -41,9 +41,10 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
         const imgSrc =
           card.bild_thumbnail_pfad
             ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
-            : card.bild_pokedex_url
+            : card.bild_pokedex_url     // manuell gesetzte URL
+            ?? card.bild_karte_url      // auto: pokemon.com
             ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
-        const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !!imgSrc;
+        const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
         const borderColor = card.seltenheit ? (RARITY_COLOR[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 
         return (

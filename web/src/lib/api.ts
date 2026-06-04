@@ -33,6 +33,7 @@ export type Card = {
   notizen: string | null;
   zustand: string | null;
   bild_pokedex_url: string | null;
+  bild_karte_url: string | null;       // auto: pokemon.com
   bild_karte_pfad: string | null;
   bild_thumbnail_pfad: string | null;
   hinzugefuegt_am: string;
@@ -96,6 +97,9 @@ export const cardApi = {
   enums: () => api.get<Enums>("/cards/meta/enums"),
 
   byPokedex: (nr: number) => api.get<Card[]>(`/cards/pokedex/${nr}`),
+
+  backfillImages: (force = false) =>
+    api.post(`/cards/meta/backfill-images?force=${force}`),
 };
 
 export const pricesApi = {
