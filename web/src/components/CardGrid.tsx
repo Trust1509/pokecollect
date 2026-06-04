@@ -7,6 +7,7 @@ import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
 type Props = {
   cards: Card[];
   apiBase: string;
+  placeholderEnabled?: boolean;
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -25,7 +26,7 @@ const RARITY_COLOR: Record<string, string> = {
   "Promo": "border-teal-400",
 };
 
-export default function CardGrid({ cards, apiBase }: Props) {
+export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: Props) {
   if (!cards.length) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
@@ -41,7 +42,7 @@ export default function CardGrid({ cards, apiBase }: Props) {
           card.bild_thumbnail_pfad
             ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
             : card.bild_pokedex_url
-            ?? pokemonPlaceholderUrl(card.pokedex_nr);
+            ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
         const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !!imgSrc;
         const borderColor = card.seltenheit ? (RARITY_COLOR[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 

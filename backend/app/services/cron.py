@@ -16,9 +16,13 @@ scheduler = AsyncIOScheduler()
 
 
 async def _daily_price_update():
-    log.info("Starte täglichen Preisupdate …")
     db = SessionLocal()
     try:
+        enabled_row = db.get(__import__("app.models.setting", fromlist=["AppSetting"]).AppSetting, "price_update_enabled")
+        if enabled_row and enabled_row.value == "false":
+            log.info("Preisupdate deaktiviert – übersprungen.")
+            return
+        log.info("Starte täglichen Preisupdate …")
         ids = list(db.scalars(
             select(PokemonCard.id).where(PokemonCard.besessen == True)
         ).all())

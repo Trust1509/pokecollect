@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { cardApi, CardListResponse, Enums } from "@/lib/api";
+import { cardApi, CardListResponse, Enums, settingsApi, AppSettings } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
 import { formatEur } from "@/lib/utils";
@@ -11,6 +11,7 @@ export default function HomePage() {
   const [data, setData] = useState<CardListResponse | null>(null);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<string[]>([]);
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export default function HomePage() {
     setLoading(true);
     try {
       // Pokédex-Nummer Suche: wenn search eine reine Zahl ist, als pokedex_nr filtern
-      const params: Record<string, unknown> = { ...filters, page, limit: 48 };
+      const params: Record<string, unknown> = { ...filters, page, limit: appSettings?.cards_per_page ?? 48 };
       if (filters.search && /^\d+$/.test(filters.search.trim())) {
         params.pokedex_nr = Number(filters.search.trim());
         delete params.search;
@@ -41,6 +42,10 @@ export default function HomePage() {
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
     cardApi.sets().then((r) => setSets(r.data));
+    settingsApi.get().then((r) => {
+      setAppSettings(r.data);
+      setFilters((f) => ({ ...f, sort: f.sort ?? r.data.default_sort }));
+    }).catch(() => {/* Settings optional – Defaults gelten */});
     cardApi.stats().then((r) =>
       setStatsTotal({
         gesamt: r.data.gesamt,
@@ -126,7 +131,7 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-              <CardGrid cards={data?.items ?? []} apiBase={API_BASE} />
+              <CardGrid cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
             </>
           )}
         </div>

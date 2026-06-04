@@ -22,9 +22,24 @@ _PASSWORD_HASH = os.getenv(
 )
 
 
+def _get_password_hash() -> str:
+    """DB-Hash has priority over env var (allows in-app password change)."""
+    try:
+        from app.database import SessionLocal
+        from app.models.setting import AppSetting
+        db = SessionLocal()
+        row = db.get(AppSetting, "app_password_hash")
+        db.close()
+        if row and row.value:
+            return row.value
+    except Exception:
+        pass
+    return _PASSWORD_HASH
+
+
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginRequest):
-    if data.username != _USERNAME or not pwd_context.verify(data.password, _PASSWORD_HASH):
+    if data.username != _USERNAME or not pwd_context.verify(data.password, _get_password_hash()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültige Anmeldedaten",

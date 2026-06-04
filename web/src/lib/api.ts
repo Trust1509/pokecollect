@@ -107,3 +107,26 @@ export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ access_token: string }>("/auth/login", { username, password }),
 };
+
+export type AppSettings = {
+  placeholder_images_enabled: boolean;
+  cards_per_page: number;
+  default_sort: string;
+  price_update_enabled: boolean;
+  price_update_hour: number;
+  price_source: string;
+  default_language: string;
+  default_condition: string;
+  cardmarket_app_token: string;
+  cardmarket_app_secret: string;
+  cardmarket_access_token: string;
+  cardmarket_access_secret: string;
+  pokemontcg_api_key: string;
+};
+
+export const settingsApi = {
+  get: () => api.get<AppSettings>("/settings"),
+  update: (data: Partial<AppSettings>) => api.put<AppSettings>("/settings", data),
+  changePassword: (current_password: string, new_password: string) =>
+    api.post("/settings/change-password", { current_password, new_password }),
+};
