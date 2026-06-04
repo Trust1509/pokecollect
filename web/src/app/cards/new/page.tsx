@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -21,6 +21,9 @@ export default function NewCardPage() {
   });
   const [cardNrError, setCardNrError] = useState<string | null>(null);
   const [nameLoading, setNameLoading] = useState(false);
+  // Tracking ob Name auto-befüllt wurde — dann darf er bei Nr.-Änderung überschrieben werden
+  const autoFilled = useRef({ kartenname: false, englischer_name: false });
+  const lookupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
@@ -28,26 +31,45 @@ export default function NewCardPage() {
   }, []);
 
   const set = (key: string, value: unknown) => {
+    // Manuelle Eingabe in Namensfelder → auto-fill-Flag zurücksetzen
+    if (key === "kartenname") autoFilled.current.kartenname = false;
+    if (key === "englischer_name") autoFilled.current.englischer_name = false;
     setForm((f) => ({ ...f, [key]: value }));
     if (key === "karten_nr") setCardNrError(null);
   };
 
-  const handlePokedexNr = async (nr: number | null) => {
-    set("pokedex_nr", nr);
-    if (!nr || nr < 1 || nr > 1025) return;
-    setNameLoading(true);
-    try {
-      const names = await fetchPokemonNames(nr);
-      if (names) {
-        setForm((f) => ({
-          ...f,
-          kartenname: f.kartenname || names.de,
-          englischer_name: (f.englischer_name as string | undefined) || names.en,
-        }));
-      }
-    } finally {
-      setNameLoading(false);
+  const handlePokedexNr = (nr: number | null) => {
+    setForm((f) => ({ ...f, pokedex_nr: nr }));
+    if (lookupTimeout.current) clearTimeout(lookupTimeout.current);
+
+    if (!nr || nr < 1 || nr > 1025) {
+      // Nr. geleert oder ungültig → auto-befüllte Namen zurücksetzen
+      setForm((f) => ({
+        ...f,
+        kartenname: autoFilled.current.kartenname ? "" : f.kartenname,
+        englischer_name: autoFilled.current.englischer_name ? "" : f.englischer_name,
+      }));
+      autoFilled.current = { kartenname: false, englischer_name: false };
+      return;
     }
+
+    // Debounce: erst nach 500ms Tippen-Pause den Lookup starten
+    lookupTimeout.current = setTimeout(async () => {
+      setNameLoading(true);
+      try {
+        const names = await fetchPokemonNames(nr);
+        if (names) {
+          setForm((f) => ({
+            ...f,
+            kartenname: (!f.kartenname || autoFilled.current.kartenname) ? names.de : f.kartenname,
+            englischer_name: (!(f.englischer_name as string) || autoFilled.current.englischer_name) ? names.en : f.englischer_name,
+          }));
+          autoFilled.current = { kartenname: true, englischer_name: true };
+        }
+      } finally {
+        setNameLoading(false);
+      }
+    }, 500);
   };
 
   const validateCardNr = (nr: string): boolean => {

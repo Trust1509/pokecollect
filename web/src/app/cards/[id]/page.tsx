@@ -27,6 +27,8 @@ export default function CardDetailPage() {
   const [form, setForm] = useState<Partial<Card>>({});
   const [cardNrError, setCardNrError] = useState<string | null>(null);
   const [nameLoading, setNameLoading] = useState(false);
+  const autoFilled = useRef({ kartenname: false, englischer_name: false });
+  const lookupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -124,22 +126,36 @@ export default function CardDetailPage() {
     router.push("/");
   };
 
-  const handlePokedexNr = async (nr: number | null) => {
+  const handlePokedexNr = (nr: number | null) => {
     setForm((f) => ({ ...f, pokedex_nr: nr }));
-    if (!nr || nr < 1 || nr > 1025) return;
-    setNameLoading(true);
-    try {
-      const names = await fetchPokemonNames(nr);
-      if (names) {
-        setForm((f) => ({
-          ...f,
-          kartenname: (f.kartenname as string | undefined) || names.de,
-          englischer_name: (f.englischer_name as string | undefined) || names.en,
-        }));
-      }
-    } finally {
-      setNameLoading(false);
+    if (lookupTimeout.current) clearTimeout(lookupTimeout.current);
+
+    if (!nr || nr < 1 || nr > 1025) {
+      setForm((f) => ({
+        ...f,
+        kartenname: autoFilled.current.kartenname ? "" : f.kartenname,
+        englischer_name: autoFilled.current.englischer_name ? "" : f.englischer_name,
+      }));
+      autoFilled.current = { kartenname: false, englischer_name: false };
+      return;
     }
+
+    lookupTimeout.current = setTimeout(async () => {
+      setNameLoading(true);
+      try {
+        const names = await fetchPokemonNames(nr);
+        if (names) {
+          setForm((f) => ({
+            ...f,
+            kartenname: (!(f.kartenname as string) || autoFilled.current.kartenname) ? names.de : f.kartenname,
+            englischer_name: (!(f.englischer_name as string) || autoFilled.current.englischer_name) ? names.en : f.englischer_name,
+          }));
+          autoFilled.current = { kartenname: true, englischer_name: true };
+        }
+      } finally {
+        setNameLoading(false);
+      }
+    }, 500);
   };
 
   const handleSetChange = (setEdition: string, s: PokemonSet | null) => {
