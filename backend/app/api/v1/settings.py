@@ -11,11 +11,13 @@ from app.models.setting import AppSetting
 from app.schemas.setting import DEFAULTS, PasswordChange, SettingsResponse, SettingsUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _require_auth(credentials: HTTPAuthorizationCredentials = Depends(bearer)):
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Nicht eingeloggt")
     try:
         jwt.decode(credentials.credentials, config.jwt_secret, algorithms=[config.jwt_algorithm])
     except JWTError:
@@ -53,7 +55,7 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
     )
 
 
-@router.get("", response_model=SettingsResponse, dependencies=[Depends(_require_auth)])
+@router.get("", response_model=SettingsResponse)
 def get_settings(db: Session = Depends(get_db)):
     return _to_response(_get_all(db))
 
