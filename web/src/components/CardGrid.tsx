@@ -109,11 +109,11 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                 {/* Zeile 1: Pokédex-Nr. (links) | Name (rechts) */}
                 <div className="flex items-baseline gap-1">
                   {card.pokedex_nr ? (
-                    <span className="text-[10px] text-gray-500 shrink-0">
+                    <span className="text-xs text-gray-500 shrink-0">
                       #{String(card.pokedex_nr).padStart(4, "0")}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-gray-700 shrink-0">–</span>
+                    <span className="text-xs text-gray-700 shrink-0">–</span>
                   )}
                   <span className="text-xs text-white font-medium truncate text-right flex-1">
                     {displayName}
@@ -122,17 +122,20 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
 
                 {/* Zeile 2: Set-Kürzel (links) | Karten-Nr. (mitte) | Seltenheit-Symbol (rechts) */}
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-gray-400 font-mono shrink-0">{setCode}</span>
-                  <span className="text-[10px] text-gray-500 flex-1 text-center truncate">
+                  <span className="text-xs text-gray-400 font-mono shrink-0">{setCode}</span>
+                  <span className="text-xs text-gray-500 flex-1 text-center truncate">
                     {card.karten_nr ?? ""}
                   </span>
-                  <RarityBadge rarity={card.seltenheit} language={card.sprache} size="xs" />
+                  <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
                 </div>
 
-                {/* Zeile 3: Preis (links) | Besessen-Kreis (rechts) */}
+                {/* Zeile 3: Preis (links) | Sprache (mitte) | Besessen-Kreis (rechts) */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-yellow-400">
+                  <span className="text-xs text-yellow-400">
                     {card.wert_eur ? formatEur(card.wert_eur) : ""}
+                  </span>
+                  <span className="text-xs text-gray-500 font-mono">
+                    {card.sprache ?? ""}
                   </span>
                   {card.besessen && (
                     <span className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" />
