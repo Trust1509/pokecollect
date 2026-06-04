@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card } from "@/lib/api";
 import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
+import { useI18n } from "@/lib/i18n";
 
 type Props = {
   cards: Card[];
@@ -31,7 +32,16 @@ const RARITY_BORDER: Record<string, string> = {
   "Promo":                     "border-teal-400",
 };
 
+/** Extrahiert Set-Kürzel aus "Paldeas Schicksale (PAF)" → "PAF" */
+function extractSetCode(setEdition: string | null): string {
+  if (!setEdition) return "–";
+  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)$/);
+  return m ? m[1] : setEdition.slice(0, 4);
+}
+
 export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: Props) {
+  const { lang } = useI18n();
+
   if (!cards.length) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
@@ -52,6 +62,13 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
         const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
         const borderColor = card.seltenheit ? (RARITY_BORDER[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 
+        // Sprachabhängiger Name
+        const displayName = lang === "EN" && card.englischer_name
+          ? card.englischer_name
+          : card.kartenname;
+
+        const setCode = extractSetCode(card.set_edition);
+
         return (
           <Link key={card.id} href={`/cards/${card.id}`}>
             <div
@@ -62,6 +79,7 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                 ${card.besessen ? borderColor : "border-gray-700 opacity-50"}
               `}
             >
+              {/* Bild */}
               <div className="aspect-[63/88] relative bg-gray-800">
                 {imgSrc ? (
                   <>
@@ -83,21 +101,44 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                     {card.pokedex_nr ? `#${String(card.pokedex_nr).padStart(4, "0")}` : "?"}
                   </div>
                 )}
-                {card.besessen && (
-                  <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-green-400" />
-                )}
               </div>
-              <div className="p-1.5">
-                <p className="text-xs text-white font-medium truncate">{card.kartenname}</p>
-                <div className="flex items-center justify-between gap-1 mt-0.5">
-                  <p className="text-xs text-gray-400 truncate flex-1">
-                    {card.set_edition ?? "–"}{card.karten_nr ? ` · ${card.karten_nr}` : ""}
-                  </p>
+
+              {/* Info-Bereich */}
+              <div className="px-1.5 pt-1 pb-1.5 space-y-0.5">
+
+                {/* Zeile 1: Pokédex-Nr. (links) | Name (rechts) */}
+                <div className="flex items-baseline gap-1">
+                  {card.pokedex_nr ? (
+                    <span className="text-[10px] text-gray-500 shrink-0">
+                      #{String(card.pokedex_nr).padStart(4, "0")}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-gray-700 shrink-0">–</span>
+                  )}
+                  <span className="text-xs text-white font-medium truncate text-right flex-1">
+                    {displayName}
+                  </span>
+                </div>
+
+                {/* Zeile 2: Set-Kürzel (links) | Karten-Nr. (mitte) | Seltenheit-Symbol (rechts) */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-gray-400 font-mono shrink-0">{setCode}</span>
+                  <span className="text-[10px] text-gray-500 flex-1 text-center truncate">
+                    {card.karten_nr ?? ""}
+                  </span>
                   <RarityBadge rarity={card.seltenheit} language={card.sprache} size="xs" />
                 </div>
-                {card.wert_eur && (
-                  <p className="text-xs text-yellow-400 mt-0.5">{formatEur(card.wert_eur)}</p>
-                )}
+
+                {/* Zeile 3: Preis (links) | Besessen-Kreis (rechts) */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-yellow-400">
+                    {card.wert_eur ? formatEur(card.wert_eur) : ""}
+                  </span>
+                  {card.besessen && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" />
+                  )}
+                </div>
+
               </div>
             </div>
           </Link>
