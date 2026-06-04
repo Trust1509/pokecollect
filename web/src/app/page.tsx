@@ -4,10 +4,12 @@ import { cardApi, CardListResponse, Enums, settingsApi, AppSettings } from "@/li
 import CardGrid from "@/components/CardGrid";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
 import { formatEur } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
 export default function HomePage() {
+  const { t } = useI18n();
   const [data, setData] = useState<CardListResponse | null>(null);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<string[]>([]);
@@ -65,7 +67,7 @@ export default function HomePage() {
       {statsTotal && (
         <div className="flex gap-6 mb-6 text-sm flex-wrap">
           <div className="bg-pokemon-card rounded-lg px-4 py-3">
-            <div className="text-gray-400">Gesammelt</div>
+            <div className="text-gray-400">{t.home_collected}</div>
             <div className="text-2xl font-bold text-white">
               {statsTotal.besessen}{" "}
               <span className="text-gray-500 text-base">/ {statsTotal.gesamt}</span>
@@ -81,7 +83,7 @@ export default function HomePage() {
           </div>
           {statsTotal.wert && (
             <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400">Gesamtwert</div>
+              <div className="text-gray-400">{t.home_total_value}</div>
               <div className="text-2xl font-bold text-yellow-400">
                 {formatEur(statsTotal.wert)}
               </div>
@@ -107,7 +109,7 @@ export default function HomePage() {
             <>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-gray-400 text-sm">
-                  {data?.total ?? 0} Karten
+                  {t.home_cards_count(data?.total ?? 0)}
                 </span>
                 {data && data.pages > 1 && (
                   <div className="flex gap-2 text-sm items-center">

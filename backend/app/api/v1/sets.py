@@ -1,0 +1,38 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.pokemon_set import PokemonSet
+from app.schemas.pokemon_set import PokemonSetCreate, PokemonSetResponse, PokemonSetUpdate
+
+router = APIRouter(prefix="/sets", tags=["sets"])
+
+
+@router.get("", response_model=list[PokemonSetResponse])
+def list_sets(db: Session = Depends(get_db)):
+    return db.scalars(select(PokemonSet).order_by(PokemonSet.code)).all()
+
+
+@router.post("", response_model=PokemonSetResponse, status_code=201)
+def create_set(data: PokemonSetCreate, db: Session = Depends(get_db)):
+    existing = db.get(PokemonSet, data.code)
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Set '{data.code}' existiert bereits")
+    s = PokemonSet(**data.model_dump())
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return s
+
+
+@router.put("/{code}", response_model=PokemonSetResponse)
+def update_set(code: str, data: PokemonSetUpdate, db: Session = Depends(get_db)):
+    s = db.get(PokemonSet, code)
+    if not s:
+        raise HTTPException(status_code=404, detail="Set nicht gefunden")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(s, field, value)
+    db.commit()
+    db.refresh(s)
+    return s

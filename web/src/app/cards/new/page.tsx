@@ -3,32 +3,60 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { cardApi, Enums } from "@/lib/api";
+import { cardApi, Enums, PokemonSet, setsApi } from "@/lib/api";
+import SetPicker from "@/components/SetPicker";
+import { useI18n } from "@/lib/i18n";
 
 export default function NewCardPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [enums, setEnums] = useState<Enums | null>(null);
+  const [sets, setSets] = useState<PokemonSet[]>([]);
+  const [selectedSet, setSelectedSet] = useState<PokemonSet | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>({
     sprache: "DE",
     besessen: false,
     folierung: "Normal",
   });
+  const [cardNrError, setCardNrError] = useState<string | null>(null);
 
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
+    setsApi.list().then((r) => setSets(r.data));
   }, []);
 
-  const set = (key: string, value: unknown) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: string, value: unknown) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    if (key === "karten_nr") setCardNrError(null);
+  };
+
+  const validateCardNr = (nr: string): boolean => {
+    if (!nr || !selectedSet?.max_card_nr) return true;
+    const m = nr.match(/^(\d{1,4})\/(\d{1,4})$/);
+    if (!m) {
+      setCardNrError(t.form_card_nr_invalid(selectedSet.max_card_nr));
+      return false;
+    }
+    return true;
+  };
 
   const handleSave = async () => {
-    if (!form.kartenname) { toast.error("Kartenname ist Pflichtfeld"); return; }
+    if (!form.kartenname) { toast.error(t.form_card_name_required); return; }
+    const nr = form.karten_nr as string | undefined;
+    if (nr && !validateCardNr(nr)) return;
     try {
       const r = await cardApi.create(form);
-      toast.success("Karte gespeichert");
+      toast.success(t.form_saved);
       router.push(`/cards/${r.data.id}`);
     } catch {
-      toast.error("Fehler beim Speichern");
+      toast.error(t.form_save_error);
     }
+  };
+
+  const handleSetChange = (setEdition: string, s: PokemonSet | null) => {
+    setForm((f) => ({ ...f, set_edition: setEdition || null }));
+    setSelectedSet(s);
+    setCardNrError(null);
   };
 
   const sel = (key: string, label: string, options: string[]) => (
@@ -60,13 +88,13 @@ export default function NewCardPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-4">
-        <Link href="/" className="text-gray-500 hover:text-white text-sm">← Sammlung</Link>
+        <Link href="/" className="text-gray-500 hover:text-white text-sm">{t.form_back}</Link>
       </div>
-      <h1 className="text-xl font-bold text-white mb-6">Neue Karte</h1>
+      <h1 className="text-xl font-bold text-white mb-6">{t.form_new_card}</h1>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="text-gray-400 text-xs block mb-1">Kartenname *</label>
+          <label className="text-gray-400 text-xs block mb-1">{t.form_card_name} *</label>
           <input
             type="text"
             value={String(form.kartenname ?? "")}
@@ -75,15 +103,42 @@ export default function NewCardPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white"
           />
         </div>
-        {txt("pokedex_nr", "Pokédex-Nr.", "number")}
-        {txt("englischer_name", "Englischer Name")}
-        {txt("set_edition", "Set/Edition")}
-        {txt("karten_nr", "Karten-Nr.")}
-        {sel("seltenheit", "Seltenheit", enums?.seltenheit ?? [])}
-        {sel("kartenversion", "Kartenversion", enums?.kartenversion ?? [])}
-        {sel("folierung", "Folierung", enums?.folierung ?? [])}
-        {sel("sprache", "Sprache", enums?.sprache ?? [])}
-        {sel("zustand", "Zustand", enums?.zustand ?? [])}
+        {txt("pokedex_nr", t.form_pokedex_nr, "number")}
+        {txt("englischer_name", t.form_english_name)}
+
+        {/* Set-Picker */}
+        <SetPicker
+          value={String(form.set_edition ?? "")}
+          onChange={handleSetChange}
+          sets={sets}
+          onSetAdded={(s) => setSets((prev) => [...prev, s].sort((a, b) => a.code.localeCompare(b.code)))}
+        />
+
+        {/* Karten-Nr. mit Hinweis */}
+        <div>
+          <label className="text-gray-400 text-xs block mb-1">{t.form_card_nr}</label>
+          <input
+            type="text"
+            value={String(form.karten_nr ?? "")}
+            onChange={(e) => set("karten_nr", e.target.value)}
+            onBlur={(e) => validateCardNr(e.target.value)}
+            placeholder={selectedSet?.max_card_nr ? `001/${String(selectedSet.max_card_nr).padStart(3, "0")}` : "z.B. 001/091"}
+            className={`w-full bg-gray-800 border rounded px-2 py-1.5 text-white text-sm ${cardNrError ? "border-red-500" : "border-gray-700"}`}
+          />
+          {selectedSet?.max_card_nr && !cardNrError && (
+            <p className="text-gray-500 text-xs mt-1">{t.form_card_nr_hint(selectedSet.max_card_nr)}</p>
+          )}
+          {cardNrError && (
+            <p className="text-red-400 text-xs mt-1">{cardNrError}</p>
+          )}
+        </div>
+        <div /> {/* spacer */}
+
+        {sel("seltenheit", t.form_rarity, enums?.seltenheit ?? [])}
+        {sel("kartenversion", t.form_card_version, enums?.kartenversion ?? [])}
+        {sel("folierung", t.form_foiling, enums?.folierung ?? [])}
+        {sel("sprache", t.form_language, enums?.sprache ?? [])}
+        {sel("zustand", t.form_condition, enums?.zustand ?? [])}
         <div className="col-span-2 flex items-center gap-2">
           <input
             type="checkbox"
@@ -91,10 +146,10 @@ export default function NewCardPage() {
             checked={Boolean(form.besessen)}
             onChange={(e) => set("besessen", e.target.checked)}
           />
-          <label htmlFor="besessen" className="text-white text-sm">Besossen (physisch vorhanden)</label>
+          <label htmlFor="besessen" className="text-white text-sm">{t.form_owned}</label>
         </div>
         <div className="col-span-2">
-          <label className="text-gray-400 text-xs block mb-1">Notizen</label>
+          <label className="text-gray-400 text-xs block mb-1">{t.form_notes}</label>
           <textarea
             value={String(form.notizen ?? "")}
             onChange={(e) => set("notizen", e.target.value)}
@@ -106,10 +161,10 @@ export default function NewCardPage() {
 
       <div className="flex gap-3 mt-6">
         <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-          Speichern
+          {t.form_save}
         </button>
         <Link href="/" className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">
-          Abbrechen
+          {t.form_cancel}
         </Link>
       </div>
     </div>

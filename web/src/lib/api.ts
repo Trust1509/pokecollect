@@ -112,6 +112,18 @@ export const authApi = {
     api.post<{ access_token: string }>("/auth/login", { username, password }),
 };
 
+export type PokemonSet = {
+  code: string;
+  name: string;
+  max_card_nr: number | null;
+};
+
+export const setsApi = {
+  list: () => api.get<PokemonSet[]>("/sets"),
+  create: (data: PokemonSet) => api.post<PokemonSet>("/sets", data),
+  update: (code: string, data: Partial<PokemonSet>) => api.put<PokemonSet>(`/sets/${code}`, data),
+};
+
 export type AppSettings = {
   placeholder_images_enabled: boolean;
   cards_per_page: number;
