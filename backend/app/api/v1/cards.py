@@ -131,8 +131,8 @@ async def _trigger_image_fetch(card_id: int):
     db = SessionLocal()
     try:
         card = db.get(PokemonCard, card_id)
-        if not card or card.bild_karte_pfad or card.bild_pokedex_url:
-            return  # eigenes Foto / manuelle URL hat Vorrang
+        if not card or not card.besessen or card.bild_karte_pfad or card.bild_pokedex_url:
+            return  # nur besessene Karten, eigenes Foto / manuelle URL hat Vorrang
         url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
         if url:
             card.bild_karte_url = url
@@ -297,7 +297,7 @@ async def _backfill_images_task(force: bool = False):
     """
     db = SessionLocal()
     try:
-        q = select(PokemonCard)
+        q = select(PokemonCard).where(PokemonCard.besessen == True)
         if not force:
             q = q.where(PokemonCard.bild_karte_url.is_(None))
             q = q.where(PokemonCard.bild_karte_pfad.is_(None))

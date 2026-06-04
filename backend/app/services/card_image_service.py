@@ -36,6 +36,8 @@ POKEMON_COM_SET_CODES: dict[str, str] = {
     "SCR":   "SV07",     # Sternenglanz
     "SSP":   "SV08",     # Strahlende Seltenheit
     "PRE":   "SV8PT5",   # Prismatische Entwicklungen ✓ verifiziert
+    "JTG":   "SV09",     # Reisegefährten / Journey Together
+    "DRI":   "SV9PT5",   # Ewige Rivalen / Destined Rivals
     "SVE":   "SVE",      # SV Energie-Karten
     # SWSH-Ära (Schwert & Schild)
     "SSH":   "SWSH1",    # Schwert & Schild Basis
@@ -99,11 +101,18 @@ BASE_URL = "https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/i
 
 
 def _extract_set_code(set_edition: Optional[str]) -> Optional[str]:
-    """Extrahiert das Kürzel aus 'Paldeas Schicksale (PAF)' → 'PAF'."""
+    """
+    Extrahiert das Kürzel aus dem set_edition-Feld.
+    'Paldeas Schicksale (PAF)' → 'PAF'
+    '151 (151C) - Chinesisch'  → '151C'  (erstes kurzes Kürzel in Klammern)
+    'Erhabene Helden (Ascended Heroes)' → None  (kein gültiges Kürzel)
+    """
     if not set_edition:
         return None
-    m = re.search(r"\(([A-Z0-9]+)\)", set_edition)
-    return m.group(1) if m else None
+    # Alle Kürzel in Klammern suchen, nur kurze (≤6 Zeichen) rein alphanumerische akzeptieren
+    for m in re.finditer(r"\(([A-Z0-9]{1,6})\)", set_edition):
+        return m.group(1)
+    return None
 
 
 def _extract_card_nr(karten_nr: Optional[str]) -> Optional[str]:
