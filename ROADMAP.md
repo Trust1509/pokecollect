@@ -42,31 +42,91 @@
 
 ---
 
-## 🔲 v0.3.0 — Authelia + Externer Zugriff
-- [ ] Authelia als Portainer-Stack deployen
+## 🔲 v0.3.0 — Automatische Kartenbilder (pokemon.com)
+
+> **Ziel:** Für jede gesammelte Karte automatisch das exakte Kartenbild laden —
+> kein eigenes Foto nötig, solange Set + Kartennummer + Sprache bekannt sind.
+
+### URL-System (verifiziert)
+```
+https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web/{SET_CODE}/{SET_CODE}_{LANG}_{NR}.png
+```
+
+- `{locale}` → z.B. `de-de`, `en-us`
+- `{SET_CODE}` → pokemon.com interner Code (≠ unser Kürzel, Mapping nötig)
+- `{NR}` → Kartennummer ohne führende Nullen, ohne `/XXX`-Suffix (z.B. `"007/091"` → `"7"`)
+
+### Set-Code Mapping (manuell verifiziert)
+| Unser Kürzel | pokemon.com Code | Set |
+|---|---|---|
+| PAF | SV4PT5 | Paldeas Schicksale |
+| SVI | SV01 | Scharlachrot & Violett Basis |
+| OBF | SV03 | Obsidian Flames |
+| TEF | SV05 | Temporal Forces |
+| 151 | SV3PT5 | Pokémon 151 |
+| PRE | SV8PT5 | Prismatische Entwicklungen |
+| MEG | XY8 | Mega-Entwicklung |
+| ASC | SWSH10 | Erhabene Helden |
+| … | … | (weitere nach Bedarf ergänzen) |
+
+> PAL, PAR und weitere → auf pokemon.com DE nicht verfügbar → Fallback PokémonTCG.io
+
+### Bild-Priorität in der App
+1. **Eigenes Scan-Foto** (`bild_karte_pfad`) — immer bevorzugt
+2. **pokemon.com** — automatisch aus Set + Nr. + Sprache konstruiert, HEAD-Check ob vorhanden
+3. **PokémonTCG.io API** — Fallback für fehlende Sets
+4. **Pokédex-Artwork** — letzter Fallback, immer verfügbar für alle 1025 Pokémon
+
+### Aufgaben
+- [ ] Backend-Service `card_image_service.py` mit `get_card_image_url()` implementieren
+- [ ] Set-Code-Mapping als Dict im Backend pflegen
+- [ ] `bild_karte_url` Feld in DB ergänzen (gecachte URL, beim Anlegen befüllt)
+- [ ] HEAD-Check: URL nur speichern wenn Bild tatsächlich existiert (HTTP 200)
+- [ ] Massen-Backfill: bestehende 1025 Karten automatisch befüllen (`/api/v1/cards/backfill-images`)
+- [ ] Frontend: Bild-Priorität in CardGrid und CardDetail implementieren
+- [ ] PokémonTCG.io als Fallback integrieren (API-Key aus Settings)
+- [ ] Set-Code-Mapping über Settings-Seite erweiterbar machen
+
+---
+
+## 🔲 v0.4.0 — Authelia + Externer Zugriff
+- [ ] Authelia als Portainer-Stack deployen (siehe `deploy/README.md`)
 - [ ] DNS-Eintrag `auth.yourdomain.com` setzen
 - [ ] DNS-Eintrag `pokecollect.yourdomain.com` setzen
 - [ ] Caddy-Config mit Authelia `forward_auth` aktivieren
 - [ ] Authelia-User anlegen, Hash generieren
 - [ ] Externen Zugriff testen (Web + Android)
 
-## 🔲 v0.4.0 — Android App
+## 🔲 v0.5.0 — Android App
 - [ ] Android-App auf Gerät testen
 - [ ] Typo "Besossen" in Android-Code fixen (CardDetailScreen.kt Zeile 64, ScanScreen.kt)
-- [ ] API-URL in App konfigurierbar machen (intern vs. extern)
+- [ ] API-URL in App konfigurierbar machen (intern vs. extern via Authelia)
 - [ ] Basis-Funktionen testen: Karten scannen, Status setzen, Detailansicht
 
-## 🔲 v0.5.0 — Cardmarket-Integration
+## 🔲 v0.6.0 — Wunschkarten
+> **Ziel:** Eigene Wunschliste führen — welche exakten Karten (Set + Nr. + Version) will ich noch sammeln?
+
+- [ ] Neue DB-Tabelle `wunschkarten` (verknüpft mit `pokemon_cards` oder eigenständig)
+- [ ] `/wishlist`-Seite im Web: Liste der gewünschten Karten
+- [ ] Karte aus Sammlung zur Wunschliste hinzufügen (Button in Detailansicht)
+- [ ] Karte manuell zur Wunschliste hinzufügen (Set + Nr. + Version + Sprache)
+- [ ] Wunschkarte als "erhalten" markieren → automatisch in Sammlung übertragen
+- [ ] Filter: besessen / nicht besessen / auf Wunschliste
+- [ ] Preis-Anzeige auf Wunschliste (Cardmarket-Wert der gewünschten Karte)
+- [ ] Export Wunschliste als CSV (für Cardmarket-Suche)
+
+## 🔲 v0.7.0 — Cardmarket-Integration
 - [ ] Cardmarket OAuth 1.0a testen (Keys via Settings-Seite eintragen)
 - [ ] Preisabruf für einzelne Karte manuell triggern
 - [ ] Preishistorie-Anzeige verbessern
 - [ ] Preis-Quelle (30-Tage-Ø vs. Tagespreis) aktivieren
+- [ ] Wunschlisten-Preise automatisch abrufen
 
-## 🔲 v0.6.0 — Bilder & Qualität
-- [ ] PokémonTCG.io Integration: Karten-Bilder automatisch laden (exaktes Kartenset-Bild)
-- [ ] Massenhafte Bild-URL-Zuweisung (alle Karten eines Sets auf einmal)
-- [ ] CSV-Export (Backup)
+## 🔲 v0.8.0 — Daten & Qualität
+- [ ] CSV-Export (vollständige Sammlung als Backup)
 - [ ] CSV-Import mit Duplikat-Erkennung
+- [ ] Massenhafte Bild-URL-Zuweisung (alle Karten eines Sets auf einmal)
+- [ ] Statistiken erweitern: Wert-Entwicklung, Set-Vollständigkeit
 
 ## 🔲 v1.0.0 — Production Release
 - [ ] Docker Images auf ghcr.io pushen
