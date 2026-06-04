@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
-import { formatEur } from "@/lib/utils";
+import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
 
 type Props = {
   cards: Card[];
@@ -37,9 +37,12 @@ export default function CardGrid({ cards, apiBase }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
       {cards.map((card) => {
-        const imgSrc = card.bild_thumbnail_pfad
-          ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
-          : card.bild_pokedex_url ?? null;
+        const imgSrc =
+          card.bild_thumbnail_pfad
+            ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
+            : card.bild_pokedex_url
+            ?? pokemonPlaceholderUrl(card.pokedex_nr);
+        const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !!imgSrc;
         const borderColor = card.seltenheit ? (RARITY_COLOR[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 
         return (
@@ -54,13 +57,20 @@ export default function CardGrid({ cards, apiBase }: Props) {
             >
               <div className="aspect-[63/88] relative bg-gray-800">
                 {imgSrc ? (
-                  <Image
-                    src={imgSrc}
-                    alt={card.kartenname}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 20vw, 15vw"
-                  />
+                  <>
+                    <Image
+                      src={imgSrc}
+                      alt={card.kartenname}
+                      fill
+                      className={`object-contain${isPlaceholder ? " p-2 opacity-70" : " object-cover"}`}
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 20vw, 15vw"
+                    />
+                    {isPlaceholder && (
+                      <div className="absolute bottom-0 inset-x-0 bg-black/50 text-center text-gray-400 text-[10px] py-0.5">
+                        Platzhalter
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-600 text-xs text-center p-2">
                     {card.pokedex_nr ? `#${String(card.pokedex_nr).padStart(4, "0")}` : "?"}

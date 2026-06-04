@@ -6,7 +6,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, pricesApi, Card, Enums } from "@/lib/api";
 import PriceChart from "@/components/PriceChart";
-import { formatEur } from "@/lib/utils";
+import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
@@ -20,6 +20,8 @@ export default function CardDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Card>>({});
   const fileRef = useRef<HTMLInputElement>(null);
+  const [urlInput, setUrlInput] = useState("");
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   useEffect(() => {
     cardApi.get(Number(id)).then((r) => {
@@ -32,9 +34,12 @@ export default function CardDetailPage() {
 
   if (!card) return <div className="text-gray-500 p-8">Lädt …</div>;
 
-  const imgSrc = card.bild_karte_pfad
-    ? `${API_BASE}/images/${card.bild_karte_pfad.replace(/^.*\/images\//, "")}`
-    : card.bild_pokedex_url ?? null;
+  const imgSrc =
+    card.bild_karte_pfad
+      ? `${API_BASE}/images/${card.bild_karte_pfad.replace(/^.*\/images\//, "")}`
+      : card.bild_pokedex_url
+      ?? pokemonPlaceholderUrl(card.pokedex_nr);
+  const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !!imgSrc;
 
   const handleSave = async () => {
     try {
@@ -56,6 +61,44 @@ export default function CardDetailPage() {
       toast.success("Foto gespeichert");
     } catch {
       toast.error("Upload fehlgeschlagen");
+    }
+  };
+
+  const handleSaveUrl = async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    try {
+      const r = await cardApi.update(Number(id), { bild_pokedex_url: url });
+      setCard(r.data);
+      setForm(r.data);
+      setShowUrlInput(false);
+      setUrlInput("");
+      toast.success("Bild-URL gespeichert");
+    } catch {
+      toast.error("Speichern fehlgeschlagen");
+    }
+  };
+
+  const handleClearPokedexUrl = async () => {
+    if (!confirm("Bild-URL löschen? Der Pokédex-Platzhalter wird dann angezeigt.")) return;
+    try {
+      const r = await cardApi.update(Number(id), { bild_pokedex_url: null });
+      setCard(r.data);
+      setForm(r.data);
+      toast.success("Bild-URL gelöscht");
+    } catch {
+      toast.error("Löschen fehlgeschlagen");
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!confirm("Foto wirklich löschen? Der Pokédex-Platzhalter wird dann wieder angezeigt.")) return;
+    try {
+      const r = await cardApi.deleteImage(Number(id));
+      setCard(r.data);
+      toast.success("Foto gelöscht");
+    } catch {
+      toast.error("Löschen fehlgeschlagen");
     }
   };
 
@@ -142,7 +185,19 @@ export default function CardDetailPage() {
         <div className="shrink-0 w-52">
           <div className="aspect-[63/88] relative bg-gray-800 rounded-lg overflow-hidden">
             {imgSrc ? (
-              <Image src={imgSrc} alt={card.kartenname} fill className="object-cover" />
+              <>
+                <Image
+                  src={imgSrc}
+                  alt={card.kartenname}
+                  fill
+                  className={isPlaceholder ? "object-contain p-4 opacity-75" : "object-cover"}
+                />
+                {isPlaceholder && (
+                  <div className="absolute bottom-0 inset-x-0 bg-black/60 text-center text-gray-400 text-xs py-1">
+                    Pokédex-Platzhalter
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-600">Kein Bild</div>
             )}
@@ -152,8 +207,37 @@ export default function CardDetailPage() {
             onClick={() => fileRef.current?.click()}
             className="w-full mt-2 text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
           >
-            Foto {card.bild_karte_pfad ? "austauschen" : "hochladen"}
+            📷 Foto {card.bild_karte_pfad ? "austauschen" : "hochladen"}
           </button>
+          {!card.bild_karte_pfad && (
+            <button
+              onClick={() => { setShowUrlInput((v) => !v); setUrlInput(card.bild_pokedex_url ?? ""); }}
+              className="w-full mt-1 text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
+            >
+              🔗 Bild-URL {card.bild_pokedex_url ? "ändern" : "hinterlegen"}
+            </button>
+          )}
+          {showUrlInput && (
+            <div className="mt-1 flex gap-1">
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                placeholder="https://…"
+                className="flex-1 min-w-0 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                onKeyDown={(e) => e.key === "Enter" && handleSaveUrl()}
+              />
+              <button onClick={handleSaveUrl} className="text-xs bg-green-700 text-white rounded px-2 py-1 hover:bg-green-600">OK</button>
+            </div>
+          )}
+          {(card.bild_karte_pfad || card.bild_pokedex_url) && (
+            <button
+              onClick={card.bild_karte_pfad ? handleDeleteImage : handleClearPokedexUrl}
+              className="w-full mt-1 text-sm bg-red-950 text-red-400 hover:text-red-200 rounded px-3 py-1.5"
+            >
+              {card.bild_karte_pfad ? "Foto löschen" : "Bild-URL löschen"}
+            </button>
+          )}
         </div>
 
         {/* Details */}
@@ -189,7 +273,7 @@ export default function CardDetailPage() {
             {field("folierung", "Folierung", "select", enums?.folierung)}
             {field("sprache", "Sprache", "select", enums?.sprache)}
             {field("zustand", "Zustand", "select", enums?.zustand)}
-            {field("besessen", "Besossen", "boolean")}
+            {field("besessen", "Besessen", "boolean")}
             {field("notizen", "Notizen", "textarea")}
           </dl>
 

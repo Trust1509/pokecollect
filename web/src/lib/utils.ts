@@ -22,3 +22,9 @@ export function imageUrl(path: string | null | undefined, apiBase: string): stri
   if (!path) return null;
   return `${apiBase}/images/${path.replace(/^.*\/images\//, "")}`;
 }
+
+export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined): string | null {
+  if (!pokedexNr || pokedexNr < 1 || pokedexNr > 1025) return null;
+  const nr = String(pokedexNr).padStart(3, "0");
+  return `https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/${nr}.png`;
+}

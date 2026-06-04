@@ -9,6 +9,7 @@ export type Filters = {
   sprache?: string;
   search?: string;
   sort?: string;
+  bild_status?: string;
 };
 
 type Props = {
@@ -103,6 +104,20 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
           {(enums?.sprache ?? []).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-gray-400 mb-1">Bild</label>
+        <select
+          value={filters.bild_status ?? ""}
+          onChange={(e) => update("bild_status", e.target.value)}
+          className="w-full bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white"
+        >
+          <option value="">Alle</option>
+          <option value="eigenes_foto">📷 Eigenes Foto</option>
+          <option value="externe_url">🔗 Externe URL</option>
+          <option value="platzhalter">🔲 Nur Platzhalter</option>
         </select>
       </div>
 

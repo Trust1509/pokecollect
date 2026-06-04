@@ -51,6 +51,7 @@ def list_cards(
     generation: Optional[int] = None,
     search: Optional[str] = None,
     pokedex_nr: Optional[int] = None,
+    bild_status: Optional[str] = Query(None, pattern="^(eigenes_foto|externe_url|platzhalter)$"),
     sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
@@ -73,6 +74,14 @@ def list_cards(
         q = q.where(
             PokemonCard.kartenname.ilike(term) | PokemonCard.englischer_name.ilike(term)
         )
+    if bild_status == "eigenes_foto":
+        q = q.where(PokemonCard.bild_karte_pfad.isnot(None))
+    elif bild_status == "externe_url":
+        q = q.where(PokemonCard.bild_karte_pfad.is_(None))
+        q = q.where(PokemonCard.bild_pokedex_url.isnot(None))
+    elif bild_status == "platzhalter":
+        q = q.where(PokemonCard.bild_karte_pfad.is_(None))
+        q = q.where(PokemonCard.bild_pokedex_url.is_(None))
     if generation:
         gen_ranges = {
             1: (1, 151), 2: (152, 251), 3: (252, 386), 4: (387, 493),
