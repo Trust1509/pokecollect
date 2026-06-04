@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, pricesApi, Card, Enums, PokemonSet, setsApi } from "@/lib/api";
+import { fetchPokemonNames } from "@/lib/pokedex";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
@@ -25,6 +26,7 @@ export default function CardDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Card>>({});
   const [cardNrError, setCardNrError] = useState<string | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -120,6 +122,24 @@ export default function CardDetailPage() {
     if (!confirm(t.detail_delete_confirm(card.kartenname))) return;
     await cardApi.delete(Number(id));
     router.push("/");
+  };
+
+  const handlePokedexNr = async (nr: number | null) => {
+    setForm((f) => ({ ...f, pokedex_nr: nr }));
+    if (!nr || nr < 1 || nr > 1025) return;
+    setNameLoading(true);
+    try {
+      const names = await fetchPokemonNames(nr);
+      if (names) {
+        setForm((f) => ({
+          ...f,
+          kartenname: (f.kartenname as string | undefined) || names.de,
+          englischer_name: (f.englischer_name as string | undefined) || names.en,
+        }));
+      }
+    } finally {
+      setNameLoading(false);
+    }
   };
 
   const handleSetChange = (setEdition: string, s: PokemonSet | null) => {
@@ -291,7 +311,26 @@ export default function CardDetailPage() {
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {field("kartenname", t.field_card_name)}
-            {field("pokedex_nr", t.field_pokedex_nr, "number")}
+            {/* Pokédex-Nr. mit Auto-Namens-Lookup */}
+            {editing ? (
+              <div key="pokedex_nr">
+                <label className="text-gray-500 text-xs block">
+                  {t.field_pokedex_nr}
+                  {nameLoading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
+                </label>
+                <input
+                  type="number"
+                  value={String((form as Record<string, unknown>).pokedex_nr ?? "")}
+                  onChange={(e) => handlePokedexNr(Number(e.target.value) || null)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
+                />
+              </div>
+            ) : (
+              <div key="pokedex_nr">
+                <dt className="text-gray-500 text-xs">{t.field_pokedex_nr}</dt>
+                <dd className="text-white">{String(card.pokedex_nr ?? "–")}</dd>
+              </div>
+            )}
             {field("englischer_name", t.field_english_name)}
 
             {/* Set/Edition: im Edit-Modus SetPicker, sonst normales Feld */}

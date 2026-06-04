@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { cardApi, Enums, PokemonSet, setsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { useI18n } from "@/lib/i18n";
+import { fetchPokemonNames } from "@/lib/pokedex";
 
 export default function NewCardPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function NewCardPage() {
     folierung: "Normal",
   });
   const [cardNrError, setCardNrError] = useState<string | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
 
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
@@ -28,6 +30,24 @@ export default function NewCardPage() {
   const set = (key: string, value: unknown) => {
     setForm((f) => ({ ...f, [key]: value }));
     if (key === "karten_nr") setCardNrError(null);
+  };
+
+  const handlePokedexNr = async (nr: number | null) => {
+    set("pokedex_nr", nr);
+    if (!nr || nr < 1 || nr > 1025) return;
+    setNameLoading(true);
+    try {
+      const names = await fetchPokemonNames(nr);
+      if (names) {
+        setForm((f) => ({
+          ...f,
+          kartenname: f.kartenname || names.de,
+          englischer_name: (f.englischer_name as string | undefined) || names.en,
+        }));
+      }
+    } finally {
+      setNameLoading(false);
+    }
   };
 
   const validateCardNr = (nr: string): boolean => {
@@ -103,7 +123,18 @@ export default function NewCardPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white"
           />
         </div>
-        {txt("pokedex_nr", t.form_pokedex_nr, "number")}
+        <div>
+          <label className="text-gray-400 text-xs block mb-1">
+            {t.form_pokedex_nr}
+            {nameLoading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
+          </label>
+          <input
+            type="number"
+            value={String(form.pokedex_nr ?? "")}
+            onChange={(e) => handlePokedexNr(Number(e.target.value) || null)}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+          />
+        </div>
         {txt("englischer_name", t.form_english_name)}
 
         {/* Set-Picker */}
