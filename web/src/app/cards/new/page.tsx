@@ -7,7 +7,7 @@ import { cardApi, Enums, PokemonSet, setsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames } from "@/lib/pokedex";
-import { rarityOptionLabel } from "@/components/RarityBadge";
+import RaritySelect from "@/components/RaritySelect";
 
 export default function NewCardPage() {
   const router = useRouter();
@@ -103,23 +103,33 @@ export default function NewCardPage() {
     setCardNrError(null);
   };
 
-  const sel = (key: string, label: string, options: string[]) => (
-    <div>
-      <label className="text-gray-400 text-xs block mb-1">{label}</label>
-      <select
-        value={String(form[key] ?? "")}
-        onChange={(e) => set(key, e.target.value || null)}
-        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
-      >
-        <option value="">–</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {key === "seltenheit" ? rarityOptionLabel(o) : o}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+  const sel = (key: string, label: string, options: string[]) => {
+    if (key === "seltenheit") {
+      return (
+        <RaritySelect
+          key={key}
+          label={label}
+          value={String(form[key] ?? "")}
+          onChange={(v) => set(key, v)}
+          options={options}
+          language={String(form.sprache ?? "DE")}
+        />
+      );
+    }
+    return (
+      <div key={key}>
+        <label className="text-gray-400 text-xs block mb-1">{label}</label>
+        <select
+          value={String(form[key] ?? "")}
+          onChange={(e) => set(key, e.target.value || null)}
+          className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+        >
+          <option value="">–</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    );
+  };
 
   const txt = (key: string, label: string, type: "text" | "number" = "text") => (
     <div>

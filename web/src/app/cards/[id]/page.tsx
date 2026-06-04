@@ -6,7 +6,8 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, pricesApi, Card, Enums, PokemonSet, setsApi } from "@/lib/api";
 import { fetchPokemonNames } from "@/lib/pokedex";
-import RarityBadge, { rarityOptionLabel } from "@/components/RarityBadge";
+import RarityBadge from "@/components/RarityBadge";
+import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
@@ -179,7 +180,18 @@ export default function CardDetailPage() {
       );
     }
     if (type === "select" && options) {
-      const isRarity = key === "seltenheit";
+      if (key === "seltenheit") {
+        return (
+          <RaritySelect
+            key={key}
+            label={label}
+            value={String(value ?? "")}
+            onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
+            options={options}
+            language={(form as Record<string, unknown>).sprache as string | null}
+          />
+        );
+      }
       return (
         <div key={key}>
           <label className="text-gray-500 text-xs block">{label}</label>
@@ -189,11 +201,7 @@ export default function CardDetailPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
           >
             <option value="">–</option>
-            {options.map((o) => (
-              <option key={o} value={o}>
-                {isRarity ? rarityOptionLabel(o, card.sprache) : o}
-              </option>
-            ))}
+            {options.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </div>
       );
