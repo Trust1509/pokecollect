@@ -150,3 +150,101 @@ Das Script macht automatisch: `git pull` → `chown` → API rebuild → Web reb
 |--------------|-----------|
 | API          | 3010      |
 | Web-Frontend | 3011      |
+| Authelia     | 9091      |
+
+---
+
+## Externen Zugriff mit Authelia einrichten
+
+> **Architektur:** Intern (192.168.2.x) ist alles offen. Extern (über Caddy + Authelia) wird ein Login erzwungen, bevor die App erreichbar ist.
+
+### Schritt 1 – Authelia-Datasets anlegen (einmalig)
+
+```bash
+zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/authelia/config
+zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/authelia/data
+chown -R 1000:1000 /mnt/HDDs/Applications/authelia/
+```
+
+### Schritt 2 – Konfigurationsdateien hochladen
+
+```bash
+# Auf dem Entwicklungsrechner:
+scp deploy/authelia/configuration.yml your_admin@192.168.x.x:/mnt/HDDs/Applications/authelia/config/
+scp deploy/authelia/users_database.yml your_admin@192.168.x.x:/mnt/HDDs/Applications/authelia/config/
+```
+
+### Schritt 3 – Passwort-Hash für Authelia generieren
+
+```bash
+docker run --rm authelia/authelia:latest \
+  authelia crypto hash generate bcrypt --password 'DEIN_PASSWORT'
+```
+
+Den ausgegebenen Hash in `/mnt/HDDs/Applications/authelia/config/users_database.yml` eintragen:
+
+```yaml
+users:
+  your_username:
+    displayname: "Your Name"
+    password: "$2b$12$xxxx..."   # Hash hier eintragen
+    email: your@email.com
+    groups:
+      - admins
+```
+
+### Schritt 4 – Geheimnisse in configuration.yml eintragen
+
+```bash
+# Zwei zufällige Strings generieren (je mind. 64 Zeichen):
+openssl rand -hex 48   # → für jwt_secret
+openssl rand -hex 48   # → für session.secret
+```
+
+In `/mnt/HDDs/Applications/authelia/config/configuration.yml` eintragen.
+
+### Schritt 5 – Authelia als Portainer-Stack deployen
+
+Neuen Stack in Portainer anlegen mit folgendem Inhalt:
+
+```yaml
+services:
+  authelia:
+    image: authelia/authelia:4.38
+    container_name: authelia
+    user: "1000:1000"
+    volumes:
+      - /mnt/HDDs/Applications/authelia/config:/config
+    ports:
+      - "9091:9091"
+    restart: unless-stopped
+```
+
+### Schritt 6 – Caddy-Config aktualisieren
+
+Inhalt von `deploy/Caddyfile.snippet` ans bestehende Caddyfile anhängen:
+
+```bash
+cat /mnt/HDDs/Applications/pokecollect/app/deploy/Caddyfile.snippet \
+  >> /mnt/HDDs/Applications/caddy/Caddyfile
+
+# DNS-Eintrag für auth.yourdomain.com auf your.external.ip setzen, dann:
+caddy reload --config /mnt/HDDs/Applications/caddy/Caddyfile
+```
+
+### Schritt 7 – Testen
+
+1. `https://auth.yourdomain.com` aufrufen → Authelia Login-Seite erscheint
+2. `https://pokecollect.yourdomain.com` aufrufen → Weiterleitung zu Authelia
+3. Mit den Zugangsdaten aus `users_database.yml` einloggen
+4. App öffnet sich nach erfolgreichem Login
+
+### Troubleshooting Authelia
+
+```bash
+# Logs prüfen:
+docker logs authelia --tail 30
+
+# Konfiguration validieren:
+docker exec authelia authelia validate-config --config /config/configuration.yml
+```
