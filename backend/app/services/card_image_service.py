@@ -37,7 +37,7 @@ POKEMON_COM_SET_CODES: dict[str, str] = {
     "SSP":   "SV08",     # Strahlende Seltenheit
     "PRE":   "SV8PT5",   # Prismatische Entwicklungen ✓ verifiziert
     "JTG":   "SV09",     # Reisegefährten / Journey Together
-    "DRI":   "SV9PT5",   # Ewige Rivalen / Destined Rivals
+    "DRI":   "SV10",     # Ewige Rivalen / Destined Rivals ✓ verifiziert
     "SVE":   "SVE",      # SV Energie-Karten
     # SWSH-Ära (Schwert & Schild)
     "SSH":   "SWSH1",    # Schwert & Schild Basis
