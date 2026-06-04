@@ -2,7 +2,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_auth
 from app.database import get_db
 from app.models.card import PokemonCard, PreisHistorie
 from app.schemas.card import PreisHistorieResponse
@@ -11,7 +10,7 @@ from app.services.cardmarket import refresh_prices_for_cards
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
-@router.post("/refresh", dependencies=[Depends(require_auth)])
+@router.post("/refresh")
 async def trigger_price_refresh(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),

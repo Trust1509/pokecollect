@@ -1,0 +1,10 @@
+---
+users:
+  your_username:
+    displayname: "Your Name"
+    # Hash generieren mit:
+    # docker run --rm authelia/authelia:latest authelia crypto hash generate bcrypt --password 'DEIN_PASSWORT'
+    password: "HASH_HIER_EINTRAGEN"
+    email: your@email.com
+    groups:
+      - admins

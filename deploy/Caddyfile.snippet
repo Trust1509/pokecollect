@@ -1,18 +1,35 @@
 # PokéCollect – Caddyfile-Snippet
 # An das bestehende Caddyfile anhängen, dann: caddy reload
 #
-# Ersetze "pokecollect.yourdomain.local" durch deine Domain.
-# Ersetze "192.168.x.x" durch die IP deines Servers.
+# Voraussetzung: Authelia läuft auf Port 9091 (siehe authelia/ Ordner)
 
-pokecollect.yourdomain.local {
-    # API
+# ── Authelia Login-Portal ────────────────────────────────────────────────────
+auth.yourdomain.com {
+    reverse_proxy 192.168.x.x:9091
+}
+
+# ── Authelia Forward-Auth Snippet (wiederverwendbar) ─────────────────────────
+(authelia) {
+    forward_auth 192.168.x.x:9091 {
+        uri /api/verify?rd=https://auth.yourdomain.com
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+}
+
+# ── PokéCollect ───────────────────────────────────────────────────────────────
+pokecollect.yourdomain.com {
+    import authelia
+
+    # API → Backend
     handle /api/* {
         reverse_proxy 192.168.x.x:3010
     }
-    # Static images served by API
+    # Bilder → Backend
     handle /images/* {
         reverse_proxy 192.168.x.x:3010
     }
-    # Web-Frontend (catch-all)
-    reverse_proxy 192.168.x.x:3011
+    # Frontend (catch-all)
+    handle {
+        reverse_proxy 192.168.x.x:3011
+    }
 }

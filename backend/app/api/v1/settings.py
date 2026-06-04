@@ -1,13 +1,11 @@
 import os
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_auth
 from app.database import get_db
 from app.models.setting import AppSetting
 from app.schemas.setting import DEFAULTS, PasswordChange, SettingsResponse, SettingsUpdate
-from fastapi import HTTPException
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -49,7 +47,7 @@ def get_settings(db: Session = Depends(get_db)):
     return _to_response(_get_all(db))
 
 
-@router.put("", response_model=SettingsResponse, dependencies=[Depends(require_auth)])
+@router.put("", response_model=SettingsResponse)
 def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
     updates = data.model_dump(exclude_unset=True)
     for key, value in updates.items():
@@ -58,15 +56,14 @@ def update_settings(data: SettingsUpdate, db: Session = Depends(get_db)):
     return _to_response(_get_all(db))
 
 
-@router.post("/change-password", dependencies=[Depends(require_auth)])
+@router.post("/change-password")
 def change_password(data: PasswordChange, db: Session = Depends(get_db)):
-    # Current password hash: DB takes priority over env var
     stored_hash_row = db.get(AppSetting, "app_password_hash")
     current_hash = (
         stored_hash_row.value if stored_hash_row
         else os.getenv("APP_PASSWORD_HASH", "")
     )
-    if not pwd_context.verify(data.current_password, current_hash):
+    if not current_hash or not pwd_context.verify(data.current_password, current_hash):
         raise HTTPException(status_code=400, detail="Aktuelles Passwort falsch")
     new_hash = pwd_context.hash(data.new_password)
     _set(db, "app_password_hash", new_hash)
