@@ -131,12 +131,13 @@ export default function CardDetailPage() {
     if (lookupTimeout.current) clearTimeout(lookupTimeout.current);
 
     if (!nr || nr < 1 || nr > 1025) {
+      const af = { ...autoFilled.current };
+      autoFilled.current = { kartenname: false, englischer_name: false };
       setForm((f) => ({
         ...f,
-        kartenname: autoFilled.current.kartenname ? "" : f.kartenname,
-        englischer_name: autoFilled.current.englischer_name ? "" : f.englischer_name,
+        kartenname: af.kartenname ? "" : f.kartenname,
+        englischer_name: af.englischer_name ? "" : f.englischer_name,
       }));
-      autoFilled.current = { kartenname: false, englischer_name: false };
       return;
     }
 
