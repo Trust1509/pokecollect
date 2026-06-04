@@ -1,6 +1,10 @@
 package at.pokecollect.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -9,7 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +38,20 @@ fun ScanScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
+
+    // Runtime-Kamera-Berechtigung (Pflicht ab Android 6)
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasCameraPermission = granted }
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
 
     var scanResult by remember { mutableStateOf<ScanResult?>(null) }
     var scanning by remember { mutableStateOf(false) }
@@ -61,7 +79,7 @@ fun ScanScreen(
                     OutlinedTextField(value = folierung, onValueChange = { folierung = it }, label = { Text("Folierung (manuell)") })
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(checked = besessen, onCheckedChange = { besessen = it })
-                        Text("Besossen")
+                        Text("Besessen")
                     }
                 }
             },
@@ -94,7 +112,7 @@ fun ScanScreen(
                 title = { Text("Karte scannen") },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.CameraAlt, null)
+                        Icon(Icons.Default.Close, null)
                     }
                 },
             )
@@ -106,6 +124,7 @@ fun ScanScreen(
                 .padding(padding),
             contentAlignment = Alignment.Center,
         ) {
+            if (hasCameraPermission) {
             AndroidView(
                 factory = { ctx ->
                     val previewView = PreviewView(ctx)
@@ -131,10 +150,11 @@ fun ScanScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            // Card frame guide
+            // Card frame guide (echtes Karten-Seitenverhältnis 63:88)
             Box(
                 modifier = Modifier
-                    .size(220.dp, 308.dp)
+                    .fillMaxWidth(0.9f)
+                    .aspectRatio(63f / 88f)
                     .border(2.dp, Color.Yellow, RoundedCornerShape(8.dp))
             )
 
@@ -167,6 +187,18 @@ fun ScanScreen(
             ) {
                 if (scanning) CircularProgressIndicator(modifier = Modifier.size(20.dp))
                 else Text("Scannen")
+            }
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(24.dp),
+                ) {
+                    Text("Kamera-Berechtigung wird benötigt, um Karten zu scannen.")
+                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                        Text("Kamera erlauben")
+                    }
+                }
             }
         }
     }

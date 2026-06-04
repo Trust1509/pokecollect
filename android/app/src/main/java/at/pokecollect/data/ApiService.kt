@@ -16,13 +16,15 @@ data class Card(
     val sprache: String,
     val besessen: Boolean,
     val wert_eur: String?,
+    val wert_aktualisiert: String?,
     val notizen: String?,
     val zustand: String?,
     val bild_pokedex_url: String?,
+    val bild_karte_url: String?,
     val bild_karte_pfad: String?,
     val bild_thumbnail_pfad: String?,
-    val hinzugefuegt_am: String,
-    val aktualisiert_am: String,
+    val hinzugefuegt_am: String?,
+    val aktualisiert_am: String?,
 )
 
 data class CardListResponse(
@@ -75,6 +77,9 @@ interface ApiService {
 
     @DELETE("cards/{id}")
     suspend fun deleteCard(@Path("id") id: Int)
+
+    @DELETE("cards/{id}/image")
+    suspend fun deleteImage(@Path("id") id: Int): Card
 
     @Multipart
     @POST("cards/{id}/image")

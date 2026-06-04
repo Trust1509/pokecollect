@@ -1,5 +1,6 @@
 package at.pokecollect.data
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -30,8 +31,9 @@ class CardRepository @Inject constructor(
                 api.listCards(search = search, limit = 200).items
             }
             dao.upsertAll(remote.map { it.toEntity() })
-            dao.getAll()
+            if (search.isNullOrBlank()) dao.getAll() else dao.search(search)
         } catch (e: Exception) {
+            Log.w("CardRepository", "getCards failed, falling back to local cache", e)
             if (search.isNullOrBlank()) dao.getAll() else dao.search(search)
         }
     }
@@ -52,11 +54,23 @@ class CardRepository @Inject constructor(
         result
     }
 
-    suspend fun uploadImage(cardId: Int, file: File): Card = withContext(Dispatchers.IO) {
+    suspend fun updateCard(id: Int, fields: Map<String, Any?>): CardEntity? = withContext(Dispatchers.IO) {
+        val result = api.updateCard(id, fields)
+        dao.upsertAll(listOf(result.toEntity()))
+        dao.getById(id)
+    }
+
+    suspend fun uploadImage(cardId: Int, file: File): CardEntity? = withContext(Dispatchers.IO) {
         val body = file.asRequestBody("image/*".toMediaType())
         val part = MultipartBody.Part.createFormData("file", file.name, body)
         val result = api.uploadImage(cardId, part)
         dao.upsertAll(listOf(result.toEntity()))
-        result
+        dao.getById(cardId)
+    }
+
+    suspend fun deleteImage(cardId: Int): CardEntity? = withContext(Dispatchers.IO) {
+        val result = api.deleteImage(cardId)
+        dao.upsertAll(listOf(result.toEntity()))
+        dao.getById(cardId)
     }
 }

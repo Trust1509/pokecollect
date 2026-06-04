@@ -16,23 +16,31 @@ data class CardEntity(
     val sprache: String,
     val besessen: Boolean,
     val wert_eur: String?,
+    val wert_aktualisiert: String?,
     val notizen: String?,
     val zustand: String?,
     val bild_pokedex_url: String?,
+    val bild_karte_url: String?,
+    val bild_karte_pfad: String?,
     val bild_thumbnail_pfad: String?,
-    val hinzugefuegt_am: String,
-    val aktualisiert_am: String,
+    val hinzugefuegt_am: String?,
+    val aktualisiert_am: String?,
 )
 
 @Dao
 interface CardDao {
-    @Query("SELECT * FROM cards ORDER BY pokedex_nr ASC NULLS LAST")
+    @Query("SELECT * FROM cards ORDER BY pokedex_nr IS NULL, pokedex_nr ASC")
     suspend fun getAll(): List<CardEntity>
 
     @Query("SELECT * FROM cards WHERE id = :id")
     suspend fun getById(id: Int): CardEntity?
 
-    @Query("SELECT * FROM cards WHERE kartenname LIKE '%' || :q || '%' OR englischer_name LIKE '%' || :q || '%'")
+    @Query(
+        "SELECT * FROM cards WHERE kartenname LIKE '%' || :q || '%' " +
+        "OR englischer_name LIKE '%' || :q || '%' " +
+        "OR CAST(pokedex_nr AS TEXT) LIKE '%' || :q || '%' " +
+        "ORDER BY pokedex_nr IS NULL, pokedex_nr ASC"
+    )
     suspend fun search(q: String): List<CardEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -45,14 +53,31 @@ interface CardDao {
     suspend fun deleteAll()
 }
 
-@Database(entities = [CardEntity::class], version = 1, exportSchema = false)
+@Database(entities = [CardEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun cardDao(): CardDao
 }
 
 fun Card.toEntity() = CardEntity(
-    id, kartenname, pokedex_nr, englischer_name, set_edition,
-    karten_nr, seltenheit, kartenversion, folierung, sprache,
-    besessen, wert_eur, notizen, zustand, bild_pokedex_url,
-    bild_thumbnail_pfad, hinzugefuegt_am, aktualisiert_am,
+    id = id,
+    kartenname = kartenname,
+    pokedex_nr = pokedex_nr,
+    englischer_name = englischer_name,
+    set_edition = set_edition,
+    karten_nr = karten_nr,
+    seltenheit = seltenheit,
+    kartenversion = kartenversion,
+    folierung = folierung,
+    sprache = sprache,
+    besessen = besessen,
+    wert_eur = wert_eur,
+    wert_aktualisiert = wert_aktualisiert,
+    notizen = notizen,
+    zustand = zustand,
+    bild_pokedex_url = bild_pokedex_url,
+    bild_karte_url = bild_karte_url,
+    bild_karte_pfad = bild_karte_pfad,
+    bild_thumbnail_pfad = bild_thumbnail_pfad,
+    hinzugefuegt_am = hinzugefuegt_am,
+    aktualisiert_am = aktualisiert_am,
 )

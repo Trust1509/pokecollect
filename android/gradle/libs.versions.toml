@@ -2,7 +2,6 @@
 agp = "8.5.1"
 kotlin = "2.0.0"
 compose-bom = "2024.06.00"
-compose-compiler = "1.5.14"
 lifecycle = "2.8.3"
 navigation = "2.7.7"
 room = "2.6.1"
@@ -47,4 +46,5 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

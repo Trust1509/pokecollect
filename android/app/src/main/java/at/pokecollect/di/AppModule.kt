@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import com.google.gson.GsonBuilder
 import at.pokecollect.data.ApiService
 import at.pokecollect.data.AppDatabase
 import at.pokecollect.data.CardDao
@@ -35,7 +36,9 @@ object AppModule {
 
     @Provides @Singleton
     fun db(@ApplicationContext ctx: Context): AppDatabase =
-        Room.databaseBuilder(ctx, AppDatabase::class.java, "pokecollect.db").build()
+        Room.databaseBuilder(ctx, AppDatabase::class.java, "pokecollect.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun dao(db: AppDatabase): CardDao = db.cardDao()
@@ -60,7 +63,11 @@ object AppModule {
         return Retrofit.Builder()
             .baseUrl("$base/")
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(
+                // serializeNulls: damit z.B. {"bild_pokedex_url": null} wirklich
+                // gesendet wird (zum Entfernen einer Bild-URL), statt weggelassen zu werden.
+                GsonConverterFactory.create(GsonBuilder().serializeNulls().create())
+            )
             .build()
     }
 

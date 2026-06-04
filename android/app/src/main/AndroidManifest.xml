@@ -10,7 +10,7 @@
         android:name=".PokéCollectApp"
         android:allowBackup="true"
         android:label="PokéCollect"
-        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true">
 
         <activity

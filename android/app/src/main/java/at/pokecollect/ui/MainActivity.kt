@@ -44,12 +44,14 @@ private fun AppNavigation() {
     val vm: CardViewModel = hiltViewModel()
     val cards by vm.cards.collectAsState()
     val loading by vm.loading.collectAsState()
+    val query by vm.query.collectAsState()
 
     NavHost(navController, startDestination = "list") {
         composable("list") {
             CardListScreen(
                 cards = cards,
                 loading = loading,
+                query = query,
                 onSearch = vm::search,
                 onCardClick = { navController.navigate("detail/$it") },
                 onScanClick = { navController.navigate("scan") },
