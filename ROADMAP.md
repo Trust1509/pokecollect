@@ -78,6 +78,26 @@
 - [ ] Karten pro Seite in Settings: Binder-freundliche Voreinstellungen
   (9 = 3×3, 12 = 3×4, 18 = 3×6, 20 = 4×5, 24 = 4×6)
 
+## 🔲 v0.5.5 — Freie Sammlungen (Multi-Collection)
+> **Ziel:** Neben dem Pokédex-Modus auch freie, selbst benannte Sammlungen ermöglichen —
+> für Sammler die nicht nach Pokédex sondern nach Sets, Themen oder Binder sammeln.
+
+- [ ] **Navbar-Tab umbenennen:** „Sammlung" → „Pokédex" (bestehende Ansicht bleibt unverändert)
+- [ ] **Neuer Tab „Sammlungen"** (`/collections`):
+  - Liste aller angelegten Sammlungen (Name, Beschreibung, Kartenanzahl)
+  - Neue Sammlung anlegen (Name + optionale Beschreibung)
+  - Sammlung löschen / umbenennen
+- [ ] **Sammlung-Detailseite** (`/collections/{id}`):
+  - Eigenes Karten-Raster (kein Pokédex-Zwang, keine Platzhalter)
+  - Karten aus der bestehenden DB zuweisen (Suche + Auswahl)
+  - Neue Karten direkt in der Sammlung anlegen (ohne Pokédex-Nr. Pflicht)
+  - Eine Karte kann in mehreren Sammlungen sein
+- [ ] **Karten-Detailseite:** Anzeige + Bearbeitung der Sammlungszugehörigkeit
+- [ ] **DB:** neue Tabellen `collections` + `collection_cards` (n:m zwischen collections und pokemon_cards)
+
+> **Hinweis:** Wer keinen Pokédex sammeln will, nutzt ausschließlich diesen Modus.
+> Der Pokédex-Tab bleibt für Pokédex-Sammler vollständig erhalten.
+
 ## 🔲 v0.6.0 — Authelia + Externer Zugriff
 - [ ] Authelia als Portainer-Stack deployen (siehe `deploy/README.md`)
 - [ ] DNS-Einträge `auth.yourdomain.com` + `pokecollect.yourdomain.com` setzen
