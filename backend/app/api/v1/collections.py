@@ -8,7 +8,7 @@ from app.models.collection import Collection, collection_cards
 from app.schemas.card import CardResponse
 from app.schemas.collection import (
     CollectionCardAdd, CollectionCardResponse, CollectionCreate, CollectionResponse,
-    CollectionUpdate, ReorderRequest, SlotRequest,
+    CollectionUpdate, PositionsRequest, ReorderRequest, SlotRequest,
 )
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -155,6 +155,20 @@ def reorder_cards(collection_id: int, data: ReorderRequest, db: Session = Depend
             .where(collection_cards.c.collection_id == collection_id)
             .where(collection_cards.c.card_id == card_id)
             .values(position=idx)
+        )
+    db.commit()
+
+
+@router.put("/{collection_id}/cards/positions", status_code=204)
+def set_positions(collection_id: int, data: PositionsRequest, db: Session = Depends(get_db)):
+    """Bulk: explizite Positionen setzen (für Seiten verschieben/löschen mit Nachrücken)."""
+    _collection_or_404(collection_id, db)
+    for p in data.positions:
+        db.execute(
+            collection_cards.update()
+            .where(collection_cards.c.collection_id == collection_id)
+            .where(collection_cards.c.card_id == p.card_id)
+            .values(position=p.position)
         )
     db.commit()
 

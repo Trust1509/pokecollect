@@ -174,6 +174,8 @@ export const collectionApi = {
     api.put(`/collections/${id}/cards/order`, { order }),
   moveToSlot: (id: number, cardId: number, slot: number) =>
     api.put(`/collections/${id}/cards/${cardId}/slot`, { slot }),
+  setPositions: (id: number, positions: { card_id: number; position: number }[]) =>
+    api.put(`/collections/${id}/cards/positions`, { positions }),
   forCard: (cardId: number) => api.get<Collection[]>(`/cards/${cardId}/collections`),
 };
 

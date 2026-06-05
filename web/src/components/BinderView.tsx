@@ -17,10 +17,13 @@ type Props = {
   onLayoutChange?: (l: string) => void;
   editable?: boolean;
   onMoveToSlot?: (cardId: number, slot: number) => void;
+  onAddAtSlot?: (cardId: number, slot: number) => void;
   binderSlots?: number | null;
   onAddPage?: (newSlots: number) => void;
   onDeleteLastPage?: (cardIdsOnLastPage: number[], newSlots: number) => void;
 };
+
+export const ASSIGN_DRAG_TYPE = "application/x-pokecollect-add";
 
 function parseLayout(layout: string): { cols: number; rows: number } {
   const m = layout.match(/^(\d+)x(\d+)$/);
@@ -41,7 +44,7 @@ const SIZE_KEY = "binder_card_size";
 
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
-  onLayoutChange, editable = false, onMoveToSlot,
+  onLayoutChange, editable = false, onMoveToSlot, onAddAtSlot,
   binderSlots, onAddPage, onDeleteLastPage,
 }: Props) {
   const { t, lang } = useI18n();
@@ -113,7 +116,23 @@ export default function BinderView({
     else setPage(leftVisible === 0 ? 1 : leftVisible + 2);
   };
 
-  const handleDrop = (slot: number) => {
+  const flipThrottle = useRef(0);
+  const handleEdgeOver = (dir: "prev" | "next") => (e: ReactDragEvent) => {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - flipThrottle.current < 700) return;
+    flipThrottle.current = now;
+    if (dir === "prev") goPrev();
+    else goNext();
+  };
+
+  const handleDrop = (slot: number, e: ReactDragEvent) => {
+    const addId = e.dataTransfer.getData(ASSIGN_DRAG_TYPE);
+    if (addId && onAddAtSlot) {
+      onAddAtSlot(Number(addId), slot);
+      setDragId(null);
+      return;
+    }
     if (dragId != null && onMoveToSlot) onMoveToSlot(dragId, slot);
     setDragId(null);
   };
@@ -143,7 +162,7 @@ export default function BinderView({
             const slot = startSlot + i;
             const card = slotMap.get(slot) ?? null;
             const dropProps = editable
-              ? { onDragOver: (e: ReactDragEvent) => e.preventDefault(), onDrop: () => handleDrop(slot) }
+              ? { onDragOver: (e: ReactDragEvent) => e.preventDefault(), onDrop: (e: ReactDragEvent) => handleDrop(slot, e) }
               : {};
 
             if (!card) {
@@ -166,7 +185,8 @@ export default function BinderView({
                 key={slot}
                 {...dropProps}
                 draggable={editable}
-                onDragStart={editable ? () => setDragId(card.id) : undefined}
+                onDragStart={editable ? (e) => { e.dataTransfer.setData("text/plain", String(card.id)); setDragId(card.id); } : undefined}
+                onDragEnd={editable ? () => setDragId(null) : undefined}
                 className={`aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800 ring-1 ring-black/40 transition-transform hover:scale-[1.03] hover:ring-pokemon-yellow ${
                   editable ? "cursor-move" : ""
                 } ${card.besessen ? "" : "opacity-50"}`}
@@ -186,10 +206,10 @@ export default function BinderView({
                       {card.pokedex_nr ? `#${String(card.pokedex_nr).padStart(4, "0")}` : "?"}
                     </div>
                   )}
-                  <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1">
-                    <span className="text-[10px] text-white truncate flex-1">{name}</span>
-                    {code && <span className="text-[10px] text-gray-400 font-mono shrink-0">{code}</span>}
-                    <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
+                  <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 grid grid-cols-3 items-center gap-1">
+                    <span className="text-[10px] text-white truncate">{name}</span>
+                    <span className="text-[10px] text-gray-400 font-mono text-center truncate">{code}</span>
+                    <span className="flex justify-end"><RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" /></span>
                   </div>
                 </Link>
               </div>
@@ -247,10 +267,28 @@ export default function BinderView({
       {editable && <p className="text-gray-500 text-xs mb-2 text-center">{t.binder_dnd_hint}</p>}
 
       {/* Seiten */}
-      <div ref={containerRef} className="w-full overflow-x-auto">
+      <div ref={containerRef} className="w-full overflow-x-auto relative">
         <div className="flex gap-4 justify-center items-start min-w-min mx-auto">
           {visiblePages.map((p) => renderPage(p))}
         </div>
+        {editable && dragId != null && leftVisible > 0 && (
+          <div
+            onDragOver={handleEdgeOver("prev")}
+            onDrop={(e) => { e.preventDefault(); setDragId(null); }}
+            className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-pokemon-yellow/40 to-transparent flex items-center pl-1 text-pokemon-yellow text-3xl"
+          >
+            ‹
+          </div>
+        )}
+        {editable && dragId != null && rightVisible < totalPages - 1 && (
+          <div
+            onDragOver={handleEdgeOver("next")}
+            onDrop={(e) => { e.preventDefault(); setDragId(null); }}
+            className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-pokemon-yellow/40 to-transparent flex items-center justify-end pr-1 text-pokemon-yellow text-3xl"
+          >
+            ›
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

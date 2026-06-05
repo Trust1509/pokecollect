@@ -6,7 +6,8 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
 import SortableCardGrid from "@/components/SortableCardGrid";
-import BinderView, { BinderItem } from "@/components/BinderView";
+import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
+import BinderEditor from "@/components/BinderEditor";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -28,6 +29,7 @@ export default function CollectionDetailPage() {
     return "grid";
   });
   const [layout, setLayout] = useState("3x3");
+  const [editingPages, setEditingPages] = useState(false);
 
   useEffect(() => {
     if (!Number.isNaN(id)) {
@@ -137,6 +139,18 @@ export default function CollectionDetailPage() {
     }
   };
 
+  const handleAddAtSlot = async (cardId: number, slot: number) => {
+    try {
+      await collectionApi.addCard(id, cardId);
+      await collectionApi.moveToSlot(id, cardId, slot);
+      toast.success(t.collection_added);
+      loadCards();
+      loadMeta();
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
   const handleLayoutChange = async (l: string) => {
     setLayout(l);
     try {
@@ -153,12 +167,22 @@ export default function CollectionDetailPage() {
     }
   };
 
-  const handleDeleteLastPage = async (cardIds: number[], newSlots: number) => {
-    if (cardIds.length && !confirm(t.binder_delete_page_warn(cardIds.length))) return;
+  const handlePagesChange = async (payload: {
+    removeCardIds?: number[];
+    positions?: { card_id: number; position: number }[];
+    binderSlots?: number;
+  }) => {
     try {
-      for (const cid of cardIds) await collectionApi.removeCard(id, cid);
-      await collectionApi.update(id, { binder_slots: newSlots });
-      setCollection((c) => (c ? { ...c, binder_slots: newSlots } : c));
+      if (payload.removeCardIds?.length) {
+        for (const cid of payload.removeCardIds) await collectionApi.removeCard(id, cid);
+      }
+      if (payload.positions?.length) {
+        await collectionApi.setPositions(id, payload.positions);
+      }
+      if (payload.binderSlots != null) {
+        await collectionApi.update(id, { binder_slots: payload.binderSlots });
+        setCollection((c) => (c ? { ...c, binder_slots: payload.binderSlots ?? null } : c));
+      }
       loadCards();
       loadMeta();
     } catch {
@@ -224,8 +248,10 @@ export default function CollectionDetailPage() {
                   <button
                     key={c.id}
                     onClick={() => handleAdd(c.id)}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData(ASSIGN_DRAG_TYPE, String(c.id))}
                     title={t.collection_add}
-                    className="group text-left bg-gray-800/40 rounded-lg overflow-hidden border border-transparent hover:border-green-500"
+                    className="group text-left bg-gray-800/40 rounded-lg overflow-hidden border border-transparent hover:border-green-500 cursor-grab"
                   >
                     <div className="aspect-[63/88] relative bg-gray-800">
                       {src && (
@@ -252,17 +278,39 @@ export default function CollectionDetailPage() {
       {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
       ) : view === "binder" ? (
-        <BinderView
-          items={binderItems}
-          apiBase={API_BASE}
-          layout={layout}
-          onLayoutChange={handleLayoutChange}
-          editable
-          onMoveToSlot={handleMoveToSlot}
-          binderSlots={collection?.binder_slots ?? null}
-          onAddPage={handleAddPage}
-          onDeleteLastPage={handleDeleteLastPage}
-        />
+        <div>
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => setEditingPages((v) => !v)}
+              className={`text-sm rounded px-3 py-1.5 ${
+                editingPages ? "bg-green-600 text-white hover:bg-green-700" : "bg-pokemon-card text-gray-300 hover:text-white"
+              }`}
+            >
+              {editingPages ? t.binder_done : t.binder_manage_pages}
+            </button>
+          </div>
+          {editingPages ? (
+            <BinderEditor
+              items={binderItems}
+              apiBase={API_BASE}
+              layout={layout}
+              binderSlots={collection?.binder_slots ?? null}
+              onPagesChange={handlePagesChange}
+            />
+          ) : (
+            <BinderView
+              items={binderItems}
+              apiBase={API_BASE}
+              layout={layout}
+              onLayoutChange={handleLayoutChange}
+              editable
+              onMoveToSlot={handleMoveToSlot}
+              onAddAtSlot={handleAddAtSlot}
+              binderSlots={collection?.binder_slots ?? null}
+              onAddPage={handleAddPage}
+            />
+          )}
+        </div>
       ) : cards.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500 text-center px-4">{t.collection_empty}</div>
       ) : (

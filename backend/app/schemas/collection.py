@@ -51,3 +51,13 @@ class ReorderRequest(BaseModel):
 class SlotRequest(BaseModel):
     """Binder-DnD: Karte auf Slot-Index verschieben (Tausch falls belegt)."""
     slot: int
+
+
+class CardPosition(BaseModel):
+    card_id: int
+    position: int
+
+
+class PositionsRequest(BaseModel):
+    """Bulk: mehrere Karten-Positionen explizit setzen (Seiten-Reorder/-Löschen)."""
+    positions: list[CardPosition]
