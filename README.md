@@ -1,103 +1,106 @@
 # PokéCollect
 
-A self-hosted Pokémon TCG collection app — track your cards, scan new ones with your Android phone, and monitor Cardmarket prices automatically.
+A free, self-hosted Pokémon TCG collection tracker. Track your physical cards with a Pokédex-style grid, scan new cards with your Android phone, and keep your data on your own hardware — no subscription, no cloud, no account required.
 
-> **Status: Pre-Release v0.1.0** — Core features working, some areas still being tested.
+> **Current version: v0.4.1** — Actively developed. [See full roadmap →](ROADMAP.md)
+
+---
+
+## Screenshots
+
+| Collection Grid | Card Detail |
+|---|---|
+| ![Collection Grid](docs/screenshots/01_collection_grid.png) | ![Card Detail](docs/screenshots/02_card_detail.png) |
+
+| Add Card | Statistics |
+|---|---|
+| ![Add Card](docs/screenshots/03_new_card.png) | ![Statistics](docs/screenshots/04_statistics.png) |
+
+**Android companion app:**
+
+![Android App](docs/screenshots/05_android.jpeg)
+
+---
 
 ## Features
 
-- **Web interface** — Pokédex-style grid, filters by generation/set/rarity/language, detail view with price charts
-- **Android app** — camera scan with on-device OCR (ML Kit), offline Room cache, sync on connect
-- **Single FastAPI backend** — one PostgreSQL database shared by all clients
-- **Cardmarket price integration** — OAuth 1.0a, daily auto-update for owned cards
-- **Notion CSV import** — migrate existing collections from Notion export
-- **Dark theme** — responsive desktop + tablet
+### Web App
+- **Pokédex-style grid** — all 1025 Pokémon as placeholders, owned cards shown with real card images
+- **Pokédex integrity** — adding a card automatically fills the placeholder; deleting restores it
+- **70+ sets** with structured data — SV, SWSH, SM, XY, MEG generation. Searchable set picker with card number format hints
+- **Official rarity symbols** — ●◆★☆✦ and PROMO star for EN/DE cards; text codes (C/U/R/RR/SR/AR...) for JP/CN
+- **Automatic card images** — fetched from pokemon.com for SV-era sets
+- **Photo upload** — upload your own card scans
+- **Price tracking** — Cardmarket value per card
+- **Statistics dashboard** — rarity/language breakdown, top 10 by value, recently added
+- **DE/EN interface** — language toggle in navbar, preference saved in localStorage
+- **Filters** — generation, set, rarity, language, image status, sort
 
-## Quick start (local)
+### Android App *(in development)*
+- Browse and edit your collection on your phone
+- **Card scanner** with on-device OCR (ML Kit, CameraX) — currently tested with German cards
+- Connects to the same PostgreSQL database as the web app
+- Offline cache via Room
+
+---
+
+## Quick Start
 
 ```bash
+git clone https://github.com/Trust1509/pokecollect.git
+cd pokecollect
 cp .env.example .env
-# Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, APP_PASSWORD_HASH, NEXT_PUBLIC_API_URL
+# Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, NEXT_PUBLIC_API_URL
 docker compose up --build
 ```
 
-- API + Swagger UI: `http://localhost:3010/docs`
-- Web frontend: `http://localhost:3011`
+- **Web frontend:** `http://localhost:3011`
+- **API + Swagger UI:** `http://localhost:3010/docs`
 
-Generate a bcrypt password hash:
-```bash
-docker run --rm python:3.12-slim bash -c \
-  "pip install bcrypt -q && python3 -c \"import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())\""
-```
-
-## Server deployment (TrueNAS Scale / Portainer)
-
-See [deploy/README.md](deploy/README.md) for full step-by-step instructions including:
-- ZFS POSIX-ACL dataset setup
-- Docker image build
-- Portainer stack deployment
-- Caddy reverse proxy config
+---
 
 ## Configuration
-
-Copy `.env.example` to `.env`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `POSTGRES_PASSWORD` | ✅ | Database password |
 | `JWT_SECRET` | ✅ | Random string for JWT signing (min. 32 chars) |
-| `APP_PASSWORD_HASH` | ✅ | bcrypt hash of your admin password |
 | `NEXT_PUBLIC_API_URL` | ✅ | URL the browser uses to reach the API (e.g. `http://192.168.x.x:3010`) |
 | `CARDMARKET_APP_TOKEN` | ➖ | Cardmarket OAuth 1.0a — register at api.cardmarket.com |
 | `CARDMARKET_APP_SECRET` | ➖ | Cardmarket OAuth 1.0a |
 | `CARDMARKET_ACCESS_TOKEN` | ➖ | Cardmarket OAuth 1.0a |
 | `CARDMARKET_ACCESS_SECRET` | ➖ | Cardmarket OAuth 1.0a |
 | `POKEMONTCG_API_KEY` | ➖ | Free key from pokemontcg.io |
-| `COMPOSE_PROJECT_NAME` | ➖ | Docker project name (default: `pokecollect`) |
 
-## Notion migration
+---
 
-Export your Notion database as CSV, then:
+## Server Deployment (TrueNAS / Portainer)
 
-```bash
-# Dry run first
-docker exec pokecollect-api-1 \
-  python /app/csv_import.py /app/cards.csv --dry-run
+See [deploy/README.md](deploy/README.md) for step-by-step instructions including ZFS POSIX-ACL dataset setup, Portainer stack deployment, and Caddy reverse proxy config.
 
-# Import
-docker exec -e DRY_RUN=false pokecollect-api-1 \
-  python /app/csv_import.py /app/cards.csv
-```
+---
 
-## Android app
-
-Configure the API base URL in the app settings (default: `http://192.168.x.x:3010/api/v1`).
-
-Build with Android Studio. Requires minSdk 26 (Android 8.0+).
-
-## Tech stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.12, FastAPI, SQLAlchemy, PostgreSQL 16, Redis 7 |
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS, Recharts |
-| Android | Kotlin, Jetpack Compose, ML Kit OCR, CameraX, Room, Retrofit, Hilt |
+| Backend | Python 3.12, FastAPI, SQLAlchemy, PostgreSQL 16 |
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Android | Kotlin, Jetpack Compose, ML Kit OCR, CameraX, Room, Hilt |
 | Deployment | Docker Compose, Portainer, Caddy |
 
-## Ports
-
-| Service | Host port |
-|---------|-----------|
-| API | 3010 |
-| Web frontend | 3011 |
+---
 
 ## Roadmap
 
-- [ ] Web settings page for API keys (Cardmarket, PokémonTCG)
-- [ ] Placeholder images for all cards (toggleable)
-- [ ] Android scan feature — full end-to-end test
-- [ ] Caddy external access config
-- [ ] GitHub Actions CI/CD → ghcr.io image publish
+See [ROADMAP.md](ROADMAP.md) for the full roadmap. Coming up:
+- Binder view (page-by-page like a physical binder)
+- Cardmarket price integration
+- Wishlist
+- PokémonTCG.io for SWSH/XY card images
+- External access via Authelia
+
+---
 
 ## License
 
