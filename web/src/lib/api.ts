@@ -76,6 +76,7 @@ export type Collection = {
   name: string;
   beschreibung: string | null;
   binder_layout: string | null;
+  binder_slots: number | null;
   erstellt_am: string | null;
   karten_anzahl: number;
 };
@@ -161,7 +162,7 @@ export const collectionApi = {
   get: (id: number) => api.get<Collection>(`/collections/${id}`),
   create: (data: { name: string; beschreibung?: string | null }) =>
     api.post<Collection>("/collections", data),
-  update: (id: number, data: { name?: string; beschreibung?: string | null; binder_layout?: string }) =>
+  update: (id: number, data: { name?: string; beschreibung?: string | null; binder_layout?: string; binder_slots?: number }) =>
     api.put<Collection>(`/collections/${id}`, data),
   delete: (id: number) => api.delete(`/collections/${id}`),
   cards: (id: number) => api.get<CollectionCard[]>(`/collections/${id}/cards`),

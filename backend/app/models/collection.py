@@ -23,6 +23,7 @@ class Collection(Base):
     name = Column(Text, nullable=False)
     beschreibung = Column(Text, nullable=True)
     binder_layout = Column(Text, nullable=True, default="3x3")  # cols x rows, z.B. "3x3"
+    binder_slots = Column(Integer, nullable=True)  # persistierte Binder-Größe (Slot-Kapazität inkl. leerer Seiten)
     erstellt_am = Column(DateTime, default=datetime.utcnow)
 
     # backref "collections" wird auf PokemonCard gesetzt → card.collections

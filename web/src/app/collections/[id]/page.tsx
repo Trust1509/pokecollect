@@ -144,6 +144,28 @@ export default function CollectionDetailPage() {
     } catch {/* nicht kritisch */}
   };
 
+  const handleAddPage = async (newSlots: number) => {
+    try {
+      await collectionApi.update(id, { binder_slots: newSlots });
+      setCollection((c) => (c ? { ...c, binder_slots: newSlots } : c));
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
+  const handleDeleteLastPage = async (cardIds: number[], newSlots: number) => {
+    if (cardIds.length && !confirm(t.binder_delete_page_warn(cardIds.length))) return;
+    try {
+      for (const cid of cardIds) await collectionApi.removeCard(id, cid);
+      await collectionApi.update(id, { binder_slots: newSlots });
+      setCollection((c) => (c ? { ...c, binder_slots: newSlots } : c));
+      loadCards();
+      loadMeta();
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
   const binderItems: BinderItem[] = cards.map((c, idx) => ({
     card: c,
     position: c.position ?? idx,
@@ -237,6 +259,9 @@ export default function CollectionDetailPage() {
           onLayoutChange={handleLayoutChange}
           editable
           onMoveToSlot={handleMoveToSlot}
+          binderSlots={collection?.binder_slots ?? null}
+          onAddPage={handleAddPage}
+          onDeleteLastPage={handleDeleteLastPage}
         />
       ) : cards.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500 text-center px-4">{t.collection_empty}</div>

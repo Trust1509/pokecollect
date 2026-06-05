@@ -17,6 +17,9 @@ type Props = {
   onLayoutChange?: (l: string) => void;
   editable?: boolean;
   onMoveToSlot?: (cardId: number, slot: number) => void;
+  binderSlots?: number | null;
+  onAddPage?: (newSlots: number) => void;
+  onDeleteLastPage?: (cardIdsOnLastPage: number[], newSlots: number) => void;
 };
 
 function parseLayout(layout: string): { cols: number; rows: number } {
@@ -25,7 +28,13 @@ function parseLayout(layout: string): { cols: number; rows: number } {
   return { cols: Number(m[1]), rows: Number(m[2]) };
 }
 
-const GAP = 8;        // gap-2 zwischen Pockets
+function extractSetCode(setEdition: string | null): string {
+  if (!setEdition) return "";
+  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)\s*$/);
+  return m ? m[1] : "";
+}
+
+const GAP = 8;        // gap zwischen Pockets
 const PAGE_PAD = 24;  // p-3 links+rechts
 const SPREAD_GAP = 16;
 const SIZE_KEY = "binder_card_size";
@@ -33,13 +42,13 @@ const SIZE_KEY = "binder_card_size";
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
   onLayoutChange, editable = false, onMoveToSlot,
+  binderSlots, onAddPage, onDeleteLastPage,
 }: Props) {
   const { t, lang } = useI18n();
   const { cols, rows } = parseLayout(layout);
   const perPage = cols * rows;
 
-  const [spread, setSpread] = useState(0);
-  const [extraPages, setExtraPages] = useState(0);
+  const [page, setPage] = useState(0);
   const [dragId, setDragId] = useState<number | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [cardSize, setCardSize] = useState<number>(() => {
@@ -74,24 +83,52 @@ export default function BinderView({
 
   const maxSlot = items.length ? Math.max(...items.map((i) => i.position)) : -1;
   const contentPages = maxSlot >= 0 ? Math.floor(maxSlot / perPage) + 1 : 1;
-  const totalPages = contentPages + (editable ? 1 + extraPages : 0);
+  const slotPages = binderSlots != null ? Math.ceil(binderSlots / perPage) : 0;
+  const totalPages = Math.max(contentPages, slotPages, 1);
 
   const pageWidth = cols * cardSize + (cols - 1) * GAP + PAGE_PAD;
   const twoPage = containerWidth >= 2 * pageWidth + SPREAD_GAP;
 
-  // Spreads: 0 = nur Seite 0; ab 1 = Seiten (2s-1, 2s)
-  const maxSpread = twoPage ? Math.ceil(Math.max(0, totalPages - 1) / 2) : Math.max(0, totalPages - 1);
-  const safeSpread = Math.min(spread, maxSpread);
+  const safePage = Math.min(Math.max(0, page), totalPages - 1);
 
-  useEffect(() => { setSpread(0); }, [layout, twoPage]);
+  // Sichtbare Seiten: Einzelseite, oder Buch-Doppelseite (Seite 0 allein, dann Paare 1|2, 3|4 …)
+  const visiblePages: number[] = !twoPage
+    ? [safePage]
+    : safePage === 0
+    ? [0]
+    : (() => {
+        const left = safePage % 2 === 1 ? safePage : safePage - 1;
+        return left + 1 < totalPages ? [left, left + 1] : [left];
+      })();
 
-  const visiblePages: number[] = twoPage
-    ? (safeSpread === 0 ? [0] : [2 * safeSpread - 1, 2 * safeSpread].filter((p) => p < totalPages))
-    : [safeSpread];
+  const leftVisible = visiblePages[0];
+  const rightVisible = visiblePages[visiblePages.length - 1];
+
+  const goPrev = () => {
+    if (!twoPage) setPage(safePage - 1);
+    else setPage(leftVisible <= 1 ? 0 : leftVisible - 2);
+  };
+  const goNext = () => {
+    if (!twoPage) setPage(safePage + 1);
+    else setPage(leftVisible === 0 ? 1 : leftVisible + 2);
+  };
 
   const handleDrop = (slot: number) => {
     if (dragId != null && onMoveToSlot) onMoveToSlot(dragId, slot);
     setDragId(null);
+  };
+
+  const handleAddPage = () => {
+    if (onAddPage) onAddPage((totalPages + 1) * perPage);
+  };
+
+  const handleDeleteLastPage = () => {
+    if (!onDeleteLastPage) return;
+    const last = totalPages - 1;
+    const ids = items
+      .filter((it) => Math.floor(it.position / perPage) === last)
+      .map((it) => it.card.id);
+    onDeleteLastPage(ids, last * perPage);
   };
 
   const renderPage = (pageNum: number) => {
@@ -101,18 +138,12 @@ export default function BinderView({
         key={pageNum}
         className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl p-3 shadow-xl shrink-0"
       >
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: `repeat(${cols}, ${cardSize}px)`, gap: `${GAP}px` }}
-        >
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${cols}, ${cardSize}px)`, gap: `${GAP}px` }}>
           {Array.from({ length: perPage }).map((_, i) => {
             const slot = startSlot + i;
             const card = slotMap.get(slot) ?? null;
             const dropProps = editable
-              ? {
-                  onDragOver: (e: ReactDragEvent) => e.preventDefault(),
-                  onDrop: () => handleDrop(slot),
-                }
+              ? { onDragOver: (e: ReactDragEvent) => e.preventDefault(), onDrop: () => handleDrop(slot) }
               : {};
 
             if (!card) {
@@ -129,6 +160,7 @@ export default function BinderView({
 
             const { src, isPlaceholder } = cardImageSrc(card, apiBase, placeholderEnabled);
             const name = lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname;
+            const code = extractSetCode(card.set_edition);
             return (
               <div
                 key={slot}
@@ -155,7 +187,8 @@ export default function BinderView({
                     </div>
                   )}
                   <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1">
-                    <span className="text-[10px] text-white truncate">{name}</span>
+                    <span className="text-[10px] text-white truncate flex-1">{name}</span>
+                    {code && <span className="text-[10px] text-gray-400 font-mono shrink-0">{code}</span>}
                     <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
                   </div>
                 </Link>
@@ -169,8 +202,8 @@ export default function BinderView({
   };
 
   const pageLabel = twoPage && visiblePages.length === 2
-    ? t.binder_pages(visiblePages[0] + 1, visiblePages[1] + 1, totalPages)
-    : t.binder_page((visiblePages[0] ?? 0) + 1, totalPages);
+    ? t.binder_pages(leftVisible + 1, rightVisible + 1, totalPages)
+    : t.binder_page((leftVisible ?? 0) + 1, totalPages);
 
   return (
     <div className="flex flex-col items-center w-full">
@@ -193,32 +226,21 @@ export default function BinderView({
         <label className="flex items-center gap-2 text-sm text-gray-400">
           {t.binder_card_size}
           <input
-            type="range"
-            min={70}
-            max={260}
-            step={10}
+            type="range" min={70} max={260} step={10}
             value={cardSize}
             onChange={(e) => setSize(Number(e.target.value))}
             className="accent-pokemon-yellow"
           />
         </label>
-        {editable && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setExtraPages((p) => p + 1)}
-              className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
-            >
-              {t.binder_add_page}
-            </button>
-            {extraPages > 0 && (
-              <button
-                onClick={() => setExtraPages((p) => Math.max(0, p - 1))}
-                className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
-              >
-                {t.binder_remove_page}
-              </button>
-            )}
-          </div>
+        {editable && onAddPage && (
+          <button onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
+            {t.binder_add_page}
+          </button>
+        )}
+        {editable && onDeleteLastPage && totalPages > 1 && (
+          <button onClick={handleDeleteLastPage} className="text-xs bg-red-950/60 text-red-300 hover:text-red-100 rounded px-2 py-1">
+            {t.binder_delete_last_page}
+          </button>
         )}
       </div>
 
@@ -234,16 +256,16 @@ export default function BinderView({
       {/* Navigation */}
       <div className="flex items-center gap-4 mt-4 text-sm">
         <button
-          disabled={safeSpread <= 0}
-          onClick={() => setSpread(safeSpread - 1)}
+          disabled={leftVisible <= 0}
+          onClick={goPrev}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ‹
         </button>
         <span className="text-gray-400">{pageLabel}</span>
         <button
-          disabled={safeSpread >= maxSpread}
-          onClick={() => setSpread(safeSpread + 1)}
+          disabled={rightVisible >= totalPages - 1}
+          onClick={goNext}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ›

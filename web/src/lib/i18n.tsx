@@ -22,6 +22,8 @@ const DE = {
   binder_card_size: "Größe",
   binder_add_page: "+ Leere Seite",
   binder_remove_page: "− Seite",
+  binder_delete_last_page: "Letzte Seite löschen",
+  binder_delete_page_warn: (n: number) => `Die letzte Seite enthält ${n} ${n === 1 ? "Karte" : "Karten"}, die aus der Sammlung entfernt werden. Fortfahren?`,
   binder_dnd_hint: "Karten per Drag & Drop verschieben – auf belegten Slot ziehen tauscht die Karten.",
   collection_reorder_hint: "Reihenfolge per Drag & Drop ändern.",
 
@@ -201,6 +203,8 @@ const EN: typeof DE = {
   binder_card_size: "Size",
   binder_add_page: "+ Empty page",
   binder_remove_page: "− Page",
+  binder_delete_last_page: "Delete last page",
+  binder_delete_page_warn: (n: number) => `The last page contains ${n} ${n === 1 ? "card" : "cards"} that will be removed from the collection. Continue?`,
   binder_dnd_hint: "Drag & drop cards to move – dropping onto an occupied slot swaps the cards.",
   collection_reorder_hint: "Drag & drop to reorder.",
 

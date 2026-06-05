@@ -33,6 +33,7 @@ def _to_response(coll: Collection, count: int) -> CollectionResponse:
         name=coll.name,
         beschreibung=coll.beschreibung,
         binder_layout=coll.binder_layout or "3x3",
+        binder_slots=coll.binder_slots,
         erstellt_am=coll.erstellt_am,
         karten_anzahl=count,
     )

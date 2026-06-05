@@ -21,11 +21,13 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     beschreibung: Optional[str] = None
     binder_layout: Optional[str] = None
+    binder_slots: Optional[int] = None
 
 
 class CollectionResponse(CollectionBase):
     id: int
     binder_layout: Optional[str] = "3x3"
+    binder_slots: Optional[int] = None
     erstellt_am: Optional[datetime] = None
     karten_anzahl: int = 0
 
