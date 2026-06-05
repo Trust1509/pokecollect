@@ -20,6 +20,8 @@ class PokemonCard(Base):
     folierung = Column(Text, nullable=True)
     sprache = Column(Text, nullable=True, default="DE", index=True)
     besessen = Column(Boolean, default=False, index=True)
+    wunschliste = Column(Boolean, default=False, index=True)
+    prioritaet = Column(Text, nullable=True)  # Chase, Hoch, Mittel, Niedrig
     wert_eur = Column(Numeric(8, 2), nullable=True)
     wert_aktualisiert = Column(DateTime, nullable=True)
     notizen = Column(Text, nullable=True)

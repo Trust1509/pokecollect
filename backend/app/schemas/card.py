@@ -29,6 +29,7 @@ FOLIERUNG_VALUES = [
 
 SPRACHE_VALUES = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"]
 ZUSTAND_VALUES = ["Mint", "Near Mint", "Excellent", "Good", "Played"]
+PRIORITAET_VALUES = ["Chase", "Hoch", "Mittel", "Niedrig"]
 
 
 class CardBase(BaseModel):
@@ -42,6 +43,8 @@ class CardBase(BaseModel):
     folierung: Optional[str] = None
     sprache: Optional[str] = "DE"
     besessen: bool = False
+    wunschliste: bool = False
+    prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
     notizen: Optional[str] = None
     zustand: Optional[str] = None
@@ -63,6 +66,8 @@ class CardUpdate(BaseModel):
     folierung: Optional[str] = None
     sprache: Optional[str] = None
     besessen: Optional[bool] = None
+    wunschliste: Optional[bool] = None
+    prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
     notizen: Optional[str] = None
     zustand: Optional[str] = None
@@ -117,3 +122,4 @@ class EnumsResponse(BaseModel):
     folierung: list[str]
     sprache: list[str]
     zustand: list[str]
+    prioritaet: list[str]

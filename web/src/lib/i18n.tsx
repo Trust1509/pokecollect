@@ -5,10 +5,74 @@ export type Lang = "DE" | "EN";
 
 const DE = {
   // Navbar
-  nav_collection: "Sammlung",
+  nav_collection: "Pokédex",
+  nav_collections: "Sammlungen",
+  nav_wishlist: "Wunschliste",
   nav_statistics: "Statistiken",
   nav_settings: "Einstellungen",
   nav_add_card: "+ Karte",
+
+  // View toggle
+  view_grid: "Raster",
+  view_binder: "Binder",
+  binder_page: (cur: number, total: number) => `Seite ${cur} / ${total}`,
+  binder_empty_pocket: "Leer",
+
+  // Collections list (/collections)
+  collections_title: "Sammlungen",
+  collections_subtitle: "Frei benannte Sammlungen – unabhängig vom Pokédex",
+  collections_new: "+ Neue Sammlung",
+  collections_empty: "Noch keine Sammlungen angelegt.",
+  collections_name: "Name",
+  collections_description: "Beschreibung",
+  collections_name_placeholder: "z.B. Glurak-Sammlung",
+  collections_description_placeholder: "Optionale Beschreibung …",
+  collections_card_count: (n: number) => `${n} ${n === 1 ? "Karte" : "Karten"}`,
+  collections_create: "Anlegen",
+  collections_rename: "Umbenennen",
+  collections_save: "Speichern",
+  collections_delete: "Löschen",
+  collections_delete_confirm: (name: string) => `Sammlung "${name}" wirklich löschen? Die Karten selbst bleiben erhalten.`,
+  collections_created: "Sammlung angelegt",
+  collections_updated: "Sammlung aktualisiert",
+  collections_deleted: "Sammlung gelöscht",
+  collections_error: "Aktion fehlgeschlagen",
+  collections_name_required: "Name ist Pflichtfeld",
+
+  // Collection detail (/collections/{id})
+  collection_back: "← Sammlungen",
+  collection_add_existing: "Karte zuweisen",
+  collection_create_new: "+ Neue Karte anlegen",
+  collection_search_placeholder: "Karte suchen (Name oder Pokédex-Nr.) …",
+  collection_no_results: "Keine Karten gefunden",
+  collection_add: "Hinzufügen",
+  collection_added: "Karte hinzugefügt",
+  collection_removed: "Karte entfernt",
+  collection_remove_confirm: "Karte aus dieser Sammlung entfernen? Die Karte selbst bleibt erhalten.",
+  collection_empty: "Diese Sammlung ist noch leer. Weise Karten zu oder lege neue an.",
+  collection_remove: "Entfernen",
+
+  // Wishlist (/wishlist)
+  wishlist_title: "Wunschliste",
+  wishlist_subtitle: "Karten, die dir noch fehlen – inkl. Chase-Karten",
+  wishlist_empty: "Deine Wunschliste ist leer. Markiere Karten als „Auf Wunschliste".",
+  wishlist_filter_priority: "Priorität",
+  wishlist_all_priorities: "Alle Prioritäten",
+  wishlist_only_chase: "Nur Chase-Karten",
+
+  // Card detail – collections + wishlist sections
+  detail_collections: "Sammlungen",
+  detail_collections_none: "Keiner Sammlung zugeordnet",
+  detail_collections_add: "Zu Sammlung hinzufügen …",
+  detail_wishlist: "Wunschliste",
+  detail_wishlist_on: "Auf Wunschliste",
+  detail_wishlist_priority: "Priorität",
+  detail_wishlist_added: "Zur Wunschliste hinzugefügt",
+  detail_wishlist_removed: "Von Wunschliste entfernt",
+
+  // Card form – wishlist
+  form_wishlist: "Auf Wunschliste setzen",
+  form_priority: "Priorität",
 
   // HomePage
   home_collected: "Gesammelt",
@@ -64,7 +128,7 @@ const DE = {
   form_cancel: "Abbrechen",
   form_saved: "Karte gespeichert",
   form_save_error: "Fehler beim Speichern",
-  form_back: "← Sammlung",
+  form_back: "← Pokédex",
 
   // CardDetailPage
   detail_loading: "Lädt …",
@@ -110,10 +174,68 @@ const DE = {
 };
 
 const EN: typeof DE = {
-  nav_collection: "Collection",
+  nav_collection: "Pokédex",
+  nav_collections: "Collections",
+  nav_wishlist: "Wishlist",
   nav_statistics: "Statistics",
   nav_settings: "Settings",
   nav_add_card: "+ Card",
+
+  view_grid: "Grid",
+  view_binder: "Binder",
+  binder_page: (cur: number, total: number) => `Page ${cur} / ${total}`,
+  binder_empty_pocket: "Empty",
+
+  collections_title: "Collections",
+  collections_subtitle: "Freely named collections – independent of the Pokédex",
+  collections_new: "+ New collection",
+  collections_empty: "No collections created yet.",
+  collections_name: "Name",
+  collections_description: "Description",
+  collections_name_placeholder: "e.g. Charizard collection",
+  collections_description_placeholder: "Optional description …",
+  collections_card_count: (n: number) => `${n} ${n === 1 ? "card" : "cards"}`,
+  collections_create: "Create",
+  collections_rename: "Rename",
+  collections_save: "Save",
+  collections_delete: "Delete",
+  collections_delete_confirm: (name: string) => `Really delete collection "${name}"? The cards themselves are kept.`,
+  collections_created: "Collection created",
+  collections_updated: "Collection updated",
+  collections_deleted: "Collection deleted",
+  collections_error: "Action failed",
+  collections_name_required: "Name is required",
+
+  collection_back: "← Collections",
+  collection_add_existing: "Assign card",
+  collection_create_new: "+ Create new card",
+  collection_search_placeholder: "Search card (name or Pokédex no.) …",
+  collection_no_results: "No cards found",
+  collection_add: "Add",
+  collection_added: "Card added",
+  collection_removed: "Card removed",
+  collection_remove_confirm: "Remove card from this collection? The card itself is kept.",
+  collection_empty: "This collection is empty. Assign cards or create new ones.",
+  collection_remove: "Remove",
+
+  wishlist_title: "Wishlist",
+  wishlist_subtitle: "Cards you're still missing – including chase cards",
+  wishlist_empty: "Your wishlist is empty. Mark cards as “On wishlist”.",
+  wishlist_filter_priority: "Priority",
+  wishlist_all_priorities: "All priorities",
+  wishlist_only_chase: "Chase cards only",
+
+  detail_collections: "Collections",
+  detail_collections_none: "Not in any collection",
+  detail_collections_add: "Add to collection …",
+  detail_wishlist: "Wishlist",
+  detail_wishlist_on: "On wishlist",
+  detail_wishlist_priority: "Priority",
+  detail_wishlist_added: "Added to wishlist",
+  detail_wishlist_removed: "Removed from wishlist",
+
+  form_wishlist: "Add to wishlist",
+  form_priority: "Priority",
 
   home_collected: "Collected",
   home_total_value: "Total Value",
@@ -166,7 +288,7 @@ const EN: typeof DE = {
   form_cancel: "Cancel",
   form_saved: "Card saved",
   form_save_error: "Error saving",
-  form_back: "← Collection",
+  form_back: "← Pokédex",
 
   detail_loading: "Loading …",
   detail_edit: "Edit",

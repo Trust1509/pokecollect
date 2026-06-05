@@ -13,6 +13,8 @@ export default function Navbar() {
       </Link>
       <span className="text-gray-600 text-xs">v{APP_VERSION}</span>
       <Link href="/" className="text-gray-300 hover:text-white text-sm">{t.nav_collection}</Link>
+      <Link href="/collections" className="text-gray-300 hover:text-white text-sm">{t.nav_collections}</Link>
+      <Link href="/wishlist" className="text-gray-300 hover:text-white text-sm">{t.nav_wishlist}</Link>
       <Link href="/stats" className="text-gray-300 hover:text-white text-sm">{t.nav_statistics}</Link>
       <div className="ml-auto flex items-center gap-3">
         <button

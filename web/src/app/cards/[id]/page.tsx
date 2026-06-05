@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { cardApi, pricesApi, Card, Enums, PokemonSet, setsApi } from "@/lib/api";
+import { cardApi, pricesApi, Card, Collection, Enums, PokemonSet, setsApi, collectionApi } from "@/lib/api";
 import { fetchPokemonNames } from "@/lib/pokedex";
 import RarityBadge from "@/components/RarityBadge";
 import RaritySelect from "@/components/RaritySelect";
@@ -34,13 +34,53 @@ export default function CardDetailPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [cardCollections, setCardCollections] = useState<Collection[]>([]);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+
+  const loadCollections = () => {
+    collectionApi.forCard(Number(id)).then((r) => setCardCollections(r.data)).catch(() => {});
+  };
 
   useEffect(() => {
     cardApi.get(Number(id)).then((r) => { setCard(r.data); setForm(r.data); });
     cardApi.enums().then((r) => setEnums(r.data));
     setsApi.list().then((r) => setSets(r.data));
     pricesApi.history(Number(id)).then((r) => setHistory(r.data));
+    collectionApi.forCard(Number(id)).then((r) => setCardCollections(r.data)).catch(() => {});
+    collectionApi.list().then((r) => setAllCollections(r.data)).catch(() => {});
   }, [id]);
+
+  const handleAddToCollection = async (collectionId: number) => {
+    try {
+      await collectionApi.addCard(collectionId, Number(id));
+      loadCollections();
+      toast.success(t.collection_added);
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
+  const handleRemoveFromCollection = async (collectionId: number) => {
+    try {
+      await collectionApi.removeCard(collectionId, Number(id));
+      loadCollections();
+      toast.success(t.collection_removed);
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
+  const toggleWishlist = async () => {
+    if (!card) return;
+    const next = !card.wunschliste;
+    try {
+      const r = await cardApi.update(Number(id), { wunschliste: next });
+      setCard(r.data); setForm(r.data);
+      toast.success(next ? t.detail_wishlist_added : t.detail_wishlist_removed);
+    } catch {
+      toast.error(t.form_save_error);
+    }
+  };
 
   if (!card) return <div className="text-gray-500 p-8">{t.detail_loading}</div>;
 
@@ -423,6 +463,8 @@ export default function CardDetailPage() {
             {field("sprache", t.field_language, "select", enums?.sprache)}
             {field("zustand", t.field_condition, "select", enums?.zustand)}
             {field("besessen", t.field_owned, "boolean")}
+            {field("wunschliste", t.detail_wishlist_on, "boolean")}
+            {field("prioritaet", t.detail_wishlist_priority, "select", enums?.prioritaet)}
             {field("notizen", t.field_notes, "textarea")}
           </dl>
 
@@ -440,7 +482,70 @@ export default function CardDetailPage() {
         </div>
       </div>
 
-      <div className="mt-8 bg-pokemon-card rounded-lg p-4">
+      {/* Wunschliste + Sammlungen */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Wunschliste Quick-Toggle */}
+        <div className="bg-pokemon-card rounded-lg p-4">
+          <h2 className="text-gray-300 font-medium mb-3">{t.detail_wishlist}</h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={toggleWishlist}
+              className={`text-sm px-3 py-1.5 rounded ${
+                card.wunschliste
+                  ? "bg-yellow-600 text-white hover:bg-yellow-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white"
+              }`}
+            >
+              {card.wunschliste ? `⭐ ${t.detail_wishlist_on}` : `☆ ${t.detail_wishlist_on}`}
+            </button>
+            {card.wunschliste && (
+              <span className="text-gray-400 text-sm">
+                {t.detail_wishlist_priority}:{" "}
+                <span className={card.prioritaet === "Chase" ? "text-orange-400 font-semibold" : "text-white"}>
+                  {card.prioritaet === "Chase" ? `🔥 ${card.prioritaet}` : (card.prioritaet ?? "–")}
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Sammlungen-Zuordnung */}
+        <div className="bg-pokemon-card rounded-lg p-4">
+          <h2 className="text-gray-300 font-medium mb-3">{t.detail_collections}</h2>
+          {cardCollections.length === 0 ? (
+            <p className="text-gray-500 text-sm mb-3">{t.detail_collections_none}</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {cardCollections.map((c) => (
+                <span key={c.id} className="inline-flex items-center gap-1 bg-gray-800 rounded-full px-3 py-1 text-sm text-white">
+                  <Link href={`/collections/${c.id}`} className="hover:text-pokemon-yellow">{c.name}</Link>
+                  <button
+                    onClick={() => handleRemoveFromCollection(c.id)}
+                    className="text-gray-500 hover:text-red-400 ml-1"
+                    title={t.collection_remove}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <select
+            value=""
+            onChange={(e) => { if (e.target.value) handleAddToCollection(Number(e.target.value)); }}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+          >
+            <option value="">{t.detail_collections_add}</option>
+            {allCollections
+              .filter((c) => !cardCollections.some((cc) => cc.id === c.id))
+              .map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-4 bg-pokemon-card rounded-lg p-4">
         <h2 className="text-gray-300 font-medium mb-3">{t.detail_price_history}</h2>
         <PriceChart history={history as { erfasst_am: string; wert_eur: string | null }[]} />
       </div>

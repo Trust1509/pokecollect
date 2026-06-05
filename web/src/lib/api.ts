@@ -28,6 +28,8 @@ export type Card = {
   folierung: string | null;
   sprache: string;
   besessen: boolean;
+  wunschliste: boolean;
+  prioritaet: string | null;
   wert_eur: string | null;
   wert_aktualisiert: string | null;
   notizen: string | null;
@@ -66,6 +68,15 @@ export type Enums = {
   folierung: string[];
   sprache: string[];
   zustand: string[];
+  prioritaet: string[];
+};
+
+export type Collection = {
+  id: number;
+  name: string;
+  beschreibung: string | null;
+  erstellt_am: string | null;
+  karten_anzahl: number;
 };
 
 // ── API Calls ─────────────────────────────────────────────────────────────
@@ -138,6 +149,22 @@ export type AppSettings = {
   cardmarket_access_token: string;
   cardmarket_access_secret: string;
   pokemontcg_api_key: string;
+};
+
+export const collectionApi = {
+  list: () => api.get<Collection[]>("/collections"),
+  get: (id: number) => api.get<Collection>(`/collections/${id}`),
+  create: (data: { name: string; beschreibung?: string | null }) =>
+    api.post<Collection>("/collections", data),
+  update: (id: number, data: { name?: string; beschreibung?: string | null }) =>
+    api.put<Collection>(`/collections/${id}`, data),
+  delete: (id: number) => api.delete(`/collections/${id}`),
+  cards: (id: number) => api.get<Card[]>(`/collections/${id}/cards`),
+  addCard: (id: number, cardId: number) =>
+    api.post<Card>(`/collections/${id}/cards`, { card_id: cardId }),
+  removeCard: (id: number, cardId: number) =>
+    api.delete(`/collections/${id}/cards/${cardId}`),
+  forCard: (cardId: number) => api.get<Collection[]>(`/cards/${cardId}/collections`),
 };
 
 export const settingsApi = {

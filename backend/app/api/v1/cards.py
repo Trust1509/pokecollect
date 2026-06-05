@@ -17,12 +17,14 @@ from app.config import settings
 from app.database import get_db, SessionLocal
 from app.services.card_image_service import fetch_card_image_url
 from app.models.card import PokemonCard, PreisHistorie
+from app.models.collection import Collection, collection_cards
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, PreisHistorieResponse, StatsResponse,
     SELTENHEIT_VALUES, KARTENVERSION_VALUES, FOLIERUNG_VALUES,
-    SPRACHE_VALUES, ZUSTAND_VALUES,
+    SPRACHE_VALUES, ZUSTAND_VALUES, PRIORITAET_VALUES,
 )
+from app.schemas.collection import CollectionResponse
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 
@@ -50,6 +52,8 @@ def _generation(pokedex_nr: Optional[int]) -> Optional[int]:
 @router.get("", response_model=CardListResponse)
 def list_cards(
     besessen: Optional[bool] = None,
+    wunschliste: Optional[bool] = None,
+    prioritaet: Optional[str] = None,
     set: Optional[str] = None,
     seltenheit: Optional[str] = None,
     sprache: Optional[str] = None,
@@ -66,6 +70,10 @@ def list_cards(
 
     if besessen is not None:
         q = q.where(PokemonCard.besessen == besessen)
+    if wunschliste is not None:
+        q = q.where(PokemonCard.wunschliste == wunschliste)
+    if prioritaet:
+        q = q.where(PokemonCard.prioritaet == prioritaet)
     if set:
         q = q.where(PokemonCard.set_edition.ilike(f"%{set}%"))
     if seltenheit:
@@ -124,6 +132,23 @@ def cards_by_pokedex(nr: int, db: Session = Depends(get_db)):
 @router.get("/{card_id}", response_model=CardResponse)
 def get_card(card_id: int, db: Session = Depends(get_db)):
     return _card_or_404(card_id, db)
+
+
+@router.get("/{card_id}/collections", response_model=list[CollectionResponse])
+def get_card_collections(card_id: int, db: Session = Depends(get_db)):
+    _card_or_404(card_id, db)
+    colls = db.scalars(
+        select(Collection)
+        .join(collection_cards, collection_cards.c.collection_id == Collection.id)
+        .where(collection_cards.c.card_id == card_id)
+        .order_by(Collection.name)
+    ).all()
+    return [
+        CollectionResponse(
+            id=c.id, name=c.name, beschreibung=c.beschreibung, erstellt_am=c.erstellt_am,
+        )
+        for c in colls
+    ]
 
 
 async def _trigger_image_fetch(card_id: int):
@@ -329,6 +354,7 @@ def get_enums():
         folierung=FOLIERUNG_VALUES,
         sprache=SPRACHE_VALUES,
         zustand=ZUSTAND_VALUES,
+        prioritaet=PRIORITAET_VALUES,
     )
 
 

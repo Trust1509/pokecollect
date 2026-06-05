@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from sqlalchemy import text
+
 from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.api.v1 import router as v1_router
@@ -110,9 +112,26 @@ def _seed_sets():
         db.close()
 
 
+def _run_light_migrations():
+    """
+    Fügt neue Spalten zu bestehenden Tabellen hinzu (kein Alembic im Einsatz).
+    create_all legt nur fehlende Tabellen an, ändert aber keine bestehenden.
+    Idempotent dank ADD COLUMN IF NOT EXISTS (PostgreSQL).
+    """
+    stmts = [
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS wunschliste BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS prioritaet TEXT",
+        "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_wunschliste ON pokemon_cards (wunschliste)",
+    ]
+    with engine.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    _run_light_migrations()
     _seed_sets()
     start_scheduler()
     yield

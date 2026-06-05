@@ -1,16 +1,18 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { cardApi, Enums, PokemonSet, setsApi } from "@/lib/api";
+import { cardApi, collectionApi, Enums, PokemonSet, setsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames } from "@/lib/pokedex";
 import RaritySelect from "@/components/RaritySelect";
 
-export default function NewCardPage() {
+function NewCardForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const collectionId = searchParams.get("collection");
   const { t } = useI18n();
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<PokemonSet[]>([]);
@@ -90,8 +92,12 @@ export default function NewCardPage() {
     if (nr && !validateCardNr(nr)) return;
     try {
       const r = await cardApi.create(form);
+      // Wenn aus einer Sammlung heraus angelegt: direkt zuweisen
+      if (collectionId) {
+        try { await collectionApi.addCard(Number(collectionId), r.data.id); } catch {/* nicht kritisch */}
+      }
       toast.success(t.form_saved);
-      router.push(`/cards/${r.data.id}`);
+      router.push(collectionId ? `/collections/${collectionId}` : `/cards/${r.data.id}`);
     } catch {
       toast.error(t.form_save_error);
     }
@@ -208,7 +214,7 @@ export default function NewCardPage() {
         {sel("folierung", t.form_foiling, enums?.folierung ?? [])}
         {sel("sprache", t.form_language, enums?.sprache ?? [])}
         {sel("zustand", t.form_condition, enums?.zustand ?? [])}
-        <div className="col-span-2 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <input
             type="checkbox"
             id="besessen"
@@ -217,6 +223,16 @@ export default function NewCardPage() {
           />
           <label htmlFor="besessen" className="text-white text-sm">{t.form_owned}</label>
         </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="wunschliste"
+            checked={Boolean(form.wunschliste)}
+            onChange={(e) => set("wunschliste", e.target.checked)}
+          />
+          <label htmlFor="wunschliste" className="text-white text-sm">{t.form_wishlist}</label>
+        </div>
+        {Boolean(form.wunschliste) && sel("prioritaet", t.form_priority, enums?.prioritaet ?? [])}
         <div className="col-span-2">
           <label className="text-gray-400 text-xs block mb-1">{t.form_notes}</label>
           <textarea
@@ -237,5 +253,13 @@ export default function NewCardPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function NewCardPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewCardForm />
+    </Suspense>
   );
 }

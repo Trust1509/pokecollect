@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { cardApi, CardListResponse, Enums, settingsApi, AppSettings } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
+import BinderView from "@/components/BinderView";
+import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
 import { formatEur } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -16,6 +18,7 @@ export default function HomePage() {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<ViewMode>("grid");
   const [loading, setLoading] = useState(false);
   const [statsTotal, setStatsTotal] = useState<{
     gesamt: number;
@@ -108,9 +111,12 @@ export default function HomePage() {
           ) : (
             <>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-400 text-sm">
-                  {t.home_cards_count(data?.total ?? 0)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-400 text-sm">
+                    {t.home_cards_count(data?.total ?? 0)}
+                  </span>
+                  <ViewToggle value={view} onChange={setView} />
+                </div>
                 {data && data.pages > 1 && (
                   <div className="flex gap-2 text-sm items-center">
                     <button
@@ -133,7 +139,11 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-              <CardGrid cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
+              {view === "binder" ? (
+                <BinderView cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
+              ) : (
+                <CardGrid cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
+              )}
             </>
           )}
         </div>
