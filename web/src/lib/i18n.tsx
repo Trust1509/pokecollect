@@ -55,7 +55,7 @@ const DE = {
   // Wishlist (/wishlist)
   wishlist_title: "Wunschliste",
   wishlist_subtitle: "Karten, die dir noch fehlen – inkl. Chase-Karten",
-  wishlist_empty: "Deine Wunschliste ist leer. Markiere Karten als „Auf Wunschliste".",
+  wishlist_empty: "Deine Wunschliste ist leer. Markiere Karten über den ⭐-Button auf der Kartenseite.",
   wishlist_filter_priority: "Priorität",
   wishlist_all_priorities: "Alle Prioritäten",
   wishlist_only_chase: "Nur Chase-Karten",
