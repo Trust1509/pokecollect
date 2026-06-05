@@ -12,7 +12,7 @@ import RaritySelect from "@/components/RaritySelect";
 function NewCardForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const collectionId = searchParams.get("collection");
+  const collectionId = searchParams?.get("collection") ?? null;
   const { t } = useI18n();
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<PokemonSet[]>([]);
