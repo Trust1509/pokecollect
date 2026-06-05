@@ -16,10 +16,36 @@ export default function HomePage() {
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<string[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [filters, setFilters] = useState<Filters>({});
-  const [page, setPage] = useState(1);
-  const [view, setView] = useState<ViewMode>("grid");
+  const [filters, setFilters] = useState<Filters>(() => {
+    if (typeof window !== "undefined") {
+      try { const s = sessionStorage.getItem("pokedex_filters"); if (s) return JSON.parse(s) as Filters; } catch {}
+    }
+    return {};
+  });
+  const [page, setPage] = useState<number>(() => {
+    if (typeof window !== "undefined") { const s = sessionStorage.getItem("pokedex_page"); if (s) return Number(s) || 1; }
+    return 1;
+  });
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") { const s = sessionStorage.getItem("pokedex_view"); if (s === "binder" || s === "grid") return s; }
+    return "grid";
+  });
+  const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(false);
+
+  // Filter / Seite / Ansicht über Navigation hinweg merken
+  useEffect(() => { try { sessionStorage.setItem("pokedex_filters", JSON.stringify(filters)); } catch {} }, [filters]);
+  useEffect(() => { try { sessionStorage.setItem("pokedex_page", String(page)); } catch {} }, [page]);
+  useEffect(() => { try { sessionStorage.setItem("pokedex_view", view); } catch {} }, [view]);
+  useEffect(() => {
+    const s = typeof window !== "undefined" ? localStorage.getItem("pokedex_binder_layout") : null;
+    if (s) setLayout(s);
+  }, []);
+
+  const handleLayoutChange = (l: string) => {
+    setLayout(l);
+    if (typeof window !== "undefined") localStorage.setItem("pokedex_binder_layout", l);
+  };
   const [statsTotal, setStatsTotal] = useState<{
     gesamt: number;
     besessen: number;
@@ -140,7 +166,13 @@ export default function HomePage() {
                 )}
               </div>
               {view === "binder" ? (
-                <BinderView cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
+                <BinderView
+                  items={(data?.items ?? []).map((c, idx) => ({ card: c, position: idx }))}
+                  apiBase={API_BASE}
+                  layout={layout}
+                  onLayoutChange={handleLayoutChange}
+                  placeholderEnabled={appSettings?.placeholder_images_enabled ?? true}
+                />
               ) : (
                 <CardGrid cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />
               )}

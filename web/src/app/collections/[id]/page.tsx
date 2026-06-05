@@ -4,9 +4,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { Card, Collection, cardApi, collectionApi } from "@/lib/api";
-import CardGrid from "@/components/CardGrid";
-import BinderView from "@/components/BinderView";
+import { Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
+import SortableCardGrid from "@/components/SortableCardGrid";
+import BinderView, { BinderItem } from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -18,9 +18,10 @@ export default function CollectionDetailPage() {
   const id = Number(params?.id);
   const { t, lang } = useI18n();
   const [collection, setCollection] = useState<Collection | null>(null);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [cards, setCards] = useState<CollectionCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>("grid");
+  const [layout, setLayout] = useState("3x3");
 
   // Karten-Zuweisung (Suche)
   const [showAssign, setShowAssign] = useState(false);
@@ -30,30 +31,46 @@ export default function CollectionDetailPage() {
 
   const loadCards = useCallback(() => {
     setLoading(true);
-    collectionApi.cards(id).then((r) => setCards(r.data)).finally(() => setLoading(false));
+    collectionApi.cards(id).then((r) => {
+      const data = r.data;
+      // Alt-Daten ohne Position einmalig normalisieren
+      if (data.length && data.some((c) => c.position == null)) {
+        collectionApi
+          .reorder(id, data.map((c) => c.id))
+          .then(() => collectionApi.cards(id).then((r2) => setCards(r2.data)))
+          .catch(() => setCards(data))
+          .finally(() => setLoading(false));
+      } else {
+        setCards(data);
+        setLoading(false);
+      }
+    }).catch(() => setLoading(false));
   }, [id]);
 
   const loadMeta = useCallback(() => {
-    collectionApi.get(id).then((r) => setCollection(r.data)).catch(() => setCollection(null));
+    collectionApi.get(id).then((r) => {
+      setCollection(r.data);
+      setLayout(r.data.binder_layout || "3x3");
+    }).catch(() => setCollection(null));
   }, [id]);
 
   useEffect(() => {
     if (!Number.isNaN(id)) { loadMeta(); loadCards(); }
   }, [id, loadMeta, loadCards]);
 
-  // Suche nach Karten zum Zuweisen (debounced)
+  // Suche: nur besessene Karten (keine Pokédex-Platzhalter)
   useEffect(() => {
     if (!showAssign) return;
     const handle = setTimeout(async () => {
       setSearching(true);
       try {
-        const params: Record<string, unknown> = { limit: 30 };
+        const p: Record<string, unknown> = { limit: 30, besessen: true };
         const q = query.trim();
         if (q) {
-          if (/^\d+$/.test(q)) params.pokedex_nr = Number(q);
-          else params.search = q;
+          if (/^\d+$/.test(q)) p.pokedex_nr = Number(q);
+          else p.search = q;
         }
-        const r = await cardApi.list(params);
+        const r = await cardApi.list(p);
         const inCollection = new Set(cards.map((c) => c.id));
         setResults(r.data.items.filter((c) => !inCollection.has(c.id)));
       } finally {
@@ -76,16 +93,49 @@ export default function CollectionDetailPage() {
   };
 
   const handleRemove = async (cardId: number) => {
-    if (!confirm(t.collection_remove_confirm)) return;
     try {
       await collectionApi.removeCard(id, cardId);
-      toast.success(t.collection_removed);
       loadCards();
       loadMeta();
     } catch {
       toast.error(t.collections_error);
     }
   };
+
+  const handleRemoveConfirm = (cardId: number) => {
+    if (!confirm(t.collection_remove_confirm)) return;
+    handleRemove(cardId);
+  };
+
+  const handleReorder = async (orderedIds: number[]) => {
+    try {
+      await collectionApi.reorder(id, orderedIds);
+      loadCards();
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
+  const handleMoveToSlot = async (cardId: number, slot: number) => {
+    try {
+      await collectionApi.moveToSlot(id, cardId, slot);
+      loadCards();
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+
+  const handleLayoutChange = async (l: string) => {
+    setLayout(l);
+    try {
+      await collectionApi.update(id, { binder_layout: l });
+    } catch {/* nicht kritisch */}
+  };
+
+  const binderItems: BinderItem[] = cards.map((c, idx) => ({
+    card: c,
+    position: c.position ?? idx,
+  }));
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -99,7 +149,7 @@ export default function CollectionDetailPage() {
           {collection?.beschreibung && <p className="text-gray-400 text-sm">{collection.beschreibung}</p>}
           <p className="text-gray-500 text-xs mt-1">{t.collections_card_count(collection?.karten_anzahl ?? cards.length)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ViewToggle value={view} onChange={setView} />
           <button
             onClick={() => setShowAssign((v) => !v)}
@@ -166,26 +216,24 @@ export default function CollectionDetailPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
+      ) : view === "binder" ? (
+        <BinderView
+          items={binderItems}
+          apiBase={API_BASE}
+          layout={layout}
+          onLayoutChange={handleLayoutChange}
+          editable
+          onMoveToSlot={handleMoveToSlot}
+        />
       ) : cards.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500 text-center px-4">{t.collection_empty}</div>
-      ) : view === "binder" ? (
-        <BinderView cards={cards} apiBase={API_BASE} />
       ) : (
-        <div className="space-y-3">
-          <CardGrid cards={cards} apiBase={API_BASE} />
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-800">
-            {cards.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => handleRemove(c.id)}
-                className="text-red-400 hover:text-red-300 text-xs bg-red-950/40 rounded px-2 py-1"
-                title={t.collection_remove}
-              >
-                ✕ {lang === "EN" && c.englischer_name ? c.englischer_name : c.kartenname}
-              </button>
-            ))}
-          </div>
-        </div>
+        <SortableCardGrid
+          cards={cards}
+          apiBase={API_BASE}
+          onReorder={handleReorder}
+          onRemove={handleRemoveConfirm}
+        />
       )}
     </div>
   );

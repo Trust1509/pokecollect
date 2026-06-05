@@ -24,10 +24,10 @@ export default function Navbar() {
         >
           {lang === "DE" ? "EN" : "DE"}
         </button>
-        <Link href="/settings" className="text-gray-400 hover:text-white text-sm">⚙ {t.nav_settings}</Link>
+        <Link href="/settings" className="text-gray-400 hover:text-white text-sm inline-block min-w-[110px] text-right">⚙ {t.nav_settings}</Link>
         <Link
           href="/cards/new"
-          className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600"
+          className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600 inline-block min-w-[88px] text-center"
         >
           {t.nav_add_card}
         </Link>

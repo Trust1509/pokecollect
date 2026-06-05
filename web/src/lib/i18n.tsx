@@ -16,7 +16,12 @@ const DE = {
   view_grid: "Raster",
   view_binder: "Binder",
   binder_page: (cur: number, total: number) => `Seite ${cur} / ${total}`,
+  binder_pages: (a: number, b: number, total: number) => `Seiten ${a}–${b} / ${total}`,
   binder_empty_pocket: "Leer",
+  binder_layout_label: "Seiten-Raster",
+  binder_add_page: "+ Leere Seite",
+  binder_dnd_hint: "Karten per Drag & Drop verschieben – auf belegten Slot ziehen tauscht die Karten.",
+  collection_reorder_hint: "Reihenfolge per Drag & Drop ändern.",
 
   // Collections list (/collections)
   collections_title: "Sammlungen",
@@ -69,6 +74,10 @@ const DE = {
   detail_wishlist_priority: "Priorität",
   detail_wishlist_added: "Zur Wunschliste hinzugefügt",
   detail_wishlist_removed: "Von Wunschliste entfernt",
+  detail_wishlist_choose_priority: "Priorität wählen …",
+  detail_wishlist_edit_priority: "Priorität ändern",
+  detail_wishlist_priority_saved: "Priorität gespeichert",
+  detail_back_generic: "← Zurück",
 
   // Card form – wishlist
   form_wishlist: "Auf Wunschliste setzen",
@@ -184,7 +193,12 @@ const EN: typeof DE = {
   view_grid: "Grid",
   view_binder: "Binder",
   binder_page: (cur: number, total: number) => `Page ${cur} / ${total}`,
+  binder_pages: (a: number, b: number, total: number) => `Pages ${a}–${b} / ${total}`,
   binder_empty_pocket: "Empty",
+  binder_layout_label: "Page layout",
+  binder_add_page: "+ Empty page",
+  binder_dnd_hint: "Drag & drop cards to move – dropping onto an occupied slot swaps the cards.",
+  collection_reorder_hint: "Drag & drop to reorder.",
 
   collections_title: "Collections",
   collections_subtitle: "Freely named collections – independent of the Pokédex",
@@ -233,6 +247,10 @@ const EN: typeof DE = {
   detail_wishlist_priority: "Priority",
   detail_wishlist_added: "Added to wishlist",
   detail_wishlist_removed: "Removed from wishlist",
+  detail_wishlist_choose_priority: "Choose priority …",
+  detail_wishlist_edit_priority: "Change priority",
+  detail_wishlist_priority_saved: "Priority saved",
+  detail_back_generic: "← Back",
 
   form_wishlist: "Add to wishlist",
   form_priority: "Priority",

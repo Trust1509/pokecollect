@@ -75,9 +75,14 @@ export type Collection = {
   id: number;
   name: string;
   beschreibung: string | null;
+  binder_layout: string | null;
   erstellt_am: string | null;
   karten_anzahl: number;
 };
+
+export type CollectionCard = Card & { position: number | null };
+
+export const BINDER_LAYOUTS = ["1x1", "2x2", "3x3", "4x3", "3x4", "4x4"] as const;
 
 // ── API Calls ─────────────────────────────────────────────────────────────
 
@@ -156,14 +161,18 @@ export const collectionApi = {
   get: (id: number) => api.get<Collection>(`/collections/${id}`),
   create: (data: { name: string; beschreibung?: string | null }) =>
     api.post<Collection>("/collections", data),
-  update: (id: number, data: { name?: string; beschreibung?: string | null }) =>
+  update: (id: number, data: { name?: string; beschreibung?: string | null; binder_layout?: string }) =>
     api.put<Collection>(`/collections/${id}`, data),
   delete: (id: number) => api.delete(`/collections/${id}`),
-  cards: (id: number) => api.get<Card[]>(`/collections/${id}/cards`),
+  cards: (id: number) => api.get<CollectionCard[]>(`/collections/${id}/cards`),
   addCard: (id: number, cardId: number) =>
-    api.post<Card>(`/collections/${id}/cards`, { card_id: cardId }),
+    api.post<CollectionCard>(`/collections/${id}/cards`, { card_id: cardId }),
   removeCard: (id: number, cardId: number) =>
     api.delete(`/collections/${id}/cards/${cardId}`),
+  reorder: (id: number, order: number[]) =>
+    api.put(`/collections/${id}/cards/order`, { order }),
+  moveToSlot: (id: number, cardId: number, slot: number) =>
+    api.put(`/collections/${id}/cards/${cardId}/slot`, { slot }),
   forCard: (cardId: number) => api.get<Collection[]>(`/cards/${cardId}/collections`),
 };
 

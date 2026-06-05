@@ -122,6 +122,8 @@ def _run_light_migrations():
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS wunschliste BOOLEAN DEFAULT FALSE",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS prioritaet TEXT",
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_wunschliste ON pokemon_cards (wunschliste)",
+        "ALTER TABLE collection_cards ADD COLUMN IF NOT EXISTS position INTEGER",
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS binder_layout TEXT DEFAULT '3x3'",
     ]
     with engine.begin() as conn:
         for stmt in stmts:

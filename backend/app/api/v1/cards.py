@@ -145,7 +145,8 @@ def get_card_collections(card_id: int, db: Session = Depends(get_db)):
     ).all()
     return [
         CollectionResponse(
-            id=c.id, name=c.name, beschreibung=c.beschreibung, erstellt_am=c.erstellt_am,
+            id=c.id, name=c.name, beschreibung=c.beschreibung,
+            binder_layout=c.binder_layout or "3x3", erstellt_am=c.erstellt_am,
         )
         for c in colls
     ]

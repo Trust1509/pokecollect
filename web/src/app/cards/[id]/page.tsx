@@ -36,6 +36,7 @@ export default function CardDetailPage() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [editingPriority, setEditingPriority] = useState(false);
 
   const loadCollections = () => {
     collectionApi.forCard(Number(id)).then((r) => setCardCollections(r.data)).catch(() => {});
@@ -73,10 +74,22 @@ export default function CardDetailPage() {
   const toggleWishlist = async () => {
     if (!card) return;
     const next = !card.wunschliste;
+    // Beim Deaktivieren Priorität zurücksetzen
+    const payload = next ? { wunschliste: true } : { wunschliste: false, prioritaet: null };
     try {
-      const r = await cardApi.update(Number(id), { wunschliste: next });
-      setCard(r.data); setForm(r.data);
+      const r = await cardApi.update(Number(id), payload);
+      setCard(r.data); setForm(r.data); setEditingPriority(false);
       toast.success(next ? t.detail_wishlist_added : t.detail_wishlist_removed);
+    } catch {
+      toast.error(t.form_save_error);
+    }
+  };
+
+  const handleSetPriority = async (p: string) => {
+    try {
+      const r = await cardApi.update(Number(id), { prioritaet: p || null });
+      setCard(r.data); setForm(r.data); setEditingPriority(false);
+      toast.success(t.detail_wishlist_priority_saved);
     } catch {
       toast.error(t.form_save_error);
     }
@@ -162,10 +175,15 @@ export default function CardDetailPage() {
     }
   };
 
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/");
+  };
+
   const handleDelete = async () => {
     if (!confirm(t.detail_delete_confirm(card.kartenname))) return;
     await cardApi.delete(Number(id));
-    router.push("/");
+    handleBack();
   };
 
   const handlePokedexNr = (nr: number | null) => {
@@ -288,7 +306,7 @@ export default function CardDetailPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-4">
-        <Link href="/" className="text-gray-500 hover:text-white text-sm">{t.form_back}</Link>
+        <button onClick={handleBack} className="text-gray-500 hover:text-white text-sm">{t.detail_back_generic}</button>
       </div>
 
       <div className="flex gap-8">
@@ -463,8 +481,6 @@ export default function CardDetailPage() {
             {field("sprache", t.field_language, "select", enums?.sprache)}
             {field("zustand", t.field_condition, "select", enums?.zustand)}
             {field("besessen", t.field_owned, "boolean")}
-            {field("wunschliste", t.detail_wishlist_on, "boolean")}
-            {field("prioritaet", t.detail_wishlist_priority, "select", enums?.prioritaet)}
             {field("notizen", t.field_notes, "textarea")}
           </dl>
 
@@ -498,15 +514,41 @@ export default function CardDetailPage() {
             >
               {card.wunschliste ? `⭐ ${t.detail_wishlist_on}` : `☆ ${t.detail_wishlist_on}`}
             </button>
-            {card.wunschliste && (
-              <span className="text-gray-400 text-sm">
-                {t.detail_wishlist_priority}:{" "}
-                <span className={card.prioritaet === "Chase" ? "text-orange-400 font-semibold" : "text-white"}>
-                  {card.prioritaet === "Chase" ? `🔥 ${card.prioritaet}` : (card.prioritaet ?? "–")}
-                </span>
-              </span>
-            )}
           </div>
+          {card.wunschliste && (
+            <div className="mt-3">
+              {(!card.prioritaet || editingPriority) ? (
+                <div>
+                  <label className="text-gray-500 text-xs block mb-1">{t.detail_wishlist_priority}</label>
+                  <select
+                    value={card.prioritaet ?? ""}
+                    onChange={(e) => handleSetPriority(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+                  >
+                    <option value="">{t.detail_wishlist_choose_priority}</option>
+                    {(enums?.prioritaet ?? []).map((p) => (
+                      <option key={p} value={p}>{p === "Chase" ? `🔥 ${p}` : p}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400">
+                    {t.detail_wishlist_priority}:{" "}
+                    <span className={card.prioritaet === "Chase" ? "text-orange-400 font-semibold" : "text-white"}>
+                      {card.prioritaet === "Chase" ? `🔥 ${card.prioritaet}` : card.prioritaet}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => setEditingPriority(true)}
+                    className="text-xs text-gray-500 hover:text-white underline"
+                  >
+                    {t.detail_wishlist_edit_priority}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sammlungen-Zuordnung */}

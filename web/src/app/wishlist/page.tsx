@@ -6,6 +6,8 @@ import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { useI18n } from "@/lib/i18n";
 
+const LAYOUT_KEY = "wishlist_binder_layout";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
 export default function WishlistPage() {
@@ -14,7 +16,18 @@ export default function WishlistPage() {
   const [enums, setEnums] = useState<Enums | null>(null);
   const [priority, setPriority] = useState<string>("");
   const [view, setView] = useState<ViewMode>("grid");
+  const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const s = typeof window !== "undefined" ? localStorage.getItem(LAYOUT_KEY) : null;
+    if (s) setLayout(s);
+  }, []);
+
+  const handleLayoutChange = (l: string) => {
+    setLayout(l);
+    if (typeof window !== "undefined") localStorage.setItem(LAYOUT_KEY, l);
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,7 +66,12 @@ export default function WishlistPage() {
       ) : cards.length === 0 ? (
         <div className="flex items-center justify-center h-48 text-gray-500 text-center px-4">{t.wishlist_empty}</div>
       ) : view === "binder" ? (
-        <BinderView cards={cards} apiBase={API_BASE} />
+        <BinderView
+          items={cards.map((c, idx) => ({ card: c, position: idx }))}
+          apiBase={API_BASE}
+          layout={layout}
+          onLayoutChange={handleLayoutChange}
+        />
       ) : (
         <CardGrid cards={cards} apiBase={API_BASE} />
       )}

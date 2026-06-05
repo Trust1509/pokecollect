@@ -1,65 +1,134 @@
 "use client";
-import { useState } from "react";
+import { DragEvent as ReactDragEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Card } from "@/lib/api";
+import { Card, BINDER_LAYOUTS } from "@/lib/api";
 import { cardImageSrc } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
+export type BinderItem = { card: Card; position: number };
+
 type Props = {
-  cards: Card[];
+  items: BinderItem[];
   apiBase: string;
   placeholderEnabled?: boolean;
+  layout: string;
+  onLayoutChange?: (l: string) => void;
+  editable?: boolean;
+  onMoveToSlot?: (cardId: number, slot: number) => void;
 };
 
-const PER_PAGE = 9; // klassische 9-Pocket-Binderseite (3×3)
+function parseLayout(layout: string): { cols: number; rows: number } {
+  const m = layout.match(/^(\d+)x(\d+)$/);
+  if (!m) return { cols: 3, rows: 3 };
+  return { cols: Number(m[1]), rows: Number(m[2]) };
+}
 
-export default function BinderView({ cards, apiBase, placeholderEnabled = true }: Props) {
+export default function BinderView({
+  items, apiBase, placeholderEnabled = true, layout,
+  onLayoutChange, editable = false, onMoveToSlot,
+}: Props) {
   const { t, lang } = useI18n();
-  const [page, setPage] = useState(0);
+  const { cols, rows } = parseLayout(layout);
+  const perPage = cols * rows;
 
-  const totalPages = Math.max(1, Math.ceil(cards.length / PER_PAGE));
-  const safePage = Math.min(page, totalPages - 1);
-  const start = safePage * PER_PAGE;
-  const pageCards = cards.slice(start, start + PER_PAGE);
+  const [spread, setSpread] = useState(0);
+  const [extraPages, setExtraPages] = useState(0);
+  const [wide, setWide] = useState(false);
+  const [dragId, setDragId] = useState<number | null>(null);
 
-  // Auf 9 Slots auffüllen, damit das Raster immer vollständig wirkt
-  const slots: (Card | null)[] = [...pageCards];
-  while (slots.length < PER_PAGE) slots.push(null);
+  // Breite-Erkennung für Buch-Doppelseite
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
-  return (
-    <div className="flex flex-col items-center">
-      <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl p-4 shadow-xl w-full max-w-2xl">
-        <div className="grid grid-cols-3 gap-3">
-          {slots.map((card, i) => {
+  const slotMap = useMemo(() => {
+    const m = new Map<number, Card>();
+    for (const it of items) m.set(it.position, it.card);
+    return m;
+  }, [items]);
+
+  const maxSlot = items.length ? Math.max(...items.map((i) => i.position)) : -1;
+  const contentPages = maxSlot >= 0 ? Math.floor(maxSlot / perPage) + 1 : 1;
+  const totalPages = contentPages + (editable ? 1 + extraPages : 0);
+
+  // Doppelseite nur bei breitem Screen und schmalen Layouts (cols <= 3)
+  const twoPage = wide && cols <= 3;
+
+  // Spreads: 0 = nur Seite 0; ab 1 = Seiten (2s-1, 2s)
+  const maxSpread = twoPage ? Math.ceil(Math.max(0, totalPages - 1) / 2) : Math.max(0, totalPages - 1);
+  const safeSpread = Math.min(spread, maxSpread);
+
+  useEffect(() => { setSpread(0); }, [layout, twoPage]);
+
+  const visiblePages: number[] = twoPage
+    ? (safeSpread === 0 ? [0] : [2 * safeSpread - 1, 2 * safeSpread].filter((p) => p < totalPages))
+    : [safeSpread];
+
+  const handleDrop = (slot: number) => {
+    if (dragId != null && onMoveToSlot) onMoveToSlot(dragId, slot);
+    setDragId(null);
+  };
+
+  const renderPage = (pageNum: number) => {
+    const startSlot = pageNum * perPage;
+    return (
+      <div
+        key={pageNum}
+        className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl p-3 shadow-xl flex-1 min-w-0"
+      >
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        >
+          {Array.from({ length: perPage }).map((_, i) => {
+            const slot = startSlot + i;
+            const card = slotMap.get(slot) ?? null;
+            const dropProps = editable
+              ? {
+                  onDragOver: (e: ReactDragEvent) => e.preventDefault(),
+                  onDrop: () => handleDrop(slot),
+                }
+              : {};
+
             if (!card) {
               return (
                 <div
-                  key={`empty-${i}`}
-                  className="aspect-[63/88] rounded-lg border-2 border-dashed border-gray-700/60 bg-gray-800/30 flex items-center justify-center text-gray-700 text-xs"
+                  key={slot}
+                  {...dropProps}
+                  className="aspect-[63/88] rounded-lg border-2 border-dashed border-gray-700/60 bg-gray-800/30 flex items-center justify-center text-gray-700 text-[10px]"
                 >
                   {t.binder_empty_pocket}
                 </div>
               );
             }
+
             const { src, isPlaceholder } = cardImageSrc(card, apiBase, placeholderEnabled);
-            const displayName =
-              lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname;
+            const name = lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname;
             return (
-              <Link key={card.id} href={`/cards/${card.id}`}>
-                <div
-                  className={`aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800 ring-1 ring-black/40 transition-transform hover:scale-[1.03] hover:ring-pokemon-yellow ${
-                    card.besessen ? "" : "opacity-50"
-                  }`}
-                >
+              <div
+                key={slot}
+                {...dropProps}
+                draggable={editable}
+                onDragStart={editable ? () => setDragId(card.id) : undefined}
+                className={`aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800 ring-1 ring-black/40 transition-transform hover:scale-[1.03] hover:ring-pokemon-yellow ${
+                  editable ? "cursor-move" : ""
+                } ${card.besessen ? "" : "opacity-50"}`}
+              >
+                <Link href={`/cards/${card.id}`} draggable={false} className="block w-full h-full">
                   {src ? (
                     <Image
                       src={src}
-                      alt={displayName}
+                      alt={name}
                       fill
+                      draggable={false}
                       className={isPlaceholder ? "object-contain p-2 opacity-70" : "object-cover"}
-                      sizes="(max-width: 768px) 30vw, 220px"
+                      sizes="(max-width: 1024px) 30vw, 180px"
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-600 text-xs">
@@ -67,28 +136,71 @@ export default function BinderView({ cards, apiBase, placeholderEnabled = true }
                     </div>
                   )}
                   <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1">
-                    <span className="text-[10px] text-white truncate">{displayName}</span>
+                    <span className="text-[10px] text-white truncate">{name}</span>
                     <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             );
           })}
         </div>
+        <div className="text-center text-gray-600 text-[10px] mt-1">{pageNum + 1}</div>
+      </div>
+    );
+  };
+
+  const pageLabel = twoPage && visiblePages.length === 2
+    ? t.binder_pages(visiblePages[0] + 1, visiblePages[1] + 1, totalPages)
+    : t.binder_page((visiblePages[0] ?? 0) + 1, totalPages);
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Steuerleiste */}
+      <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
+        {onLayoutChange && (
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            {t.binder_layout_label}
+            <select
+              value={layout}
+              onChange={(e) => onLayoutChange(e.target.value)}
+              className="bg-pokemon-card border border-gray-700 rounded px-2 py-1 text-white text-sm"
+            >
+              {BINDER_LAYOUTS.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {editable && (
+          <button
+            onClick={() => setExtraPages((p) => p + 1)}
+            className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
+          >
+            {t.binder_add_page}
+          </button>
+        )}
       </div>
 
+      {editable && <p className="text-gray-500 text-xs mb-2 text-center">{t.binder_dnd_hint}</p>}
+
+      {/* Seiten */}
+      <div className="flex gap-4 w-full max-w-5xl justify-center items-start">
+        {visiblePages.map((p) => renderPage(p))}
+      </div>
+
+      {/* Navigation */}
       <div className="flex items-center gap-4 mt-4 text-sm">
         <button
-          disabled={safePage <= 0}
-          onClick={() => setPage(safePage - 1)}
+          disabled={safeSpread <= 0}
+          onClick={() => setSpread(safeSpread - 1)}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ‹
         </button>
-        <span className="text-gray-400">{t.binder_page(safePage + 1, totalPages)}</span>
+        <span className="text-gray-400">{pageLabel}</span>
         <button
-          disabled={safePage >= totalPages - 1}
-          onClick={() => setPage(safePage + 1)}
+          disabled={safeSpread >= maxSpread}
+          onClick={() => setSpread(safeSpread + 1)}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ›
