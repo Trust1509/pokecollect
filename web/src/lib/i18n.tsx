@@ -19,7 +19,9 @@ const DE = {
   binder_pages: (a: number, b: number, total: number) => `Seiten ${a}–${b} / ${total}`,
   binder_empty_pocket: "Leer",
   binder_layout_label: "Seiten-Raster",
+  binder_card_size: "Größe",
   binder_add_page: "+ Leere Seite",
+  binder_remove_page: "− Seite",
   binder_dnd_hint: "Karten per Drag & Drop verschieben – auf belegten Slot ziehen tauscht die Karten.",
   collection_reorder_hint: "Reihenfolge per Drag & Drop ändern.",
 
@@ -196,7 +198,9 @@ const EN: typeof DE = {
   binder_pages: (a: number, b: number, total: number) => `Pages ${a}–${b} / ${total}`,
   binder_empty_pocket: "Empty",
   binder_layout_label: "Page layout",
+  binder_card_size: "Size",
   binder_add_page: "+ Empty page",
+  binder_remove_page: "− Page",
   binder_dnd_hint: "Drag & drop cards to move – dropping onto an occupied slot swaps the cards.",
   collection_reorder_hint: "Drag & drop to reorder.",
 

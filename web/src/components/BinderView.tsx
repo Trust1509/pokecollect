@@ -1,5 +1,5 @@
 "use client";
-import { DragEvent as ReactDragEvent, useEffect, useMemo, useState } from "react";
+import { DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, BINDER_LAYOUTS } from "@/lib/api";
@@ -25,6 +25,11 @@ function parseLayout(layout: string): { cols: number; rows: number } {
   return { cols: Number(m[1]), rows: Number(m[2]) };
 }
 
+const GAP = 8;        // gap-2 zwischen Pockets
+const PAGE_PAD = 24;  // p-3 links+rechts
+const SPREAD_GAP = 16;
+const SIZE_KEY = "binder_card_size";
+
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
   onLayoutChange, editable = false, onMoveToSlot,
@@ -35,17 +40,31 @@ export default function BinderView({
 
   const [spread, setSpread] = useState(0);
   const [extraPages, setExtraPages] = useState(0);
-  const [wide, setWide] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [cardSize, setCardSize] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const s = Number(localStorage.getItem(SIZE_KEY));
+      if (s >= 70 && s <= 260) return s;
+    }
+    return 140;
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Breite-Erkennung für Buch-Doppelseite
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const update = () => setWide(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setContainerWidth(e.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
+
+  const setSize = (v: number) => {
+    setCardSize(v);
+    if (typeof window !== "undefined") localStorage.setItem(SIZE_KEY, String(v));
+  };
 
   const slotMap = useMemo(() => {
     const m = new Map<number, Card>();
@@ -57,8 +76,8 @@ export default function BinderView({
   const contentPages = maxSlot >= 0 ? Math.floor(maxSlot / perPage) + 1 : 1;
   const totalPages = contentPages + (editable ? 1 + extraPages : 0);
 
-  // Doppelseite nur bei breitem Screen und schmalen Layouts (cols <= 3)
-  const twoPage = wide && cols <= 3;
+  const pageWidth = cols * cardSize + (cols - 1) * GAP + PAGE_PAD;
+  const twoPage = containerWidth >= 2 * pageWidth + SPREAD_GAP;
 
   // Spreads: 0 = nur Seite 0; ab 1 = Seiten (2s-1, 2s)
   const maxSpread = twoPage ? Math.ceil(Math.max(0, totalPages - 1) / 2) : Math.max(0, totalPages - 1);
@@ -80,11 +99,11 @@ export default function BinderView({
     return (
       <div
         key={pageNum}
-        className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl p-3 shadow-xl flex-1 min-w-0"
+        className="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-700 rounded-xl p-3 shadow-xl shrink-0"
       >
         <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${cols}, ${cardSize}px)`, gap: `${GAP}px` }}
         >
           {Array.from({ length: perPage }).map((_, i) => {
             const slot = startSlot + i;
@@ -128,7 +147,7 @@ export default function BinderView({
                       fill
                       draggable={false}
                       className={isPlaceholder ? "object-contain p-2 opacity-70" : "object-cover"}
-                      sizes="(max-width: 1024px) 30vw, 180px"
+                      sizes={`${cardSize}px`}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-600 text-xs">
@@ -154,9 +173,9 @@ export default function BinderView({
     : t.binder_page((visiblePages[0] ?? 0) + 1, totalPages);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-full">
       {/* Steuerleiste */}
-      <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
+      <div className="flex items-center gap-4 mb-3 flex-wrap justify-center">
         {onLayoutChange && (
           <label className="flex items-center gap-2 text-sm text-gray-400">
             {t.binder_layout_label}
@@ -171,21 +190,45 @@ export default function BinderView({
             </select>
           </label>
         )}
+        <label className="flex items-center gap-2 text-sm text-gray-400">
+          {t.binder_card_size}
+          <input
+            type="range"
+            min={70}
+            max={260}
+            step={10}
+            value={cardSize}
+            onChange={(e) => setSize(Number(e.target.value))}
+            className="accent-pokemon-yellow"
+          />
+        </label>
         {editable && (
-          <button
-            onClick={() => setExtraPages((p) => p + 1)}
-            className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
-          >
-            {t.binder_add_page}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setExtraPages((p) => p + 1)}
+              className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
+            >
+              {t.binder_add_page}
+            </button>
+            {extraPages > 0 && (
+              <button
+                onClick={() => setExtraPages((p) => Math.max(0, p - 1))}
+                className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1"
+              >
+                {t.binder_remove_page}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       {editable && <p className="text-gray-500 text-xs mb-2 text-center">{t.binder_dnd_hint}</p>}
 
       {/* Seiten */}
-      <div className="flex gap-4 w-full max-w-5xl justify-center items-start">
-        {visiblePages.map((p) => renderPage(p))}
+      <div ref={containerRef} className="w-full overflow-x-auto">
+        <div className="flex gap-4 justify-center items-start min-w-min mx-auto">
+          {visiblePages.map((p) => renderPage(p))}
+        </div>
       </div>
 
       {/* Navigation */}

@@ -15,7 +15,13 @@ export default function WishlistPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [priority, setPriority] = useState<string>("");
-  const [view, setView] = useState<ViewMode>("grid");
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const s = sessionStorage.getItem("wishlist_view");
+      if (s === "binder" || s === "grid") return s;
+    }
+    return "grid";
+  });
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(true);
 
@@ -23,6 +29,8 @@ export default function WishlistPage() {
     const s = typeof window !== "undefined" ? localStorage.getItem(LAYOUT_KEY) : null;
     if (s) setLayout(s);
   }, []);
+
+  useEffect(() => { try { sessionStorage.setItem("wishlist_view", view); } catch {} }, [view]);
 
   const handleLayoutChange = (l: string) => {
     setLayout(l);

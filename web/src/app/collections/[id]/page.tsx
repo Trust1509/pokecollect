@@ -20,8 +20,20 @@ export default function CollectionDetailPage() {
   const [collection, setCollection] = useState<Collection | null>(null);
   const [cards, setCards] = useState<CollectionCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewMode>("grid");
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const s = sessionStorage.getItem(`collection_view_${params?.id}`);
+      if (s === "binder" || s === "grid") return s;
+    }
+    return "grid";
+  });
   const [layout, setLayout] = useState("3x3");
+
+  useEffect(() => {
+    if (!Number.isNaN(id)) {
+      try { sessionStorage.setItem(`collection_view_${id}`, view); } catch {}
+    }
+  }, [view, id]);
 
   // Karten-Zuweisung (Suche)
   const [showAssign, setShowAssign] = useState(false);
@@ -64,7 +76,7 @@ export default function CollectionDetailPage() {
     const handle = setTimeout(async () => {
       setSearching(true);
       try {
-        const p: Record<string, unknown> = { limit: 30, besessen: true };
+        const p: Record<string, unknown> = { limit: 60, besessen: true };
         const q = query.trim();
         if (q) {
           if (/^\d+$/.test(q)) p.pokedex_nr = Number(q);
@@ -182,34 +194,35 @@ export default function CollectionDetailPage() {
           ) : results.length === 0 ? (
             <div className="text-gray-500 text-sm py-4 text-center">{t.collection_no_results}</div>
           ) : (
-            <ul className="max-h-80 overflow-y-auto divide-y divide-gray-800">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-[28rem] overflow-y-auto pr-1">
               {results.map((c) => {
                 const { src, isPlaceholder } = cardImageSrc(c, API_BASE);
                 const name = lang === "EN" && c.englischer_name ? c.englischer_name : c.kartenname;
                 return (
-                  <li key={c.id} className="flex items-center gap-3 py-2">
-                    <div className="w-9 h-12 relative bg-gray-800 rounded overflow-hidden shrink-0">
+                  <button
+                    key={c.id}
+                    onClick={() => handleAdd(c.id)}
+                    title={t.collection_add}
+                    className="group text-left bg-gray-800/40 rounded-lg overflow-hidden border border-transparent hover:border-green-500"
+                  >
+                    <div className="aspect-[63/88] relative bg-gray-800">
                       {src && (
-                        <Image src={src} alt={name} fill className={isPlaceholder ? "object-contain p-0.5 opacity-70" : "object-cover"} sizes="36px" />
+                        <Image src={src} alt={name} fill className={isPlaceholder ? "object-contain p-1 opacity-70" : "object-cover"} sizes="120px" />
                       )}
+                      <div className="absolute inset-0 bg-green-600/0 group-hover:bg-green-600/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <span className="bg-green-700 text-white text-xs px-2 py-1 rounded">+ {t.collection_add}</span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white text-sm truncate">{name}</div>
-                      <div className="text-gray-500 text-xs truncate">
-                        {c.pokedex_nr ? `#${String(c.pokedex_nr).padStart(4, "0")} · ` : ""}
+                    <div className="px-1 py-1">
+                      <div className="text-white text-[11px] truncate">{name}</div>
+                      <div className="text-gray-500 text-[10px] truncate">
                         {c.set_edition ?? ""} {c.karten_nr ?? ""}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleAdd(c.id)}
-                      className="bg-green-700 text-white text-xs px-3 py-1.5 rounded hover:bg-green-600 shrink-0"
-                    >
-                      {t.collection_add}
-                    </button>
-                  </li>
+                  </button>
                 );
               })}
-            </ul>
+            </div>
           )}
         </div>
       )}
