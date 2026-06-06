@@ -11,6 +11,7 @@ const config: Config = {
       colors: {
         pokemon: {
           red: "#EF5350",
+          pokedex: "#CC0000",   // klassisches Pokédex-Rot
           yellow: "#FFCA28",
           blue: "#42A5F5",
           dark: "#1a1a2e",

@@ -26,8 +26,8 @@ function PokedexReplaceModal({
   onCancel: () => void;
   t: ReturnType<typeof useI18n>["t"];
 }) {
-  const { src: conflictSrc } = cardImageSrc(conflictCard, apiBase, false);
-  const { src: newSrc } = cardImageSrc(currentCard, apiBase, false);
+  const { src: conflictSrc } = cardImageSrc(conflictCard, apiBase, true);
+  const { src: newSrc } = cardImageSrc(currentCard, apiBase, true);
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 max-w-xl w-full shadow-2xl">
@@ -44,22 +44,28 @@ function PokedexReplaceModal({
               )}
             </div>
             <div className="text-white text-xs font-medium truncate">{conflictCard.kartenname}</div>
-            <div className="text-gray-400 text-[10px] truncate">{conflictCard.set_edition ?? "–"}</div>
+            <div className="text-gray-500 text-[10px] truncate">{conflictCard.set_edition ?? "–"}</div>
+            {conflictCard.karten_nr && (
+              <div className="text-gray-400 text-[10px]">{conflictCard.karten_nr}</div>
+            )}
             {conflictCard.seltenheit && (
               <div className="mt-1 flex justify-center">
                 <RarityBadge rarity={conflictCard.seltenheit} language={conflictCard.sprache} size="sm" />
               </div>
             )}
           </div>
-          <div className="bg-gray-800 rounded-lg p-3 text-center border-2 border-blue-500">
-            <div className="text-xs text-blue-400 mb-2">{t.pokedex_replace_new}</div>
+          <div className="bg-gray-800 rounded-lg p-3 text-center border-2 border-pokemon-pokedex">
+            <div className="text-xs text-pokemon-pokedex mb-2">{t.pokedex_replace_new}</div>
             <div className="aspect-[63/88] relative w-20 mx-auto bg-gray-700 rounded overflow-hidden mb-2">
               {newSrc && (
                 <Image src={newSrc} alt={currentCard.kartenname} fill className="object-cover" />
               )}
             </div>
             <div className="text-white text-xs font-medium truncate">{currentCard.kartenname}</div>
-            <div className="text-gray-400 text-[10px] truncate">{currentCard.set_edition ?? "–"}</div>
+            <div className="text-gray-500 text-[10px] truncate">{currentCard.set_edition ?? "–"}</div>
+            {currentCard.karten_nr && (
+              <div className="text-gray-400 text-[10px]">{currentCard.karten_nr}</div>
+            )}
             {currentCard.seltenheit && (
               <div className="mt-1 flex justify-center">
                 <RarityBadge rarity={currentCard.seltenheit} language={currentCard.sprache} size="sm" />
@@ -71,7 +77,7 @@ function PokedexReplaceModal({
           <button onClick={onCancel} className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm">
             {t.form_cancel}
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
+          <button onClick={onConfirm} className="px-4 py-2 bg-pokemon-pokedex text-white rounded hover:opacity-80 text-sm font-medium">
             {t.pokedex_replace_confirm}
           </button>
         </div>
@@ -606,11 +612,11 @@ export default function CardDetailPage() {
               onClick={togglePokedex}
               className={`text-sm px-3 py-1.5 rounded ${
                 card.im_pokedex
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  ? "bg-pokemon-pokedex text-white hover:opacity-80"
                   : "bg-gray-800 text-gray-300 hover:text-white"
               }`}
             >
-              {card.im_pokedex ? `🔵 ${t.detail_pokedex_flag_on}` : `○ ${t.detail_pokedex_flag}`}
+              {card.im_pokedex ? `● ${t.detail_pokedex_flag_on}` : `○ ${t.detail_pokedex_flag}`}
             </button>
           </div>
         )}

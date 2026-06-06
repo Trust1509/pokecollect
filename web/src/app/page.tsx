@@ -101,14 +101,17 @@ export default function HomePage() {
           {/* Pokédex-Fortschritt */}
           {pokedexCollected !== null && (
             <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400">Pokédex</div>
-              <div className="text-2xl font-bold text-blue-400">
+              <div className="text-gray-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />
+                Pokédex
+              </div>
+              <div className="text-2xl font-bold text-pokemon-pokedex">
                 {pokedexCollected}{" "}
                 <span className="text-gray-500 text-base">/ 1025</span>
               </div>
               <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
                 <div
-                  className="h-full bg-blue-500 rounded-full"
+                  className="h-full bg-pokemon-pokedex rounded-full"
                   style={{ width: `${(pokedexCollected / 1025) * 100}%` }}
                 />
               </div>

@@ -123,7 +123,7 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                   <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
                 </div>
 
-                {/* Zeile 3: Preis (links) | Sprache (mitte) | Besessen-Kreis (rechts) */}
+                {/* Zeile 3: Preis (links) | Sprache (mitte) | Status-Punkte (rechts) */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-yellow-400">
                     {card.wert_eur ? formatEur(card.wert_eur) : ""}
@@ -131,9 +131,17 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                   <span className="text-xs text-gray-500 font-mono">
                     {card.sprache ?? ""}
                   </span>
-                  {card.besessen && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" />
-                  )}
+                  <div className="flex items-center gap-0.5">
+                    {card.im_pokedex && (
+                      <span
+                        className="w-2.5 h-2.5 rounded-full bg-pokemon-pokedex shrink-0"
+                        title="Im Pokédex"
+                      />
+                    )}
+                    {card.besessen && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-400 shrink-0" />
+                    )}
+                  </div>
                 </div>
 
               </div>
