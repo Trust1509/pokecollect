@@ -29,6 +29,7 @@ export type Card = {
   sprache: string;
   besessen: boolean;
   wunschliste: boolean;
+  im_pokedex: boolean;
   prioritaet: string | null;
   wert_eur: string | null;
   wert_aktualisiert: string | null;

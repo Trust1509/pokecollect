@@ -21,6 +21,7 @@ export default function HomePage() {
   const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(false);
+  const [pokedexMode, setPokedexMode] = useState(false);
 
   // Filter / Seite / Ansicht aus sessionStorage lesen (nach Hydration)
   useEffect(() => {
@@ -54,18 +55,25 @@ export default function HomePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Pokédex-Nummer Suche: wenn search eine reine Zahl ist, als pokedex_nr filtern
-      const params: Record<string, unknown> = { ...filters, page, limit: appSettings?.cards_per_page ?? 48 };
-      if (filters.search && /^\d+$/.test(filters.search.trim())) {
-        params.pokedex_nr = Number(filters.search.trim());
-        delete params.search;
+      let params: Record<string, unknown>;
+      if (pokedexMode) {
+        // Im Pokédex-Modus: nur im_pokedex=true Karten, sortiert nach Pokédex-Nr., alle auf einer Seite
+        params = { im_pokedex: true, limit: 1026, page: 1, sort: filters.sort ?? "pokedex_nr" };
+        if (filters.search) params.search = filters.search;
+      } else {
+        params = { ...filters, page, limit: appSettings?.cards_per_page ?? 48 };
+        // Pokédex-Nummer Suche: wenn search eine reine Zahl ist, als pokedex_nr filtern
+        if (filters.search && /^\d+$/.test(filters.search.trim())) {
+          params.pokedex_nr = Number(filters.search.trim());
+          delete params.search;
+        }
       }
       const res = await cardApi.list(params);
       setData(res.data);
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters, page, pokedexMode]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -137,9 +145,26 @@ export default function HomePage() {
             <>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-gray-400 text-sm">
-                    {t.home_cards_count(data?.total ?? 0)}
-                  </span>
+                  {pokedexMode ? (
+                    <span className="text-blue-400 text-sm font-medium">
+                      🔵 {t.pokedex_progress(data?.total ?? 0)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">
+                      {t.home_cards_count(data?.total ?? 0)}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setPokedexMode((v) => !v)}
+                    title={t.pokedex_mode}
+                    className={`text-xs px-2.5 py-1 rounded ${
+                      pokedexMode
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-pokemon-card text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {pokedexMode ? `🔵 ${t.pokedex_mode}` : `○ ${t.pokedex_mode}`}
+                  </button>
                   <ViewToggle value={view} onChange={setView} />
                 </div>
                 {data && data.pages > 1 && (

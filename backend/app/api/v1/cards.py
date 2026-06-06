@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 
 log = logging.getLogger(__name__)
 from PIL import Image
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -53,6 +53,7 @@ def _generation(pokedex_nr: Optional[int]) -> Optional[int]:
 def list_cards(
     besessen: Optional[bool] = None,
     wunschliste: Optional[bool] = None,
+    im_pokedex: Optional[bool] = None,
     prioritaet: Optional[str] = None,
     set: Optional[str] = None,
     seltenheit: Optional[str] = None,
@@ -72,6 +73,8 @@ def list_cards(
         q = q.where(PokemonCard.besessen == besessen)
     if wunschliste is not None:
         q = q.where(PokemonCard.wunschliste == wunschliste)
+    if im_pokedex is not None:
+        q = q.where(PokemonCard.im_pokedex == im_pokedex)
     if prioritaet:
         q = q.where(PokemonCard.prioritaet == prioritaet)
     if set:
@@ -197,6 +200,15 @@ def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session
 def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
     updated = data.model_dump(exclude_unset=True)
+    # Pokédex-Exklusivität: wenn im_pokedex=True gesetzt wird, alle anderen Karten
+    # mit gleicher pokedex_nr auf False zurücksetzen (1 Pokédex-Slot pro Pokémon)
+    if updated.get("im_pokedex") is True and card.pokedex_nr:
+        db.execute(
+            update(PokemonCard)
+            .where(PokemonCard.pokedex_nr == card.pokedex_nr)
+            .where(PokemonCard.id != card.id)
+            .values(im_pokedex=False)
+        )
     for field, value in updated.items():
         setattr(card, field, value)
     # Bild neu abrufen wenn relevante Felder geändert wurden

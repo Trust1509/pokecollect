@@ -10,6 +10,7 @@ import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderVie
 import BinderEditor from "@/components/BinderEditor";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { cardImageSrc, extractSetCode } from "@/lib/utils";
+import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
@@ -44,8 +45,11 @@ export default function CollectionDetailPage() {
   // Karten-Zuweisung (Suche)
   const [showAssign, setShowAssign] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Card[]>([]);
+  // allSearchResults: aus API (nur bei Query-Änderung aktualisiert, kein Flicker bei cards-Änderung)
+  const [allSearchResults, setAllSearchResults] = useState<Card[]>([]);
   const [searching, setSearching] = useState(false);
+  // results: lokal gefiltert (Karten die schon in der Sammlung sind, werden ausgeblendet)
+  const results = allSearchResults.filter((c) => !cards.some((cc) => cc.id === c.id));
 
   const loadCards = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -77,32 +81,28 @@ export default function CollectionDetailPage() {
   }, [id, loadMeta, loadCards]);
 
   // Suche: nur besessene Karten (keine Pokédex-Platzhalter)
+  // Kein 'cards' in deps → kein Flicker wenn Karte hinzugefügt wird (lokales Filter reicht)
   useEffect(() => {
-    if (!showAssign) return;
+    if (!showAssign) { setAllSearchResults([]); return; }
     const handle = setTimeout(async () => {
       setSearching(true);
       try {
-        const p: Record<string, unknown> = { limit: 60, besessen: true };
+        const p: Record<string, unknown> = { limit: 80, besessen: true };
         const q = query.trim();
-        if (q) {
-          if (/^\d+$/.test(q)) p.pokedex_nr = Number(q);
-          else p.search = q;
-        }
+        if (q) p.search = q; // immer Text-Suche, keine exakte pokedex_nr-Suche
         const r = await cardApi.list(p);
-        const inCollection = new Set(cards.map((c) => c.id));
-        setResults(r.data.items.filter((c) => !inCollection.has(c.id)));
+        setAllSearchResults(r.data.items);
       } finally {
         setSearching(false);
       }
     }, 350);
     return () => clearTimeout(handle);
-  }, [query, showAssign, cards]);
+  }, [query, showAssign]);
 
   const handleAdd = async (cardId: number) => {
     try {
       await collectionApi.addCard(id, cardId);
       toast.success(t.collection_added);
-      setResults((r) => r.filter((c) => c.id !== cardId));
       loadCards(true);
       loadMeta();
     } catch {
@@ -267,8 +267,9 @@ export default function CollectionDetailPage() {
                     </div>
                     <div className="px-1 py-1">
                       <div className="text-white text-[11px] truncate">{name}</div>
-                      <div className="text-gray-500 text-[10px] truncate">
-                        {extractSetCode(c.set_edition)} {c.karten_nr ?? ""}
+                      <div className="flex items-center gap-1 text-gray-500 text-[10px]">
+                        <span className="truncate">{extractSetCode(c.set_edition)} {c.karten_nr ?? ""}</span>
+                        {c.seltenheit && <RarityBadge rarity={c.seltenheit} language={c.sprache} size="sm" />}
                       </div>
                     </div>
                   </button>

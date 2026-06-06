@@ -85,6 +85,13 @@ const DE = {
   detail_wishlist_choose_priority: "Priorität wählen …",
   detail_wishlist_edit_priority: "Priorität ändern",
   detail_wishlist_priority_saved: "Priorität gespeichert",
+  detail_pokedex_flag: "Im Pokédex",
+  detail_pokedex_flag_on: "Im Pokédex ✓",
+  detail_pokedex_flag_added: "Als Pokédex-Karte gesetzt",
+  detail_pokedex_flag_removed: "Aus Pokédex entfernt",
+  detail_pokedex_flag_hint: "Legt fest, welche Karte pro Pokémon im Pokédex erscheint",
+  pokedex_mode: "Pokédex-Modus",
+  pokedex_progress: (n: number) => `${n} / 1025 Pokémon`,
   detail_back_generic: "← Zurück",
 
   // Card form – wishlist
@@ -282,6 +289,13 @@ const EN: typeof DE = {
   detail_wishlist_choose_priority: "Choose priority …",
   detail_wishlist_edit_priority: "Change priority",
   detail_wishlist_priority_saved: "Priority saved",
+  detail_pokedex_flag: "In Pokédex",
+  detail_pokedex_flag_on: "In Pokédex ✓",
+  detail_pokedex_flag_added: "Set as Pokédex card",
+  detail_pokedex_flag_removed: "Removed from Pokédex",
+  detail_pokedex_flag_hint: "Defines which card represents this Pokémon in the Pokédex",
+  pokedex_mode: "Pokédex mode",
+  pokedex_progress: (n: number) => `${n} / 1025 Pokémon`,
   detail_back_generic: "← Back",
 
   form_wishlist: "Add to wishlist",

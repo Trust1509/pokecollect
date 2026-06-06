@@ -44,6 +44,7 @@ class CardBase(BaseModel):
     sprache: Optional[str] = "DE"
     besessen: bool = False
     wunschliste: bool = False
+    im_pokedex: bool = False
     prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
     notizen: Optional[str] = None
@@ -67,6 +68,7 @@ class CardUpdate(BaseModel):
     sprache: Optional[str] = None
     besessen: Optional[bool] = None
     wunschliste: Optional[bool] = None
+    im_pokedex: Optional[bool] = None
     prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
     notizen: Optional[str] = None

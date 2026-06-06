@@ -10,7 +10,7 @@ import RarityBadge from "@/components/RarityBadge";
 import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
-import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
+import { formatEur, imageUrl, pokemonPlaceholderUrl } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
@@ -71,6 +71,18 @@ export default function CardDetailPage() {
     }
   };
 
+  const togglePokedex = async () => {
+    if (!card) return;
+    const next = !card.im_pokedex;
+    try {
+      const r = await cardApi.update(Number(id), { im_pokedex: next });
+      setCard(r.data); setForm(r.data);
+      toast.success(next ? t.detail_pokedex_flag_added : t.detail_pokedex_flag_removed);
+    } catch {
+      toast.error(t.form_save_error);
+    }
+  };
+
   const toggleWishlist = async () => {
     if (!card) return;
     const next = !card.wunschliste;
@@ -98,11 +110,10 @@ export default function CardDetailPage() {
   if (!card) return <div className="text-gray-500 p-8">{t.detail_loading}</div>;
 
   const imgSrc =
-    card.bild_karte_pfad
-      ? `${API_BASE}/images/${card.bild_karte_pfad.replace(/^.*\/images\//, "")}`
-      : card.bild_pokedex_url
-      ?? card.bild_karte_url
-      ?? pokemonPlaceholderUrl(card.pokedex_nr);
+    imageUrl(card.bild_karte_pfad, API_BASE)
+    ?? card.bild_pokedex_url
+    ?? card.bild_karte_url
+    ?? pokemonPlaceholderUrl(card.pokedex_nr);
   const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
   const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
 
@@ -498,8 +509,26 @@ export default function CardDetailPage() {
         </div>
       </div>
 
-      {/* Wunschliste + Sammlungen */}
+      {/* Pokédex-Flag + Wunschliste + Sammlungen */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Pokédex-Flag — nur wenn Pokédex-Nr. vorhanden */}
+        {card.pokedex_nr && (
+          <div className="bg-pokemon-card rounded-lg p-4">
+            <h2 className="text-gray-300 font-medium mb-1">{t.detail_pokedex_flag}</h2>
+            <p className="text-gray-500 text-xs mb-3">{t.detail_pokedex_flag_hint}</p>
+            <button
+              onClick={togglePokedex}
+              className={`text-sm px-3 py-1.5 rounded ${
+                card.im_pokedex
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white"
+              }`}
+            >
+              {card.im_pokedex ? `🔵 ${t.detail_pokedex_flag_on}` : `○ ${t.detail_pokedex_flag}`}
+            </button>
+          </div>
+        )}
+
         {/* Wunschliste Quick-Toggle */}
         <div className="bg-pokemon-card rounded-lg p-4">
           <h2 className="text-gray-300 font-medium mb-3">{t.detail_wishlist}</h2>

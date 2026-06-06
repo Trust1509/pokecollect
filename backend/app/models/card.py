@@ -21,6 +21,7 @@ class PokemonCard(Base):
     sprache = Column(Text, nullable=True, default="DE", index=True)
     besessen = Column(Boolean, default=False, index=True)
     wunschliste = Column(Boolean, default=False, index=True)
+    im_pokedex = Column(Boolean, default=False, index=True)  # Pokédex-Repräsentant für diese Pokédex-Nr.
     prioritaet = Column(Text, nullable=True)  # Chase, Hoch, Mittel, Niedrig
     wert_eur = Column(Numeric(8, 2), nullable=True)
     wert_aktualisiert = Column(DateTime, nullable=True)
