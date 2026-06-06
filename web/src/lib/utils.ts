@@ -20,13 +20,20 @@ export function formatEur(value: string | null | undefined): string {
 
 export function imageUrl(path: string | null | undefined, apiBase: string): string | null {
   if (!path) return null;
-  return `${apiBase}/images/${path.replace(/^.*\/images\//, "")}`;
+  return `${apiBase}/images/${path.replace(/^(?:.*\/)?images\//, "")}`;
 }
 
 export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined): string | null {
   if (!pokedexNr || pokedexNr < 1 || pokedexNr > 1025) return null;
   const nr = String(pokedexNr).padStart(3, "0");
   return `https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/${nr}.png`;
+}
+
+/** "Paldeas Schicksale (PAF)" → "PAF"; sonst die ersten Zeichen. */
+export function extractSetCode(setEdition: string | null | undefined): string {
+  if (!setEdition) return "";
+  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)\s*$/);
+  return m ? m[1] : setEdition.slice(0, 4);
 }
 
 type CardImageFields = {
@@ -43,7 +50,7 @@ export function cardImageSrc(
   placeholderEnabled = true
 ): { src: string | null; isPlaceholder: boolean } {
   const src = card.bild_thumbnail_pfad
-    ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
+    ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^(?:.*\/)?images\//, "")}`
     : card.bild_pokedex_url
     ?? card.bild_karte_url
     ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);

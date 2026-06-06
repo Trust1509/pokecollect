@@ -188,6 +188,22 @@ const DE = {
   field_notes: "Notizen",
   field_yes: "✓ Ja",
   field_no: "✗ Nein",
+
+  // Statistik-Seite
+  stats_title: "Statistiken",
+  stats_total: "Gesamt",
+  stats_cards_recorded: "Karten erfasst",
+  stats_owned: "Besessen",
+  stats_pct_of_collection: (n: number) => `${n}% der Sammlung`,
+  stats_total_value: "Gesamtwert",
+  stats_cardmarket_owned: "Cardmarket (besessen)",
+  stats_rarity: "Seltenheit",
+  stats_languages: "Sprachen",
+  stats_top10: "Top 10 teuerste Karten",
+  stats_col_card: "Karte",
+  stats_col_set: "Set",
+  stats_col_value: "Wert",
+  stats_recent: "Zuletzt hinzugefügt",
 };
 
 const EN: typeof DE = {
@@ -363,6 +379,21 @@ const EN: typeof DE = {
   field_notes: "Notes",
   field_yes: "✓ Yes",
   field_no: "✗ No",
+
+  stats_title: "Statistics",
+  stats_total: "Total",
+  stats_cards_recorded: "cards recorded",
+  stats_owned: "Owned",
+  stats_pct_of_collection: (n: number) => `${n}% of collection`,
+  stats_total_value: "Total value",
+  stats_cardmarket_owned: "Cardmarket (owned)",
+  stats_rarity: "Rarity",
+  stats_languages: "Languages",
+  stats_top10: "Top 10 most valuable cards",
+  stats_col_card: "Card",
+  stats_col_set: "Set",
+  stats_col_value: "Value",
+  stats_recent: "Recently added",
 };
 
 const translations: Record<Lang, typeof DE> = { DE, EN };

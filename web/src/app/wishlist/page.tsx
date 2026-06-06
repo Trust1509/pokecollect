@@ -15,18 +15,17 @@ export default function WishlistPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [priority, setPriority] = useState<string>("");
-  const [view, setView] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      const s = sessionStorage.getItem("wishlist_view");
-      if (s === "binder" || s === "grid") return s;
-    }
-    return "grid";
-  });
+  const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const s = typeof window !== "undefined" ? localStorage.getItem(LAYOUT_KEY) : null;
+    const s = sessionStorage.getItem("wishlist_view");
+    if (s === "binder" || s === "grid") setView(s);
+  }, []);
+
+  useEffect(() => {
+    const s = localStorage.getItem(LAYOUT_KEY);
     if (s) setLayout(s);
   }, []);
 

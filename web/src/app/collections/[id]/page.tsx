@@ -9,7 +9,7 @@ import SortableCardGrid from "@/components/SortableCardGrid";
 import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
 import BinderEditor from "@/components/BinderEditor";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
-import { cardImageSrc } from "@/lib/utils";
+import { cardImageSrc, extractSetCode } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
@@ -21,15 +21,19 @@ export default function CollectionDetailPage() {
   const [collection, setCollection] = useState<Collection | null>(null);
   const [cards, setCards] = useState<CollectionCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      const s = sessionStorage.getItem(`collection_view_${params?.id}`);
-      if (s === "binder" || s === "grid") return s;
-    }
-    return "grid";
-  });
+  const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [editingPages, setEditingPages] = useState(false);
+
+  // View aus sessionStorage lesen (nach Hydration — kein SSR-Mismatch)
+  useEffect(() => {
+    if (!Number.isNaN(id)) {
+      try {
+        const s = sessionStorage.getItem(`collection_view_${id}`);
+        if (s === "binder" || s === "grid") setView(s);
+      } catch {}
+    }
+  }, [id]);
 
   useEffect(() => {
     if (!Number.isNaN(id)) {
@@ -43,8 +47,8 @@ export default function CollectionDetailPage() {
   const [results, setResults] = useState<Card[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const loadCards = useCallback(() => {
-    setLoading(true);
+  const loadCards = useCallback((silent = false) => {
+    if (!silent) setLoading(true);
     collectionApi.cards(id).then((r) => {
       const data = r.data;
       // Alt-Daten ohne Position einmalig normalisieren
@@ -53,12 +57,12 @@ export default function CollectionDetailPage() {
           .reorder(id, data.map((c) => c.id))
           .then(() => collectionApi.cards(id).then((r2) => setCards(r2.data)))
           .catch(() => setCards(data))
-          .finally(() => setLoading(false));
+          .finally(() => { if (!silent) setLoading(false); });
       } else {
         setCards(data);
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
-    }).catch(() => setLoading(false));
+    }).catch(() => { if (!silent) setLoading(false); });
   }, [id]);
 
   const loadMeta = useCallback(() => {
@@ -99,7 +103,7 @@ export default function CollectionDetailPage() {
       await collectionApi.addCard(id, cardId);
       toast.success(t.collection_added);
       setResults((r) => r.filter((c) => c.id !== cardId));
-      loadCards();
+      loadCards(true);
       loadMeta();
     } catch {
       toast.error(t.collections_error);
@@ -109,7 +113,7 @@ export default function CollectionDetailPage() {
   const handleRemove = async (cardId: number) => {
     try {
       await collectionApi.removeCard(id, cardId);
-      loadCards();
+      loadCards(true);
       loadMeta();
     } catch {
       toast.error(t.collections_error);
@@ -124,7 +128,7 @@ export default function CollectionDetailPage() {
   const handleReorder = async (orderedIds: number[]) => {
     try {
       await collectionApi.reorder(id, orderedIds);
-      loadCards();
+      loadCards(true);
     } catch {
       toast.error(t.collections_error);
     }
@@ -133,7 +137,7 @@ export default function CollectionDetailPage() {
   const handleMoveToSlot = async (cardId: number, slot: number) => {
     try {
       await collectionApi.moveToSlot(id, cardId, slot);
-      loadCards();
+      loadCards(true);
     } catch {
       toast.error(t.collections_error);
     }
@@ -144,7 +148,7 @@ export default function CollectionDetailPage() {
       await collectionApi.addCard(id, cardId);
       await collectionApi.moveToSlot(id, cardId, slot);
       toast.success(t.collection_added);
-      loadCards();
+      loadCards(true);
       loadMeta();
     } catch {
       toast.error(t.collections_error);
@@ -183,7 +187,7 @@ export default function CollectionDetailPage() {
         await collectionApi.update(id, { binder_slots: payload.binderSlots });
         setCollection((c) => (c ? { ...c, binder_slots: payload.binderSlots ?? null } : c));
       }
-      loadCards();
+      loadCards(true);
       loadMeta();
     } catch {
       toast.error(t.collections_error);
@@ -264,7 +268,7 @@ export default function CollectionDetailPage() {
                     <div className="px-1 py-1">
                       <div className="text-white text-[11px] truncate">{name}</div>
                       <div className="text-gray-500 text-[10px] truncate">
-                        {c.set_edition ?? ""} {c.karten_nr ?? ""}
+                        {extractSetCode(c.set_edition)} {c.karten_nr ?? ""}
                       </div>
                     </div>
                   </button>
