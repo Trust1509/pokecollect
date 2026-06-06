@@ -183,6 +183,16 @@ def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session
             for field, value in data.model_dump().items():
                 setattr(placeholder, field, value)
             placeholder.bild_karte_url = None  # wird neu abgerufen
+            # Auto-Pokédex-Flag: falls noch kein anderer im Pokédex ist
+            if not placeholder.im_pokedex:
+                existing_flag = db.scalar(
+                    select(func.count(PokemonCard.id))
+                    .where(PokemonCard.pokedex_nr == placeholder.pokedex_nr)
+                    .where(PokemonCard.im_pokedex == True)
+                    .where(PokemonCard.id != placeholder.id)
+                )
+                if existing_flag == 0:
+                    placeholder.im_pokedex = True
             db.commit()
             db.refresh(placeholder)
             background_tasks.add_task(_trigger_image_fetch, placeholder.id)
@@ -190,6 +200,17 @@ def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session
 
     card = PokemonCard(**data.model_dump())
     db.add(card)
+    db.flush()  # ID vergeben, noch kein Commit
+    # Auto-Pokédex-Flag: erste besessene Karte für diese Pokédex-Nr. → automatisch im Pokédex
+    if card.besessen and card.pokedex_nr:
+        existing_flag = db.scalar(
+            select(func.count(PokemonCard.id))
+            .where(PokemonCard.pokedex_nr == card.pokedex_nr)
+            .where(PokemonCard.im_pokedex == True)
+            .where(PokemonCard.id != card.id)
+        )
+        if existing_flag == 0:
+            card.im_pokedex = True
     db.commit()
     db.refresh(card)
     background_tasks.add_task(_trigger_image_fetch, card.id)

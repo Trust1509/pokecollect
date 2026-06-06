@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
-import { formatEur, pokemonPlaceholderUrl } from "@/lib/utils";
+import { cardImageSrc, formatEur } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -53,13 +53,7 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
       {cards.map((card) => {
-        const imgSrc =
-          card.bild_thumbnail_pfad
-            ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^.*\/images\//, "")}`
-            : card.bild_pokedex_url
-            ?? card.bild_karte_url
-            ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
-        const isPlaceholder = !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
+        const { src: imgSrc, isPlaceholder } = cardImageSrc(card, apiBase, placeholderEnabled);
         const borderColor = card.seltenheit ? (RARITY_BORDER[card.seltenheit] ?? "border-gray-600") : "border-gray-600";
 
         // Sprachabhängiger Name
