@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Collection, collectionApi } from "@/lib/api";
+import { Collection, collectionApi, cardApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 export default function CollectionsPage() {
   const { t } = useI18n();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ownedCount, setOwnedCount] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -25,7 +26,10 @@ export default function CollectionsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    cardApi.list({ besessen: true, limit: 1 }).then((r) => setOwnedCount(r.data.total)).catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!newName.trim()) { toast.error(t.collections_name_required); return; }
@@ -120,11 +124,26 @@ export default function CollectionsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
-      ) : collections.length === 0 ? (
-        <div className="flex items-center justify-center h-48 text-gray-500">{t.collections_empty}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {collections.map((c) => (
+          {/* Virtuelle Standard-Sammlung: alle besessenen Karten */}
+          <Link href="/owned">
+            <div className="bg-pokemon-card rounded-lg p-4 border-2 border-dashed border-blue-800 hover:border-blue-500 transition-colors cursor-pointer">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-semibold text-blue-300 hover:text-pokemon-yellow truncate">
+                    📚 {t.collections_all_owned}
+                  </h2>
+                  <p className="text-gray-400 text-sm truncate">{t.collections_all_owned_desc}</p>
+                  {ownedCount !== null && (
+                    <p className="text-gray-500 text-xs mt-1">{t.collections_card_count(ownedCount)}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {collections.length === 0 ? null : collections.map((c) => (
             <div key={c.id} className="bg-pokemon-card rounded-lg p-4">
               {editId === c.id ? (
                 <div className="space-y-2">

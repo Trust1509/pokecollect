@@ -10,10 +10,76 @@ import RarityBadge from "@/components/RarityBadge";
 import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
-import { formatEur, imageUrl, pokemonPlaceholderUrl } from "@/lib/utils";
+import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
+
+// ── Inline-Komponente: Pokédex-Ersetzungs-Bestätigungsdialog ─────────────────
+function PokedexReplaceModal({
+  conflictCard, currentCard, apiBase, onConfirm, onCancel, t,
+}: {
+  conflictCard: Card;
+  currentCard: Card;
+  apiBase: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const { src: conflictSrc } = cardImageSrc(conflictCard, apiBase, false);
+  const { src: newSrc } = cardImageSrc(currentCard, apiBase, false);
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-700 p-6 max-w-xl w-full shadow-2xl">
+        <h3 className="text-white font-bold text-lg mb-1">⚠️ {t.pokedex_replace_title}</h3>
+        <p className="text-gray-400 text-sm mb-5">
+          {t.pokedex_replace_desc(currentCard.pokedex_nr!, currentCard.kartenname)}
+        </p>
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-gray-800 rounded-lg p-3 text-center">
+            <div className="text-xs text-gray-400 mb-2">{t.pokedex_replace_current}</div>
+            <div className="aspect-[63/88] relative w-20 mx-auto bg-gray-700 rounded overflow-hidden mb-2">
+              {conflictSrc && (
+                <Image src={conflictSrc} alt={conflictCard.kartenname} fill className="object-cover" />
+              )}
+            </div>
+            <div className="text-white text-xs font-medium truncate">{conflictCard.kartenname}</div>
+            <div className="text-gray-400 text-[10px] truncate">{conflictCard.set_edition ?? "–"}</div>
+            {conflictCard.seltenheit && (
+              <div className="mt-1 flex justify-center">
+                <RarityBadge rarity={conflictCard.seltenheit} language={conflictCard.sprache} size="sm" />
+              </div>
+            )}
+          </div>
+          <div className="bg-gray-800 rounded-lg p-3 text-center border-2 border-blue-500">
+            <div className="text-xs text-blue-400 mb-2">{t.pokedex_replace_new}</div>
+            <div className="aspect-[63/88] relative w-20 mx-auto bg-gray-700 rounded overflow-hidden mb-2">
+              {newSrc && (
+                <Image src={newSrc} alt={currentCard.kartenname} fill className="object-cover" />
+              )}
+            </div>
+            <div className="text-white text-xs font-medium truncate">{currentCard.kartenname}</div>
+            <div className="text-gray-400 text-[10px] truncate">{currentCard.set_edition ?? "–"}</div>
+            {currentCard.seltenheit && (
+              <div className="mt-1 flex justify-center">
+                <RarityBadge rarity={currentCard.seltenheit} language={currentCard.sprache} size="sm" />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button onClick={onCancel} className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm">
+            {t.form_cancel}
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
+            {t.pokedex_replace_confirm}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function CardDetailPage() {
   const params = useParams();
@@ -37,6 +103,8 @@ export default function CardDetailPage() {
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [editingPriority, setEditingPriority] = useState(false);
+  const [conflictCard, setConflictCard] = useState<Card | null>(null);
+  const [showPokedexModal, setShowPokedexModal] = useState(false);
 
   const loadCollections = () => {
     collectionApi.forCard(Number(id)).then((r) => setCardCollections(r.data)).catch(() => {});
@@ -71,16 +139,34 @@ export default function CardDetailPage() {
     }
   };
 
-  const togglePokedex = async () => {
+  const doSetPokedex = async (value: boolean) => {
     if (!card) return;
-    const next = !card.im_pokedex;
     try {
-      const r = await cardApi.update(Number(id), { im_pokedex: next });
+      const r = await cardApi.update(Number(id), { im_pokedex: value });
       setCard(r.data); setForm(r.data);
-      toast.success(next ? t.detail_pokedex_flag_added : t.detail_pokedex_flag_removed);
+      setShowPokedexModal(false); setConflictCard(null);
+      toast.success(value ? t.detail_pokedex_flag_added : t.detail_pokedex_flag_removed);
     } catch {
       toast.error(t.form_save_error);
     }
+  };
+
+  const togglePokedex = async () => {
+    if (!card) return;
+    const next = !card.im_pokedex;
+    // Beim Setzen prüfen ob ein anderes Pokémon schon diesen Slot hat → Bestätigungsdialog
+    if (next && card.pokedex_nr) {
+      try {
+        const r = await cardApi.list({ pokedex_nr: card.pokedex_nr, im_pokedex: true, limit: 5 });
+        const others = (r.data.items as Card[]).filter((c) => c.id !== card.id);
+        if (others.length > 0) {
+          setConflictCard(others[0]);
+          setShowPokedexModal(true);
+          return; // Warten auf Bestätigung im Modal
+        }
+      } catch {/* Fehler ignorieren, direkt setzen */}
+    }
+    await doSetPokedex(next);
   };
 
   const toggleWishlist = async () => {
@@ -620,6 +706,18 @@ export default function CardDetailPage() {
         <h2 className="text-gray-300 font-medium mb-3">{t.detail_price_history}</h2>
         <PriceChart history={history as { erfasst_am: string; wert_eur: string | null }[]} />
       </div>
+
+      {/* Pokédex-Ersetzungs-Dialog */}
+      {showPokedexModal && conflictCard && (
+        <PokedexReplaceModal
+          conflictCard={conflictCard}
+          currentCard={card}
+          apiBase={API_BASE}
+          onConfirm={() => doSetPokedex(true)}
+          onCancel={() => { setShowPokedexModal(false); setConflictCard(null); }}
+          t={t}
+        />
+      )}
     </div>
   );
 }

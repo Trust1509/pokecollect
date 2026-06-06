@@ -21,7 +21,6 @@ export default function HomePage() {
   const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(false);
-  const [pokedexMode, setPokedexMode] = useState(false);
 
   // Filter / Seite / Ansicht aus sessionStorage lesen (nach Hydration)
   useEffect(() => {
@@ -51,29 +50,24 @@ export default function HomePage() {
     besessen: number;
     wert: string | null;
   } | null>(null);
+  const [pokedexCollected, setPokedexCollected] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let params: Record<string, unknown>;
-      if (pokedexMode) {
-        // Im Pokédex-Modus: nur im_pokedex=true Karten, sortiert nach Pokédex-Nr., alle auf einer Seite
-        params = { im_pokedex: true, limit: 1026, page: 1, sort: filters.sort ?? "pokedex_nr" };
-        if (filters.search) params.search = filters.search;
-      } else {
-        params = { ...filters, page, limit: appSettings?.cards_per_page ?? 48 };
-        // Pokédex-Nummer Suche: wenn search eine reine Zahl ist, als pokedex_nr filtern
-        if (filters.search && /^\d+$/.test(filters.search.trim())) {
-          params.pokedex_nr = Number(filters.search.trim());
-          delete params.search;
-        }
-      }
+      // Pokédex-Ansicht: immer dedupliziert (eine Karte je Pokémon)
+      const params: Record<string, unknown> = {
+        ...filters,
+        page,
+        limit: appSettings?.cards_per_page ?? 48,
+        pokedex_view: true,
+      };
       const res = await cardApi.list(params);
       setData(res.data);
     } finally {
       setLoading(false);
     }
-  }, [filters, page, pokedexMode]);
+  }, [filters, page, appSettings]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -91,6 +85,8 @@ export default function HomePage() {
         wert: r.data.gesamtwert_eur,
       })
     );
+    // Pokédex-Fortschritt: Anzahl gesammelter Pokémon (im_pokedex=True ≙ je 1 pro Pokémon)
+    cardApi.list({ im_pokedex: true, limit: 1 }).then((r) => setPokedexCollected(r.data.total));
   }, []);
 
   const handleFilters = (f: Filters) => {
@@ -100,24 +96,43 @@ export default function HomePage() {
 
   return (
     <div>
-      {statsTotal && (
-        <div className="flex gap-6 mb-6 text-sm flex-wrap">
-          <div className="bg-pokemon-card rounded-lg px-4 py-3">
-            <div className="text-gray-400">{t.home_collected}</div>
-            <div className="text-2xl font-bold text-white">
-              {statsTotal.besessen}{" "}
-              <span className="text-gray-500 text-base">/ {statsTotal.gesamt}</span>
+      {(statsTotal || pokedexCollected !== null) && (
+        <div className="flex gap-4 mb-6 text-sm flex-wrap">
+          {/* Pokédex-Fortschritt */}
+          {pokedexCollected !== null && (
+            <div className="bg-pokemon-card rounded-lg px-4 py-3">
+              <div className="text-gray-400">Pokédex</div>
+              <div className="text-2xl font-bold text-blue-400">
+                {pokedexCollected}{" "}
+                <span className="text-gray-500 text-base">/ 1025</span>
+              </div>
+              <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
+                <div
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${(pokedexCollected / 1025) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
-              <div
-                className="h-full bg-green-500 rounded-full"
-                style={{
-                  width: `${statsTotal.gesamt ? (statsTotal.besessen / statsTotal.gesamt) * 100 : 0}%`,
-                }}
-              />
+          )}
+          {/* Gesamtzahl besessener Karten (inkl. Duplikate) */}
+          {statsTotal && (
+            <div className="bg-pokemon-card rounded-lg px-4 py-3">
+              <div className="text-gray-400">{t.home_collected}</div>
+              <div className="text-2xl font-bold text-white">
+                {statsTotal.besessen}{" "}
+                <span className="text-gray-500 text-base">/ {statsTotal.gesamt}</span>
+              </div>
+              <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
+                <div
+                  className="h-full bg-green-500 rounded-full"
+                  style={{
+                    width: `${statsTotal.gesamt ? (statsTotal.besessen / statsTotal.gesamt) * 100 : 0}%`,
+                  }}
+                />
+              </div>
             </div>
-          </div>
-          {statsTotal.wert && (
+          )}
+          {statsTotal?.wert && (
             <div className="bg-pokemon-card rounded-lg px-4 py-3">
               <div className="text-gray-400">{t.home_total_value}</div>
               <div className="text-2xl font-bold text-yellow-400">
@@ -145,26 +160,9 @@ export default function HomePage() {
             <>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  {pokedexMode ? (
-                    <span className="text-blue-400 text-sm font-medium">
-                      🔵 {t.pokedex_progress(data?.total ?? 0)}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">
-                      {t.home_cards_count(data?.total ?? 0)}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setPokedexMode((v) => !v)}
-                    title={t.pokedex_mode}
-                    className={`text-xs px-2.5 py-1 rounded ${
-                      pokedexMode
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-pokemon-card text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    {pokedexMode ? `🔵 ${t.pokedex_mode}` : `○ ${t.pokedex_mode}`}
-                  </button>
+                  <span className="text-gray-400 text-sm">
+                    {t.home_cards_count(data?.total ?? 0)}
+                  </span>
                   <ViewToggle value={view} onChange={setView} />
                 </div>
                 {data && data.pages > 1 && (

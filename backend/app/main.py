@@ -127,6 +127,18 @@ def _run_light_migrations():
         "ALTER TABLE collections ADD COLUMN IF NOT EXISTS binder_slots INTEGER",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS im_pokedex BOOLEAN NOT NULL DEFAULT FALSE",
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_im_pokedex ON pokemon_cards (im_pokedex)",
+        # Einmalmigration: erste besessene Karte je Pokédex-Nr. automatisch als Pokédex-Vertreter setzen
+        """
+        UPDATE pokemon_cards
+        SET im_pokedex = TRUE
+        WHERE id IN (
+            SELECT MIN(id)
+            FROM pokemon_cards
+            WHERE besessen = TRUE AND pokedex_nr IS NOT NULL
+            GROUP BY pokedex_nr
+            HAVING SUM(CASE WHEN im_pokedex = TRUE THEN 1 ELSE 0 END) = 0
+        )
+        """,
     ]
     with engine.begin() as conn:
         for stmt in stmts:

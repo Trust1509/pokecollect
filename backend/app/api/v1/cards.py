@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 
 log = logging.getLogger(__name__)
 from PIL import Image
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, update, or_, and_, cast, String
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -54,6 +54,7 @@ def list_cards(
     besessen: Optional[bool] = None,
     wunschliste: Optional[bool] = None,
     im_pokedex: Optional[bool] = None,
+    pokedex_view: bool = False,
     prioritaet: Optional[str] = None,
     set: Optional[str] = None,
     seltenheit: Optional[str] = None,
@@ -64,10 +65,38 @@ def list_cards(
     bild_status: Optional[str] = Query(None, pattern="^(eigenes_foto|externe_url|platzhalter)$"),
     sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am)$"),
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1100),
     db: Session = Depends(get_db),
 ):
     q = select(PokemonCard)
+
+    # Pokédex-Ansicht: je pokedex_nr genau eine Karte (im_pokedex=True bevorzugt,
+    # dann erste besessene Karte als Fallback, dann Platzhalter für nicht gesammelte)
+    if pokedex_view:
+        flagged = select(PokemonCard.pokedex_nr).where(
+            PokemonCard.im_pokedex == True,
+            PokemonCard.pokedex_nr.isnot(None),
+        )
+        fallback = (
+            select(func.min(PokemonCard.id))
+            .where(
+                PokemonCard.pokedex_nr.isnot(None),
+                PokemonCard.besessen == True,
+                ~PokemonCard.pokedex_nr.in_(flagged),
+            )
+            .group_by(PokemonCard.pokedex_nr)
+        )
+        q = q.where(
+            PokemonCard.pokedex_nr.isnot(None),
+            or_(
+                PokemonCard.im_pokedex == True,
+                PokemonCard.id.in_(fallback),
+                and_(
+                    PokemonCard.besessen == False,
+                    ~PokemonCard.pokedex_nr.in_(flagged),
+                ),
+            ),
+        )
 
     if besessen is not None:
         q = q.where(PokemonCard.besessen == besessen)
@@ -87,8 +116,11 @@ def list_cards(
         q = q.where(PokemonCard.pokedex_nr == pokedex_nr)
     if search:
         term = f"%{search}%"
+        # Suche nach Name UND partieller Pokédex-Nr. (z.B. "2" findet #2, #23, #253 …)
         q = q.where(
-            PokemonCard.kartenname.ilike(term) | PokemonCard.englischer_name.ilike(term)
+            PokemonCard.kartenname.ilike(term)
+            | PokemonCard.englischer_name.ilike(term)
+            | cast(PokemonCard.pokedex_nr, String).ilike(term)
         )
     if bild_status == "eigenes_foto":
         q = q.where(PokemonCard.bild_karte_pfad.isnot(None))
