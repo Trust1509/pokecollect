@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.7.3] – 2026-06-07 (Scan- & Binder-Fixes)
+
+### Fixes
+- **Binder-Seite merkt sich die Position:** Beim Öffnen einer Detailansicht aus
+  dem Binder (Pokédex oder Sammlung) und Zurück landet man wieder auf derselben
+  Seite statt auf Seite 1 (`BinderView` persistiert die Seite je Ansicht).
+- **Live-Webcam zeigt jetzt das Bild:** Stream wird erst nach dem Rendern des
+  Video-Elements angehängt (vorher schwarz). Höhere Auflösung angefragt.
+
+### Scan
+- **Auto-Aufnahme:** Hält man die Karte ruhig, scharf und hell im Rahmen,
+  löst die Kamera automatisch aus (abschaltbar). Manuelles „Aufnehmen" bleibt.
+- **Seltenheit** wird erkannt: Resolver mappt die (englische) TCGdex-Rarity auf
+  unser Seltenheits-Enum und füllt sie im Bestätigungs-Dialog vor (editierbar).
+- Bei unklarem/falschem Set-Kürzel zusätzlicher Fallback über Namenssuche
+  gefiltert nach Kartennummer.
+- Vorschaubild im Review größer + klickbar (Originalgröße zur Kontrolle).
+
+### Hinweis
+- Live-Webcam/PWA brauchen HTTPS – siehe Teil 3 (geplant): Caddy-TLS löst den
+  Chrome-Flag-Workaround dauerhaft, auch am Smartphone.
+
 ## [v0.7.2] – 2026-06-07 (Scan-Feinschliff: Gemini, Webcam, Foto)
 
 ### Scan

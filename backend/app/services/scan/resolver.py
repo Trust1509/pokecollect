@@ -74,11 +74,37 @@ def _karten_nr(local_id: Optional[str], official: Optional[int], raw_number: Opt
     return raw_number
 
 
-async def _english_name(tcgdex_card_id: str, lang: str) -> Optional[str]:
-    if lang == "en":
+# TCGdex-Seltenheit (englisch) → unser Seltenheits-Enum
+_RARITY_MAP = {
+    "common": "Common",
+    "uncommon": "Uncommon",
+    "rare": "Rare",
+    "rare holo": "Rare",
+    "double rare": "Double Rare",
+    "ultra rare": "Ultra Rare",
+    "secret rare": "Secret Rare",
+    "illustration rare": "Illustration Rare",
+    "special illustration rare": "Special Illustration Rare",
+    "hyper rare": "Hyper Rare",
+    "shiny rare": "Shiny Rare",
+    "shiny ultra rare": "Shiny Ultra Rare",
+    "rainbow rare": "Rainbow Rare",
+    "ace spec rare": "ACE SPEC Rare",
+    "promo": "Promo",
+}
+
+
+def _map_rarity(rarity_en: Optional[str]) -> Optional[str]:
+    if not rarity_en:
         return None
-    tc = await tcgdex.get_card(tcgdex_card_id, "en")
-    return tc.name if tc else None
+    return _RARITY_MAP.get(rarity_en.strip().lower(), rarity_en)
+
+
+async def _english_card(tc, lang: str):
+    """Liefert die englische Variante (für englischen Namen + Seltenheit)."""
+    if lang == "en":
+        return tc
+    return await tcgdex.get_card(tc.id, "en")
 
 
 async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") -> ScanCandidate:
@@ -92,15 +118,29 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     if set_id and local_id:
         tc = await tcgdex.fetch_card_by_set_multilang(set_id, local_id, tcg_lang)
 
-    # Fallback: Kartensuche per Name, wenn keine exakte Auflösung
+    # Fallback: Kartensuche per Name. Wenn die Nummer bekannt ist, über die
+    # localId eindeutig machen (robust gegen falsch erkannte Set-Kürzel).
     via_search = False
+    via_number = False
     if tc is None and read.name:
         results = await tcgdex.search_cards({"name": read.name}, tcg_lang)
-        if len(results) == 1:
-            cid = results[0].get("id")
-            if cid:
-                tc = await tcgdex.get_card(cid, tcg_lang)
-                via_search = True
+
+        def _norm(x: object) -> str:
+            return str(x).lstrip("0") or "0"
+
+        chosen = None
+        if local_id:
+            matches = [r for r in results if r.get("localId") and _norm(r["localId"]) == local_id]
+            if matches:
+                chosen = matches[0]
+                via_number = True
+        if chosen is None and len(results) == 1:
+            chosen = results[0]
+        if chosen and chosen.get("id"):
+            tc = await tcgdex.get_card(chosen["id"], tcg_lang)
+            via_search = True
+            if tc and tc.set and tc.set.id:
+                set_id = tc.set.id
 
     uncertain: list[str] = []
     if not read.name:
@@ -119,7 +159,10 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     if tc:
         official = tc.set.cardCount.official if (tc.set and tc.set.cardCount) else None
         set_id = (tc.set.id if tc.set else set_id)
-        eng = await _english_name(tc.id, tcg_lang)
+        en_card = await _english_card(tc, tcg_lang)
+        eng = en_card.name if (en_card and tcg_lang != "en") else None
+        rarity_en = (en_card.rarity if en_card else None) or tc.rarity
+        seltenheit = _map_rarity(rarity_en)
         set_edition = _set_edition(db, set_id, read.set_code)
         knr = _karten_nr(tc.localId, official, read.number)
         foil_options = _foil_options(tc)
@@ -146,6 +189,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             "pokedex_nr": tc.dex_id,
             "set_edition": set_edition,
             "karten_nr": knr,
+            "seltenheit": seltenheit,
             "sprache": app_lang,
             "folierung": foil_options[0] if foil_options else "Normal",
             "besessen": True,
@@ -169,6 +213,8 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     base = read.confidence if read.confidence is not None else 0.3
     if tc and not via_search:
         confidence = max(base, 0.85)
+    elif tc and via_number:
+        confidence = max(base, 0.8)        # Name + Nummer eindeutig
     elif tc and via_search:
         confidence = min(max(base, 0.6), 0.75)
     else:

@@ -313,6 +313,7 @@ export default function CollectionDetailPage() {
               onAddAtSlot={handleAddAtSlot}
               binderSlots={collection?.binder_slots ?? null}
               onAddPage={handleAddPage}
+              storageKey={`binder_page_coll_${id}`}
             />
           )}
         </div>

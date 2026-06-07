@@ -21,6 +21,8 @@ type Props = {
   binderSlots?: number | null;
   onAddPage?: (newSlots: number) => void;
   onDeleteLastPage?: (cardIdsOnLastPage: number[], newSlots: number) => void;
+  /** sessionStorage-Key, um die aktuelle Binder-Seite über Navigation hinweg zu merken */
+  storageKey?: string;
 };
 
 export const ASSIGN_DRAG_TYPE = "application/x-pokecollect-add";
@@ -45,13 +47,26 @@ const SIZE_KEY = "binder_card_size";
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
   onLayoutChange, editable = false, onMoveToSlot, onAddAtSlot,
-  binderSlots, onAddPage, onDeleteLastPage,
+  binderSlots, onAddPage, onDeleteLastPage, storageKey,
 }: Props) {
   const { t, lang } = useI18n();
   const { cols, rows } = parseLayout(layout);
   const perPage = cols * rows;
 
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState<number>(() => {
+    if (storageKey && typeof window !== "undefined") {
+      const v = Number(sessionStorage.getItem(storageKey));
+      if (Number.isFinite(v) && v >= 0) return v;
+    }
+    return 0;
+  });
+
+  // Aktuelle Seite merken (z.B. um nach Öffnen einer Detailansicht zurückzukehren)
+  useEffect(() => {
+    if (storageKey && typeof window !== "undefined") {
+      try { sessionStorage.setItem(storageKey, String(page)); } catch {}
+    }
+  }, [page, storageKey]);
   const [dragId, setDragId] = useState<number | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [cardSize, setCardSize] = useState<number>(() => {

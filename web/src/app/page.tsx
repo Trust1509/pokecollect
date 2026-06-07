@@ -197,6 +197,7 @@ export default function HomePage() {
                   layout={layout}
                   onLayoutChange={handleLayoutChange}
                   placeholderEnabled={appSettings?.placeholder_images_enabled ?? true}
+                  storageKey="binder_page_home"
                 />
               ) : (
                 <CardGrid cards={data?.items ?? []} apiBase={API_BASE} placeholderEnabled={appSettings?.placeholder_images_enabled ?? true} />

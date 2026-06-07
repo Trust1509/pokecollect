@@ -72,6 +72,9 @@ export default function ScanPage() {
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const sourceBlobRef = useRef<Blob | null>(null);
   const [camMsg, setCamMsg] = useState<string | null>(null);
+  const [autoCapture, setAutoCapture] = useState(true);
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = busy; }, [busy]);
 
   // Kamera (nur in sicherem Kontext verfügbar – sonst Datei-Fallback)
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -110,19 +113,69 @@ export default function ScanPage() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCameraOn(true);
+      setCameraOn(true); // Video wird erst jetzt gerendert → Stream im Effect anhängen
     } catch {
       setCamMsg(t.scan_camera_insecure);
     }
   };
+
+  // Stream an das Video hängen, sobald es im DOM ist (sonst bleibt das Bild schwarz)
+  useEffect(() => {
+    if (cameraOn && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraOn]);
+
+  // Auto-Aufnahme: löst aus, wenn das Bild ruhig (Kamera still gehalten),
+  // scharf und hell genug ist. Best-effort-Heuristik; manuell geht immer.
+  useEffect(() => {
+    if (!cameraOn || !autoCapture) return;
+    const W = 160, H = 224;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    let prev: Float32Array | null = null;
+    let steady = 0;
+    const id = setInterval(() => {
+      const v = videoRef.current;
+      if (!v || v.videoWidth === 0 || busyRef.current) return;
+      ctx.drawImage(v, 0, 0, W, H);
+      const data = ctx.getImageData(0, 0, W, H).data;
+      const gray = new Float32Array(W * H);
+      let bright = 0;
+      for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+        const g = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        gray[p] = g; bright += g;
+      }
+      bright /= W * H;
+      let sharp = 0;
+      for (let y = 1; y < H - 1; y++) {
+        for (let x = 1; x < W - 1; x++) {
+          const idx = y * W + x;
+          const lap = 4 * gray[idx] - gray[idx - 1] - gray[idx + 1] - gray[idx - W] - gray[idx + W];
+          sharp += Math.abs(lap);
+        }
+      }
+      sharp /= (W - 2) * (H - 2);
+      let diff = Infinity;
+      if (prev) {
+        let s = 0;
+        for (let i = 0; i < gray.length; i++) s += Math.abs(gray[i] - prev[i]);
+        diff = s / gray.length;
+      }
+      prev = gray;
+      if (diff < 3.5 && sharp > 7 && bright > 30) steady++; else steady = 0;
+      if (steady >= 3) { steady = 0; void handleCapture(); }
+    }, 400);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOn, autoCapture]);
 
   const blobFromVideo = (): Promise<Blob | null> =>
     new Promise((resolve) => {
@@ -331,19 +384,23 @@ export default function ScanPage() {
           <div className="rounded-lg border border-gray-700 bg-pokemon-card p-4">
             {cameraOn ? (
               <div className="space-y-3">
-                <div className="relative mx-auto" style={{ maxWidth: 360 }}>
-                  <video ref={videoRef} playsInline muted className="w-full rounded" />
+                <div className="relative mx-auto" style={{ maxWidth: 480 }}>
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full rounded bg-black" />
                   <div className="pointer-events-none absolute inset-4 border-2 border-pokemon-yellow/70 rounded" />
                 </div>
                 <p className="text-center text-gray-500 text-xs">{t.scan_camera_hint}</p>
-                <div className="flex gap-2 justify-center">
-                  <button onClick={handleCapture} disabled={busy}
+                <div className="flex gap-2 justify-center items-center flex-wrap">
+                  <button onClick={() => void handleCapture()} disabled={busy}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50">
                     {busy ? t.scan_analyzing : t.scan_capture}
                   </button>
                   <button onClick={stopCamera} className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">
                     {t.scan_stop_camera}
                   </button>
+                  <label className="flex items-center gap-1 text-xs text-gray-300 ml-2">
+                    <input type="checkbox" checked={autoCapture} onChange={(e) => setAutoCapture(e.target.checked)} />
+                    {t.scan_autocapture}
+                  </label>
                 </div>
               </div>
             ) : (
@@ -383,14 +440,20 @@ export default function ScanPage() {
                 className={`rounded-lg border p-3 flex gap-3 ${
                   !c.include ? "border-gray-800 opacity-50" : uncertain ? "border-pokemon-red" : "border-gray-700"
                 } bg-pokemon-card`}>
-                {/* Bild – bei Einzelkarte das aufgenommene Foto, sonst TCGdex-Treffer */}
-                <div className="w-20 shrink-0">
-                  {(mode === "single" && sourceUrl) || c.match?.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={(mode === "single" && sourceUrl) ? sourceUrl : c.match!.image_url!} alt="" className="w-full rounded" />
-                  ) : (
-                    <div className="aspect-[63/88] bg-gray-800 rounded flex items-center justify-center text-gray-600 text-xs">?</div>
-                  )}
+                {/* Bild – bei Einzelkarte das aufgenommene Foto, sonst TCGdex-Treffer.
+                    Klick öffnet das Bild groß zur Kontrolle. */}
+                <div className="w-28 sm:w-36 shrink-0">
+                  {(() => {
+                    const big = (mode === "single" && sourceUrl) ? sourceUrl : c.match?.image_url ?? null;
+                    return big ? (
+                      <a href={big} target="_blank" rel="noreferrer" title="Groß anzeigen">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={big} alt="" className="w-full rounded hover:opacity-90" />
+                      </a>
+                    ) : (
+                      <div className="aspect-[63/88] bg-gray-800 rounded flex items-center justify-center text-gray-600 text-xs">?</div>
+                    );
+                  })()}
                   <div className="mt-1 text-center text-[10px] text-gray-500">
                     {t.scan_confidence}: {Math.round(c.confidence * 100)}%
                   </div>
@@ -436,6 +499,20 @@ export default function ScanPage() {
                       {foilOptions.map((f) => <option key={f} value={f}>{f}</option>)}
                     </select>
                   </div>
+                  {/* Seltenheit */}
+                  <select
+                    value={String(s.seltenheit ?? "")}
+                    onChange={(e) => updateField(idx, "seltenheit", e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
+                  >
+                    <option value="">{t.scan_field_rarity}</option>
+                    {(() => {
+                      const opts = enums?.seltenheit ?? [];
+                      const cur = String(s.seltenheit ?? "");
+                      const all = cur && !opts.includes(cur) ? [cur, ...opts] : opts;
+                      return all.map((r) => <option key={r} value={r}>{r}</option>);
+                    })()}
+                  </select>
                 </div>
 
                 {/* Übernehmen-Toggle */}
