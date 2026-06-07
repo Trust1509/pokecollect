@@ -20,6 +20,39 @@ function parseLayout(layout: string): { cols: number; rows: number } {
   return { cols: Number(m[1]), rows: Number(m[2]) };
 }
 
+/** Zentriert auf Karten-Seitenverhältnis (63:88) zuschneiden + skalieren → JPEG-File. */
+async function cropToCardPhoto(blob: Blob): Promise<File> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = url;
+    });
+    const ratio = 63 / 88;
+    let cw = img.width;
+    let ch = Math.round(cw / ratio);
+    if (ch > img.height) {
+      ch = img.height;
+      cw = Math.round(ch * ratio);
+    }
+    const sx = Math.round((img.width - cw) / 2);
+    const sy = Math.round((img.height - ch) / 2);
+    const maxW = 600;
+    const scale = cw > maxW ? maxW / cw : 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(cw * scale);
+    canvas.height = Math.round(ch * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, sx, sy, cw, ch, 0, 0, canvas.width, canvas.height);
+    const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
+    return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function ScanPage() {
   const { t } = useI18n();
   const [status, setStatus] = useState<ScanStatus | null>(null);
@@ -36,13 +69,15 @@ export default function ScanPage() {
   const [busy, setBusy] = useState(false);
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [savedCount, setSavedCount] = useState(0);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const sourceBlobRef = useRef<Blob | null>(null);
+  const [camMsg, setCamMsg] = useState<string | null>(null);
 
   // Kamera (nur in sicherem Kontext verfügbar – sonst Datei-Fallback)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
-  const canUseCamera = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
   useEffect(() => {
     scanApi.status().then((r) => setStatus(r.data)).catch(() => {});
@@ -67,7 +102,12 @@ export default function ScanPage() {
   };
 
   const startCamera = async () => {
-    if (!canUseCamera) return;
+    setCamMsg(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Unsicherer Kontext (HTTP über LAN) → getUserMedia ist gesperrt.
+      setCamMsg(t.scan_camera_insecure);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
@@ -80,7 +120,7 @@ export default function ScanPage() {
       }
       setCameraOn(true);
     } catch {
-      toast.error(t.scan_camera_unavailable);
+      setCamMsg(t.scan_camera_insecure);
     }
   };
 
@@ -98,6 +138,11 @@ export default function ScanPage() {
     });
 
   const runScan = useCallback(async (blob: Blob) => {
+    sourceBlobRef.current = blob;
+    setSourceUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blob);
+    });
     setBusy(true);
     try {
       const { cols, rows } = parseLayout(layout);
@@ -170,6 +215,14 @@ export default function ScanPage() {
         set_im_pokedex: setPokedexRep,
         items,
       });
+      // Einzelkarte: das aufgenommene Foto direkt als Kartenfoto verwenden
+      // (zugeschnitten/skaliert) – hat in der App Anzeige-Vorrang.
+      if (mode === "single" && res.data.card_ids.length === 1 && sourceBlobRef.current) {
+        try {
+          const file = await cropToCardPhoto(sourceBlobRef.current);
+          await cardApi.uploadImage(res.data.card_ids[0], file);
+        } catch { /* Foto-Upload optional – nicht kritisch */ }
+      }
       setSavedCount(res.data.created);
       setStep("done");
       toast.success(t.scan_saved(res.data.created));
@@ -301,17 +354,13 @@ export default function ScanPage() {
                   className="bg-pokemon-blue text-white px-5 py-3 rounded-lg hover:bg-blue-500 disabled:opacity-50 w-full sm:w-auto">
                   {busy ? t.scan_analyzing : t.scan_take_photo}
                 </button>
-                {canUseCamera && (
-                  <div>
-                    <button onClick={startCamera} disabled={engineActive === "none"}
-                      className="text-pokemon-blue hover:underline text-sm disabled:opacity-50">
-                      {t.scan_start_camera}
-                    </button>
-                  </div>
-                )}
-                {!canUseCamera && (
-                  <p className="text-gray-500 text-xs">{t.scan_camera_unavailable}</p>
-                )}
+                <div>
+                  <button onClick={startCamera} disabled={engineActive === "none"}
+                    className="text-pokemon-blue hover:underline text-sm disabled:opacity-50">
+                    {t.scan_start_camera}
+                  </button>
+                </div>
+                {camMsg && <p className="text-gray-400 text-xs whitespace-pre-line">{camMsg}</p>}
               </div>
             )}
           </div>
@@ -334,11 +383,11 @@ export default function ScanPage() {
                 className={`rounded-lg border p-3 flex gap-3 ${
                   !c.include ? "border-gray-800 opacity-50" : uncertain ? "border-pokemon-red" : "border-gray-700"
                 } bg-pokemon-card`}>
-                {/* Bild */}
+                {/* Bild – bei Einzelkarte das aufgenommene Foto, sonst TCGdex-Treffer */}
                 <div className="w-20 shrink-0">
-                  {c.match?.image_url ? (
+                  {(mode === "single" && sourceUrl) || c.match?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.match.image_url} alt="" className="w-full rounded" />
+                    <img src={(mode === "single" && sourceUrl) ? sourceUrl : c.match!.image_url!} alt="" className="w-full rounded" />
                   ) : (
                     <div className="aspect-[63/88] bg-gray-800 rounded flex items-center justify-center text-gray-600 text-xs">?</div>
                   )}

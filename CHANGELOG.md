@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.7.2] – 2026-06-07 (Scan-Feinschliff: Gemini, Webcam, Foto)
+
+### Scan
+- **Gemini-Key über die Einstellungsseite** pflegbar (DB-Setting, Fallback .env).
+  Ist der Key gesetzt, nutzt der Scan automatisch Gemini statt OCR – inkl.
+  konfigurierbarem Modell. `GET /scan/status` spiegelt den DB-Key wider.
+- **Desktop-Webcam:** „Kamera starten" immer verfügbar; bei unsicherem Kontext
+  (HTTP über LAN) erscheint eine klare Anleitung (Chrome-Flag bzw. HTTPS).
+- **Aufgenommenes Foto wird genutzt:** Vorschau im Review zeigt das gescannte
+  Bild; bei Einzelkarten wird die Aufnahme zugeschnitten (Karten-Format 63:88)
+  + skaliert und direkt als Kartenfoto hochgeladen (Anzeige-Vorrang).
+
+### Set-Korrekturen
+- `MEP` (Mega-Promos → `mep`) und `151C` (chinesische 151er → `sv03.5`,
+  Bild via EN/DE-Sprachfallback) in Brücke + Seed ergänzt.
+  Bild-Auflösung greift jetzt auch ohne eigene Set-Zeile auf die Brücke zurück.
+
 ## [v0.7.1] – 2026-06-07 (Karten-Scan)
 
 ### Features – Scan (Web + Android teilen dieselbe API)

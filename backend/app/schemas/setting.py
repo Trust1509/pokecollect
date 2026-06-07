@@ -16,6 +16,8 @@ DEFAULTS: dict[str, str] = {
     "cardmarket_access_token": "",
     "cardmarket_access_secret": "",
     "pokemontcg_api_key": "",
+    "gemini_api_key": "",
+    "gemini_model": "gemini-2.5-flash",
 }
 
 
@@ -33,6 +35,8 @@ class SettingsResponse(BaseModel):
     cardmarket_access_token: str
     cardmarket_access_secret: str
     pokemontcg_api_key: str
+    gemini_api_key: str
+    gemini_model: str
 
 
 class SettingsUpdate(BaseModel):
@@ -49,6 +53,8 @@ class SettingsUpdate(BaseModel):
     cardmarket_access_token: Optional[str] = None
     cardmarket_access_secret: Optional[str] = None
     pokemontcg_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    gemini_model: Optional[str] = None
 
 
 class PasswordChange(BaseModel):

@@ -14,9 +14,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
+from app.models.setting import AppSetting
 from app.schemas.scan import (
     ScanCommitRequest, ScanCommitResponse, ScanMode, ScanResponse,
 )
@@ -30,13 +32,27 @@ router = APIRouter(prefix="/scan", tags=["scan"])
 _MAX_BYTES = 12 * 1024 * 1024  # 12 MB
 
 
+def _setting(db: Session, key: str, env_default: str) -> str:
+    """DB-Einstellung mit Fallback auf .env/Config."""
+    row = db.get(AppSetting, key)
+    return (row.value if row and row.value else env_default) or ""
+
+
+def _gemini_config(db: Session) -> tuple[str, str]:
+    key = _setting(db, "gemini_api_key", settings.gemini_api_key)
+    model = _setting(db, "gemini_model", settings.gemini_model)
+    return key, model
+
+
 @router.get("/status")
-def scan_status():
+def scan_status(db: Session = Depends(get_db)):
     """Welche Erkennungs-Engine ist aktiv? (Hybrid-Anzeige im UI)"""
+    key, _ = _gemini_config(db)
+    gem = gemini.is_enabled(key)
     return {
-        "gemini": gemini.is_enabled(),
+        "gemini": gem,
         "ocr": ocr.is_enabled(),
-        "active": "gemini" if gemini.is_enabled() else ("ocr" if ocr.is_enabled() else "none"),
+        "active": "gemini" if gem else ("ocr" if ocr.is_enabled() else "none"),
     }
 
 
@@ -66,8 +82,9 @@ async def scan(
     engine = "none"
     reads = None
     # Hybrid: Gemini bevorzugt (stark bei Binder/Multi), sonst lokale OCR.
-    if gemini.is_enabled():
-        reads = await gemini.extract(data, mime_type=mime)
+    gemini_key, gemini_model = _gemini_config(db)
+    if gemini.is_enabled(gemini_key):
+        reads = await gemini.extract(data, api_key=gemini_key, model=gemini_model, mime_type=mime)
         if reads is not None:
             engine = "gemini"
     if reads is None:

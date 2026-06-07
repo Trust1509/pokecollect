@@ -44,12 +44,19 @@ def extract_set_code(set_edition: Optional[str]) -> Optional[str]:
 
 
 def resolve_set_id(db: Session, set_edition: Optional[str]) -> Optional[str]:
-    """Kürzel aus set_edition → pokemon_sets.set_id (offline, aus DB)."""
+    """
+    Kürzel aus set_edition → set_id. Bevorzugt pokemon_sets (DB),
+    fällt sonst auf die PTCGO-Brücke zurück (für Sets, die (noch) keine
+    eigene Zeile haben, z.B. MEP/151C).
+    """
     code = extract_set_code(set_edition)
     if not code:
         return None
     row = db.get(PokemonSet, code)
-    return row.set_id if row else None
+    if row and row.set_id:
+        return row.set_id
+    from app.services.set_sync import PTCGO_TO_SETID
+    return PTCGO_TO_SETID.get(code.strip().upper())
 
 
 @dataclass

@@ -20,6 +20,7 @@ logging.basicConfig(level=logging.INFO)
 _SET_SEED = [
     # ── MEG-Generation (parallel zu SV) ──────────────────────────────────────
     ("MEG",  "Mega-Entwicklung",                   132),
+    ("MEP",  "Mega-Promos",                        None),  # TCGdex: mep (ohne Bilder)
     ("PFL",  "Fatale Flammen",                     109),
     ("ASC",  "Erhabene Helden",                   None),  # ~130, noch nicht final
     ("OCH",  "Optimale Ordnung",                  None),  # ~130, noch nicht final
@@ -31,6 +32,7 @@ _SET_SEED = [
     ("OBF",  "Obsidianflammen",                    197),
     ("MEW",  "Pokémon 151",                        165),
     ("151",  "Pokémon 151",                        165),
+    ("151C", "Pokémon 151 (Chinesisch)",           165),  # TCGdex: sv03.5 (Bild via EN/DE-Fallback)
     ("PAR",  "Paradoxrift",                        182),
     ("PAF",  "Paldeas Schicksale",                  91),
     ("TEF",  "Gewalten der Zeit",                  162),

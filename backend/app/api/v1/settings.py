@@ -39,6 +39,8 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         cardmarket_access_token=raw["cardmarket_access_token"] or "",
         cardmarket_access_secret=raw["cardmarket_access_secret"] or "",
         pokemontcg_api_key=raw["pokemontcg_api_key"] or "",
+        gemini_api_key=raw["gemini_api_key"] or "",
+        gemini_model=raw["gemini_model"] or "gemini-2.5-flash",
     )
 
 

@@ -208,6 +208,30 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      {/* Scan / Gemini */}
+      <Section title="📷 Scan (Gemini)">
+        <p className="text-gray-400 text-xs">
+          Mit hinterlegtem Gemini-API-Key nutzt der Karten-Scan die starke Gemini-Bilderkennung
+          (ideal für ganze Binderseiten). Ohne Key läuft die lokale OCR. Key:{" "}
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com/apikey</a>
+        </p>
+        <Field label="Gemini API Key">
+          <input type="password" value={s.gemini_api_key} onChange={(e) => set("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder="AIza…" />
+        </Field>
+        <Field label="Gemini Modell" hint="Standard: gemini-2.5-flash">
+          <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
+        </Field>
+        <div className="pt-1">
+          <button
+            onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model })}
+            disabled={saving}
+            className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            Scan-Einstellungen speichern
+          </button>
+        </div>
+      </Section>
+
       {/* Bilder */}
       <Section title="🖼️ Kartenbilder (pokemon.com)">
         <p className="text-gray-400 text-xs">

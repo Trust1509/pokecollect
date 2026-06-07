@@ -68,6 +68,13 @@ PTCGO_TO_SETID: dict[str, str] = {
     # offizielle Abkürzung – daher manuell. Alle übrigen SM/SWSH/XY-Sets werden
     # im Sync automatisch über abbreviation.official aufgelöst.
     "COS": "sm12",
+    # Sonderfälle der Sammlung:
+    # MEP = Mega-Promos (TCGdex-Set "mep"; aktuell ohne Bilder → Platzhalter,
+    #       aber Daten/Preise lösen auf).
+    "MEP": "mep",
+    # 151C = chinesische 151er. TCGdex hat kein zh-tw-151-Set → auf sv03.5
+    #        gemappt, Bild kommt per Sprach-Fallback aus EN/DE.
+    "151C": "sv03.5",
 }
 
 

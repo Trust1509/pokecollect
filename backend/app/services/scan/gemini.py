@@ -16,10 +16,11 @@ from typing import Optional
 
 import httpx
 
-from app.config import settings
 from app.schemas.scan import ScanRawRead
 
 log = logging.getLogger(__name__)
+
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -39,17 +40,23 @@ Leere/keine Karte enthaltende Fächer NICHT ausgeben.
 Antworte AUSSCHLIESSLICH mit einem JSON-Array von Objekten, ohne Erklärungstext."""
 
 
-def is_enabled() -> bool:
-    return bool(settings.gemini_api_key)
+def is_enabled(api_key: Optional[str]) -> bool:
+    return bool(api_key)
 
 
-async def extract(image_bytes: bytes, mime_type: str = "image/jpeg") -> Optional[list[ScanRawRead]]:
+async def extract(
+    image_bytes: bytes,
+    api_key: str,
+    model: Optional[str] = None,
+    mime_type: str = "image/jpeg",
+) -> Optional[list[ScanRawRead]]:
     """
     Schickt das Bild an Gemini und liefert die erkannten Karten.
     None signalisiert einen harten Fehler (Aufrufer kann auf OCR ausweichen).
     """
-    if not is_enabled():
+    if not api_key:
         return None
+    model = model or DEFAULT_MODEL
 
     b64 = base64.b64encode(image_bytes).decode("ascii")
     payload = {
@@ -64,13 +71,13 @@ async def extract(image_bytes: bytes, mime_type: str = "image/jpeg") -> Optional
             "temperature": 0.0,
         },
     }
-    url = _ENDPOINT.format(model=settings.gemini_model)
+    url = _ENDPOINT.format(model=model)
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 url,
-                params={"key": settings.gemini_api_key},
+                params={"key": api_key},
                 json=payload,
             )
     except httpx.HTTPError as exc:

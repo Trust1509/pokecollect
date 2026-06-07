@@ -173,6 +173,8 @@ export type AppSettings = {
   cardmarket_access_token: string;
   cardmarket_access_secret: string;
   pokemontcg_api_key: string;
+  gemini_api_key: string;
+  gemini_model: string;
 };
 
 export const collectionApi = {
