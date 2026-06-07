@@ -175,6 +175,7 @@ export type AppSettings = {
   pokemontcg_api_key: string;
   gemini_api_key: string;
   gemini_model: string;
+  gemini_daily_limit: number;
 };
 
 export const collectionApi = {
@@ -239,6 +240,7 @@ export type ScanCandidate = {
     position: number | null;
     confidence: number | null;
     bbox: number[] | null;
+    quad: number[][] | null;
   };
   match: ScanMatch | null;
   suggested: Record<string, unknown>;

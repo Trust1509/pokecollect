@@ -18,6 +18,7 @@ DEFAULTS: dict[str, str] = {
     "pokemontcg_api_key": "",
     "gemini_api_key": "",
     "gemini_model": "gemini-2.5-flash",
+    "gemini_daily_limit": "0",   # 0 = unbekannt/kein Limit anzeigen
 }
 
 
@@ -37,6 +38,7 @@ class SettingsResponse(BaseModel):
     pokemontcg_api_key: str
     gemini_api_key: str
     gemini_model: str
+    gemini_daily_limit: int
 
 
 class SettingsUpdate(BaseModel):
@@ -55,6 +57,7 @@ class SettingsUpdate(BaseModel):
     pokemontcg_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
+    gemini_daily_limit: Optional[int] = None
 
 
 class PasswordChange(BaseModel):

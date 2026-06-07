@@ -36,6 +36,9 @@ Gib für JEDE eindeutig erkennbare Pokémon-Karte ein Objekt zurück mit:
 - "position": die Position im Raster, von links nach rechts und oben nach unten gezählt, beginnend bei 0; bei Einzelkarte 0
 - "box_2d": die Bounding-Box der Karte als [ymin, xmin, ymax, xmax], jeweils
   ganzzahlig von 0 bis 1000 (auf Bildhöhe/-breite normiert), möglichst eng um die Karte
+- "corners": die VIER Eckpunkte der Karte als [[x,y],[x,y],[x,y],[x,y]] in der
+  Reihenfolge oben-links, oben-rechts, unten-rechts, unten-links; x,y ganzzahlig
+  0–1000. Für perspektivische Entzerrung – exakt an den Kartenecken, auch wenn die Karte schräg liegt.
 - "confidence": deine Sicherheit 0.0–1.0, wie zuverlässig du Name UND Nummer gelesen hast
 
 Leere/keine Karte enthaltende Fächer NICHT ausgeben.
@@ -119,6 +122,7 @@ async def extract(
             position=_int(item.get("position"), default=idx),
             confidence=_float(item.get("confidence")),
             bbox=_bbox(item),
+            quad=_quad(item),
         )
         out.append(read)
     return out
@@ -196,6 +200,23 @@ def _bbox(item: dict) -> Optional[list[float]]:
             box = [v / 100.0 for v in box]
         return box
     return None
+
+
+def _quad(item: dict) -> Optional[list[list[float]]]:
+    """Vier Eckpunkte [[x,y]…] (TL,TR,BR,BL) als Anteile 0..1; sonst None."""
+    raw = item.get("corners") or item.get("quad")
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        return None
+    pts: list[list[float]] = []
+    for p in raw:
+        if not isinstance(p, (list, tuple)) or len(p) != 2:
+            return None
+        try:
+            pts.append([float(p[0]), float(p[1])])
+        except (TypeError, ValueError):
+            return None
+    scale = 1000.0 if max(max(p) for p in pts) > 1.5 else 1.0
+    return [[p[0] / scale, p[1] / scale] for p in pts]
 
 
 def _norm_lang(v) -> Optional[str]:

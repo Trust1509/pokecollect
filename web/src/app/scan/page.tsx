@@ -45,15 +45,67 @@ function loadImg(url: string): Promise<HTMLImageElement> {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** Löst X_i = A*u_i + C*v_i + E (3 Punkte) → [A, C, E]. */
+function solveAffine(u: number[], v: number[], X: number[]): [number, number, number] | null {
+  const det = u[0] * (v[1] - v[2]) - v[0] * (u[1] - u[2]) + (u[1] * v[2] - u[2] * v[1]);
+  if (Math.abs(det) < 1e-9) return null;
+  const A = (X[0] * (v[1] - v[2]) - v[0] * (X[1] - X[2]) + (X[1] * v[2] - X[2] * v[1])) / det;
+  const C = (u[0] * (X[1] - X[2]) - X[0] * (u[1] - u[2]) + (u[1] * X[2] - u[2] * X[1])) / det;
+  const E = (u[0] * (v[1] * X[2] - v[2] * X[1]) - v[0] * (u[1] * X[2] - u[2] * X[1]) + X[0] * (u[1] * v[2] - u[2] * v[1])) / det;
+  return [A, C, E];
+}
+
+/** Zeichnet ein Quell-Dreieck so, dass es auf das Ziel-Dreieck abgebildet wird (affin). */
+function drawTriangle(
+  ctx: CanvasRenderingContext2D, img: HTMLImageElement,
+  s: number[][], d: number[][],
+) {
+  const u = [s[0][0], s[1][0], s[2][0]];
+  const v = [s[0][1], s[1][1], s[2][1]];
+  const ace = solveAffine(u, v, [d[0][0], d[1][0], d[2][0]]);
+  const bdf = solveAffine(u, v, [d[0][1], d[1][1], d[2][1]]);
+  if (!ace || !bdf) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(d[0][0], d[0][1]); ctx.lineTo(d[1][0], d[1][1]); ctx.lineTo(d[2][0], d[2][1]);
+  ctx.closePath();
+  ctx.clip();
+  ctx.setTransform(ace[0], bdf[0], ace[1], bdf[1], ace[2], bdf[2]);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
 /**
- * Schneidet das Kartenfoto zu. Mit bbox [x,y,w,h] (0..1) wird genau die Karte
- * ausgeschnitten (mit etwas Rand); ohne bbox zentriert auf Karten-Format 63:88.
+ * Schneidet/entzerrt das Kartenfoto zu Karten-Format (63:88):
+ *  - quad (4 Ecken) → perspektivische Entzerrung (auch schräge Karten)
+ *  - bbox [x,y,w,h] → achsenparalleler Zuschnitt
+ *  - sonst zentrierter Zuschnitt
  */
-async function cropToCardPhoto(blob: Blob, bbox?: number[] | null): Promise<File> {
+async function cropToCardPhoto(
+  blob: Blob,
+  opts?: { bbox?: number[] | null; quad?: number[][] | null },
+): Promise<File> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImg(url);
+    const W = 460, H = Math.round((W * 88) / 63);
+
+    if (opts?.quad && opts.quad.length === 4) {
+      // Pixel-Eckpunkte (TL,TR,BR,BL)
+      const src = opts.quad.map(([x, y]) => [clamp(x, 0, 1) * img.width, clamp(y, 0, 1) * img.height]);
+      const dst = [[0, 0], [W, 0], [W, H], [0, H]];
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+      // Zwei Dreiecke entlang der Diagonale TL–BR
+      drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
+      drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+      const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
+      return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
+    }
+
     let sx: number, sy: number, sw: number, sh: number;
+    const bbox = opts?.bbox;
     if (bbox && bbox.length === 4) {
       const pad = 0.03;
       const [bx, by, bw, bh] = bbox;
@@ -266,7 +318,7 @@ export default function ScanPage() {
       const list: EditableCandidate[] = res.data.candidates.map((c) => ({
         ...c,
         include: true,
-        usePhoto: !!(c.raw?.bbox),
+        usePhoto: !!(c.raw?.bbox || c.raw?.quad),
         cropUrl: null,
         imPokedex: setPokedexRep,
       }));
@@ -278,9 +330,9 @@ export default function ScanPage() {
       setStep("review");
       // Foto-Zuschnitte je Karte (aus der bbox) für Vorschau erzeugen
       list.forEach(async (c, idx) => {
-        if (!c.raw?.bbox || !sourceBlobRef.current) return;
+        if ((!c.raw?.bbox && !c.raw?.quad) || !sourceBlobRef.current) return;
         try {
-          const f = await cropToCardPhoto(sourceBlobRef.current, c.raw.bbox);
+          const f = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw.bbox, quad: c.raw.quad });
           const u = URL.createObjectURL(f);
           setCandidates((prev) => prev.map((cc, i) => (i === idx ? { ...cc, cropUrl: u } : cc)));
         } catch { /* Vorschau optional */ }
@@ -385,7 +437,7 @@ export default function ScanPage() {
       await Promise.all(chosen.map(async (c, k) => {
         if (!c.usePhoto || !sourceBlobRef.current || ids[k] == null) return;
         try {
-          const file = await cropToCardPhoto(sourceBlobRef.current, c.raw?.bbox ?? undefined);
+          const file = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw?.bbox, quad: c.raw?.quad });
           await cardApi.uploadImage(ids[k], file);
         } catch { /* Foto-Upload optional */ }
       }));

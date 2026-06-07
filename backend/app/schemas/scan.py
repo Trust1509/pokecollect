@@ -18,6 +18,7 @@ class ScanRawRead(BaseModel):
     position: Optional[int] = None       # Slot-Index bei Binder-Scan (0-basiert)
     confidence: Optional[float] = None   # Roh-Sicherheit der Engine (0..1)
     bbox: Optional[list[float]] = None   # [x,y,w,h] als Anteil 0..1 des Bildes
+    quad: Optional[list[list[float]]] = None  # 4 Eckpunkte [[x,y]…] (0..1) TL,TR,BR,BL
 
 
 class ScanMatch(BaseModel):

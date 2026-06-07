@@ -274,6 +274,10 @@ export default function CardDetailPage() {
       const r = await cardApi.deleteImage(Number(id));
       setCard(r.data);
       toast.success(t.detail_photo_saved);
+      // Server holt das TCGdex-Bild im Hintergrund nach → kurz danach neu laden
+      setTimeout(() => {
+        cardApi.get(Number(id)).then((r2) => setCard(r2.data)).catch(() => {});
+      }, 2000);
     } catch {
       toast.error(t.detail_delete_error);
     }

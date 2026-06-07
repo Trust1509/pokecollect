@@ -41,6 +41,7 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         pokemontcg_api_key=raw["pokemontcg_api_key"] or "",
         gemini_api_key=raw["gemini_api_key"] or "",
         gemini_model=raw["gemini_model"] or "gemini-2.5-flash",
+        gemini_daily_limit=int(raw["gemini_daily_limit"] or 0),
     )
 
 

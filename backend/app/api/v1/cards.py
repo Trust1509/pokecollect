@@ -360,7 +360,7 @@ async def upload_image(
 
 
 @router.delete("/{card_id}/image", response_model=CardResponse)
-def delete_image(card_id: int, db: Session = Depends(get_db)):
+def delete_image(card_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
     for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad"):
         p = getattr(card, path_field)
@@ -371,6 +371,10 @@ def delete_image(card_id: int, db: Session = Depends(get_db)):
         setattr(card, path_field, None)
     db.commit()
     db.refresh(card)
+    # Kein eigenes Foto / keine manuelle URL mehr → TCGdex-Bild (neu) abrufen,
+    # damit nicht der Platzhalter stehen bleibt.
+    if card.besessen and not card.bild_karte_url and not card.bild_pokedex_url:
+        background_tasks.add_task(_trigger_image_fetch, card.id)
     return card
 
 

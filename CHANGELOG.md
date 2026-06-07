@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.7.9] – 2026-06-07 (Foto-Entzerrung, Foto-Löschen-Fix, Gemini-Limit)
+
+### Scan
+- **Perspektivische Entzerrung:** Gemini liefert die vier Kartenecken; das eigene
+  Foto wird damit auf ein sauberes Karten-Rechteck (63:88) entzerrt – auch bei
+  schräg fotografierten Karten / mehreren Karten auf einem Bild. Fällt ohne
+  Ecken auf bbox-Zuschnitt zurück.
+
+### Fix
+- **Foto löschen:** Nach dem Löschen eines eigenen Fotos wird automatisch das
+  TCGdex-Kartenbild nachgeladen (statt Platzhalter), sofern keine manuelle URL
+  gesetzt ist.
+
+### Gemini-Tracking
+- **Tageslimit konfigurierbar** (Einstellungen): Anzeige „heute X / Limit" mit
+  Fortschrittsbalken + „übrig", da Google das Restkontingent nicht per API meldet.
+
 ## [v0.7.8] – 2026-06-07 (Pokédex-Dublette, Foto aufnehmen, Gemini-Tracking)
 
 ### Fix

@@ -223,9 +223,12 @@ export default function SettingsPage() {
         <Field label="Gemini Modell" hint="Standard: gemini-2.5-flash">
           <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
         </Field>
+        <Field label="Tägliches Limit (Anfragen)" hint="Aus deinem Google-AI-Plan. 0 = nicht anzeigen. Wird nur zur Anzeige des Verbrauchs genutzt.">
+          <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
+        </Field>
         <div className="pt-1">
           <button
-            onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model })}
+            onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model, gemini_daily_limit: s.gemini_daily_limit })}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
@@ -238,8 +241,23 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-900 rounded p-2">
                 <div className="text-gray-500 text-xs">Heute</div>
-                <div className="text-white">{usage.today.requests} Anfragen</div>
+                <div className="text-white">
+                  {usage.today.requests}{s.gemini_daily_limit > 0 ? ` / ${s.gemini_daily_limit}` : ""} Anfragen
+                </div>
                 <div className="text-gray-400 text-xs">{usage.today.tokens.toLocaleString("de")} Tokens</div>
+                {s.gemini_daily_limit > 0 && (
+                  <>
+                    <div className="mt-1 h-1.5 bg-gray-700 rounded-full">
+                      <div
+                        className={`h-full rounded-full ${usage.today.requests >= s.gemini_daily_limit ? "bg-pokemon-red" : "bg-green-500"}`}
+                        style={{ width: `${Math.min(100, (usage.today.requests / s.gemini_daily_limit) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-gray-500 text-xs mt-0.5">
+                      {Math.max(0, s.gemini_daily_limit - usage.today.requests)} übrig
+                    </div>
+                  </>
+                )}
               </div>
               <div className="bg-gray-900 rounded p-2">
                 <div className="text-gray-500 text-xs">Gesamt</div>
