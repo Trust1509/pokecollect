@@ -212,6 +212,21 @@ async def get_card_by_set(set_id: str, local_id: str, lang: str = "en") -> Optio
     return TcgdexCard.model_validate(data)
 
 
+async def fetch_card_by_set_multilang(
+    set_id: str, local_id: str, primary_lang: str = "en"
+) -> Optional[TcgdexCard]:
+    """
+    Wie get_card_by_set, probiert aber zuerst die gewünschte Sprache und dann
+    die Fallback-Sprachen (Bild/Preise sind dort i.d.R. vollständiger).
+    """
+    langs = [primary_lang] + [l for l in FALLBACK_LANGS if l != primary_lang]
+    for lang in langs:
+        card = await get_card_by_set(set_id, local_id, lang)
+        if card:
+            return card
+    return None
+
+
 async def get_sets(lang: str = "en") -> list[TcgdexSetBrief]:
     """Alle Sets einer Sprache (Liste)."""
     async with _client(lang) as client:

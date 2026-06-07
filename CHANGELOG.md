@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.7.1] – 2026-06-07 (Karten-Scan)
+
+### Features – Scan (Web + Android teilen dieselbe API)
+- **POST /api/v1/scan**: Foto → erkannte Karten. Hybrid-Engine:
+  Gemini (REST über httpx, kein SDK) wenn `GEMINI_API_KEY` gesetzt, sonst
+  lokale **OCR** (Tesseract) als Fallback. `GET /scan/status` zeigt die aktive Engine.
+- **Drei Modi**: `single` (Einzelkarte), `multi` (mehrere lose Karten),
+  `binder` (ganze Mappenseite – wird am bekannten Raster rows×cols zerlegt).
+- **Resolver** löst jede Erkennung gegen TCGdex auf (set_code→set_id-Brücke +
+  Nummer → exakte Karte; bei Unschärfe Namenssuche). Liefert Kandidaten mit
+  **Confidence + Liste unsicherer Felder** und vorbefülltem Bestätigungs-Dialog,
+  Folierungs-Optionen nur laut `variants`.
+- **POST /api/v1/scan/commit**: bestätigte Karten ablegen – Ziel Pokédex oder
+  Sammlung (mit Binder-Slot über `position`), optional Pokédex-Vertreter setzen.
+- **Web-Scan-UI** (`/scan`): Modus-/Ziel-/Raster-Auswahl, Kamera (getUserMedia,
+  Rückkamera) **oder** Foto-Upload-Fallback (funktioniert auch über HTTP/LAN),
+  Review-Liste mit Hervorhebung unsicherer Treffer, Stapel-Speichern.
+  Scan-Button in der Navbar.
+
+### Geplant für v0.7.x / 0.8.0
+- Teil 3: Mobile-First-Refactor + PWA (manifest, service worker)
+- OCR-Feintuning / optionale Bildvorverarbeitung
+- Offene Bild-Lücken (MEP-Promos, CN-151-Set-Codes) nach Rückmeldung der Labels
+
 ## [v0.7.0] – 2026-06-07 (TCGdex-Integration)
 
 ### Features – Backend

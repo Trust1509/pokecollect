@@ -203,3 +203,90 @@ export const settingsApi = {
   changePassword: (current_password: string, new_password: string) =>
     api.post("/settings/change-password", { current_password, new_password }),
 };
+
+// ── Scan ──────────────────────────────────────────────────────────────────
+
+export type ScanMode = "single" | "multi" | "binder";
+
+export type ScanMatch = {
+  tcgdex_card_id: string | null;
+  name: string | null;
+  englischer_name: string | null;
+  set_id: string | null;
+  set_code: string | null;
+  set_name: string | null;
+  local_id: string | null;
+  rarity: string | null;
+  dex_id: number | null;
+  image_url: string | null;
+  variants_normal: boolean | null;
+  variants_reverse: boolean | null;
+  variants_holo: boolean | null;
+  variants_firstedition: boolean | null;
+};
+
+export type ScanCandidate = {
+  position: number | null;
+  confidence: number;
+  uncertain_fields: string[];
+  raw: {
+    name: string | null;
+    set_code: string | null;
+    number: string | null;
+    language: string | null;
+    position: number | null;
+    confidence: number | null;
+  };
+  match: ScanMatch | null;
+  suggested: Record<string, unknown>;
+  foil_options: string[];
+};
+
+export type ScanResponse = {
+  engine: string;
+  mode: ScanMode;
+  candidates: ScanCandidate[];
+};
+
+export type ScanStatus = { gemini: boolean; ocr: boolean; active: string };
+
+export type ScanCommitItem = {
+  kartenname: string;
+  pokedex_nr?: number | null;
+  englischer_name?: string | null;
+  set_edition?: string | null;
+  karten_nr?: string | null;
+  seltenheit?: string | null;
+  kartenversion?: string | null;
+  folierung?: string | null;
+  sprache?: string | null;
+  zustand?: string | null;
+  notizen?: string | null;
+  tcgdex_card_id?: string | null;
+  set_id?: string | null;
+  dex_id?: number | null;
+  bild_karte_url?: string | null;
+  position?: number | null;
+};
+
+export type ScanCommitRequest = {
+  target: "pokedex" | "collection";
+  collection_id?: number | null;
+  set_im_pokedex?: boolean;
+  items: ScanCommitItem[];
+};
+
+export const scanApi = {
+  status: () => api.get<ScanStatus>("/scan/status"),
+  scan: (file: Blob, opts: { mode: ScanMode; rows?: number; cols?: number; default_language?: string }) => {
+    const form = new FormData();
+    form.append("file", file, "scan.jpg");
+    form.append("mode", opts.mode);
+    form.append("rows", String(opts.rows ?? 0));
+    form.append("cols", String(opts.cols ?? 0));
+    form.append("default_language", opts.default_language ?? "DE");
+    return api.post<ScanResponse>("/scan", form);
+  },
+  commit: (payload: ScanCommitRequest) =>
+    api.post<{ created: number; card_ids: number[] }>("/scan/commit", payload),
+};

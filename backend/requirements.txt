@@ -15,3 +15,5 @@ Pillow==10.4.0
 python-dotenv==1.0.1
 alembic==1.13.2
 notion-client==2.2.1
+# Scan-Variante A (lokale OCR). Gemini (Variante B) läuft per REST über httpx.
+pytesseract==0.3.13

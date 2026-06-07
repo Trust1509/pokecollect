@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     pokemontcg_api_key: str = ""
 
     # Optional: aktiviert die stärkere Scan-Variante B (Gemini). Default aus.
+    # Ist der Key gesetzt, nutzt der Scan Gemini; sonst lokale OCR als Fallback.
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
     images_dir: str = "/app/images"
 

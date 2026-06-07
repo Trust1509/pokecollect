@@ -2,8 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# tesseract-ocr + deutsches Sprachpaket für die lokale Scan-Variante (OCR-Fallback)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc \
+    tesseract-ocr tesseract-ocr-deu \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

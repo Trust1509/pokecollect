@@ -26,6 +26,12 @@ export default function Navbar() {
         </button>
         <Link href="/settings" className="text-gray-400 hover:text-white text-sm inline-block min-w-[110px] text-right">⚙ {t.nav_settings}</Link>
         <Link
+          href="/scan"
+          className="bg-pokemon-blue text-white text-sm px-3 py-1.5 rounded hover:bg-blue-500 inline-block text-center"
+        >
+          {t.nav_scan}
+        </Link>
+        <Link
           href="/cards/new"
           className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600 inline-block min-w-[88px] text-center"
         >
