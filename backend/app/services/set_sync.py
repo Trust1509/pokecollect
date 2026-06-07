@@ -2,17 +2,18 @@
 Set-Sync: reichert die `pokemon_sets`-Tabelle mit TCGdex-Daten an.
 
 Quelle der Wahrheit ist die TCGdex-set.id (sprachunabhängig, stabil).
-Die EINZIGE manuell gepflegte Stelle ist die Brücke PTCGO_TO_SETID:
-  aufgedrucktes Kürzel (code) → TCGdex set.id.
+set_id wird in zwei Stufen aufgelöst – beide OHNE Raten:
+  1. Brücke PTCGO_TO_SETID (offline, sofort) – für Sets, deren Kürzel TCGdex
+     nicht als offizielle Abkürzung führt (z.B. MEW/151) oder für die wir die
+     ID vorab kennen.
+  2. Auto-Auflösung über das `abbreviation.official`-Feld der Set-Details:
+     TCGdex liefert pro Set das aufgedruckte Kürzel → exaktes Match auf `code`.
 Alles andere (Name EN/DE, Kartenzahlen, Logo, Symbol, Serie) kommt aus der API.
-
-Der Sync braucht nur zwei Requests (/en/sets + /de/sets):
-  - Serie wird aus dem Logo-Pfad abgeleitet (…/en/{serie}/{setid}/logo)
-  - Symbol wird aus serie + set_id konstruiert (…/univ/{serie}/{setid}/symbol)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -23,6 +24,8 @@ from app.models.pokemon_set import PokemonSet
 from app.services import tcgdex
 
 log = logging.getLogger(__name__)
+
+_DETAIL_CONCURRENCY = 12
 
 
 # ── PTCGO-Kürzel → TCGdex set.id ─────────────────────────────────────────────
@@ -61,6 +64,10 @@ PTCGO_TO_SETID: dict[str, str] = {
     "EVS": "swsh7",
     # X & Y
     "XY8": "xy8",
+    # Sonne & Mond: COS (Welten im Wandel / Cosmic Eclipse) führt TCGdex ohne
+    # offizielle Abkürzung – daher manuell. Alle übrigen SM/SWSH/XY-Sets werden
+    # im Sync automatisch über abbreviation.official aufgelöst.
+    "COS": "sm12",
 }
 
 
@@ -102,13 +109,28 @@ def apply_bridge_to_seed() -> None:
         db.close()
 
 
+async def _fetch_all_details(set_ids: list[str]) -> dict[str, dict]:
+    """Holt Set-Details nebenläufig (begrenzt). Liefert {set_id: detail_json}."""
+    sem = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+    out: dict[str, dict] = {}
+
+    async def one(sid: str):
+        async with sem:
+            d = await tcgdex.get_set(sid, "en")
+        if isinstance(d, dict):
+            out[sid] = d
+
+    await asyncio.gather(*(one(sid) for sid in set_ids))
+    return out
+
+
 async def sync_sets() -> dict:
     """
-    Holt /en/sets + /de/sets und reichert alle pokemon_sets-Zeilen mit set_id
-    an (Name EN/DE, Kartenzahlen, Logo, Symbol, Serie). Merge über set.id.
+    Holt /en/sets + /de/sets, löst set_id auf (Brücke + abbreviation.official aus
+    den Set-Details) und reichert alle Zeilen an (Name EN/DE, Kartenzahlen, Logo,
+    Symbol, Serie). Merge ausschließlich über die stabile set.id.
 
-    Liefert eine kleine Zusammenfassung inkl. der aufgelösten set_id-Werte
-    (zur Verifikation unsicherer Fälle).
+    Liefert eine Zusammenfassung inkl. aufgelöster set_id-Werte (zur Verifikation).
     """
     en = await tcgdex.get_sets("en")
     de = await tcgdex.get_sets("de")
@@ -119,6 +141,15 @@ async def sync_sets() -> dict:
     en_by_id = {s.id: s for s in en}
     de_by_id = {s.id: s for s in de}
 
+    # Set-Details holen → abbreviation.official → code-Match (Auto-Auflösung),
+    # liefert zugleich serie + symbol zuverlässig (anders als die Liste).
+    details = await _fetch_all_details([s.id for s in en])
+    abbr_to_id: dict[str, str] = {}
+    for sid, d in details.items():
+        ab = d.get("abbreviation")
+        if isinstance(ab, dict) and ab.get("official"):
+            abbr_to_id[ab["official"].upper()] = sid
+
     db = SessionLocal()
     updated = 0
     resolved: dict[str, str] = {}
@@ -126,36 +157,44 @@ async def sync_sets() -> dict:
     try:
         rows = db.scalars(select(PokemonSet)).all()
         for row in rows:
-            # set_id ggf. aus der Brücke nachziehen
+            # set_id auflösen: Brücke → Auto (abbreviation.official)
             if not row.set_id:
-                mapped = PTCGO_TO_SETID.get(row.code)
-                if mapped:
-                    row.set_id = mapped
-            if not row.set_id:
-                missing.append(row.code)
-                continue
-
-            src = en_by_id.get(row.set_id)
-            if not src:
-                # set_id zeigt auf ein (noch) nicht in der API vorhandenes Set
+                row.set_id = PTCGO_TO_SETID.get(row.code) or abbr_to_id.get(row.code.upper())
+            if not row.set_id or (row.set_id not in en_by_id and row.set_id not in details):
                 missing.append(row.code)
                 continue
 
             resolved[row.code] = row.set_id
-            series = _series_from_logo(src.logo)
-            row.name_en = src.name or row.name_en
-            if src.cardCount:
-                row.card_count_official = src.cardCount.official
-                row.card_count_total = src.cardCount.total
-            row.series_id = series or row.series_id
-            # Logo/Symbol: Basis-URL + .png (nur von erlaubtem Host übernehmen)
-            if src.logo and tcgdex.is_allowed_image_url(src.logo):
-                row.logo_url = f"{src.logo.rstrip('/')}.png"
-            sym = _symbol_url(series, row.set_id)
-            if sym:
-                row.symbol_url = f"{sym}.png"
+            src = en_by_id.get(row.set_id)
+            d = details.get(row.set_id, {})
 
-            # Deutscher Name aus /de/sets nachziehen (Fallback bleibt bestehender Name)
+            # Name EN, Kartenzahlen
+            row.name_en = d.get("name") or (src.name if src else None) or row.name_en
+            cc = d.get("cardCount") or {}
+            official = cc.get("official") or (src.cardCount.official if src and src.cardCount else None)
+            total = cc.get("total") or (src.cardCount.total if src and src.cardCount else None)
+            if official is not None:
+                row.card_count_official = official
+            if total is not None:
+                row.card_count_total = total
+
+            # Serie (Detail bevorzugt, sonst aus Logo-Pfad)
+            serie = None
+            if isinstance(d.get("serie"), dict):
+                serie = d["serie"].get("id")
+            serie = serie or _series_from_logo(src.logo if src else None)
+            if serie:
+                row.series_id = serie
+
+            # Logo/Symbol (nur von erlaubtem Host übernehmen)
+            logo = d.get("logo") or (src.logo if src else None)
+            if logo and tcgdex.is_allowed_image_url(logo):
+                row.logo_url = f"{logo.rstrip('/')}.png"
+            symbol = d.get("symbol") or _symbol_url(serie, row.set_id)
+            if symbol and tcgdex.is_allowed_image_url(symbol):
+                row.symbol_url = f"{symbol.rstrip('/')}.png"
+
+            # Deutscher Name aus /de/sets (Fallback bleibt bestehender Name)
             de_src = de_by_id.get(row.set_id)
             if de_src and de_src.name:
                 row.name = de_src.name
@@ -164,11 +203,10 @@ async def sync_sets() -> dict:
     finally:
         db.close()
 
-    log.info("Set-Sync fertig: %d Sets aktualisiert.", updated)
+    log.info("Set-Sync fertig: %d Sets aktualisiert, %d ohne set_id.", updated, len(missing))
     if resolved:
         log.info("Aufgelöste set_id-Werte: %s",
                  ", ".join(f"{c}->{sid}" for c, sid in sorted(resolved.items())))
     if missing:
-        log.info("Ohne set_id (Brücke ergänzen falls nötig): %s",
-                 ", ".join(sorted(missing)))
+        log.info("Ohne set_id (vermutlich unveröffentlicht): %s", ", ".join(sorted(missing)))
     return {"updated": updated, "resolved": resolved, "missing": sorted(missing)}
