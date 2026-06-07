@@ -133,6 +133,15 @@ export default function CatalogPage() {
         </select>
       </div>
 
+      {(q || setCode || illustrator || generation || sort !== "set") && (
+        <button
+          onClick={() => { setQ(""); setSetCode(""); setIllustrator(""); setGeneration(""); setSort("set"); }}
+          className="text-gray-400 hover:text-white text-xs underline mb-3"
+        >
+          {t.filter_reset}
+        </button>
+      )}
+
       {data && data.pages > 1 && (
         <div className="flex justify-end items-center gap-2 text-sm mb-2">
           <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}

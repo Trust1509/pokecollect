@@ -82,7 +82,7 @@ export default function AllOwnedPage() {
         <p className="text-gray-400 text-sm">{t.collections_all_owned_desc}</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+      <div className="flex flex-col gap-4">
         <FilterSidebar
           filters={filters}
           onChange={handleFilters}

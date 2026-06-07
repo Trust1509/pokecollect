@@ -39,7 +39,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
     .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
 
   return (
-    <aside className="w-full md:w-56 shrink-0 text-sm">
+    <aside className="w-full text-sm">
       {/* Filter ein-/ausklappen (Mobile + Desktop) */}
       <button
         onClick={() => setOpen((o) => !o)}
@@ -49,7 +49,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
         <span className="text-gray-500">{open ? "▲" : "▼"}</span>
       </button>
 
-      <div className={`${open ? "block" : "hidden"} space-y-5 mt-3`}>
+      <div className={`${open ? "grid" : "hidden"} grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-3 items-end`}>
       <div>
         <label className="block text-gray-400 mb-1">{t.filter_search}</label>
         <input

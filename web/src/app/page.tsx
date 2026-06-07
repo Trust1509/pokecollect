@@ -100,56 +100,51 @@ export default function HomePage() {
   return (
     <div>
       {(statsTotal || pokedexCollected !== null) && (
-        <div className="flex gap-4 mb-6 text-sm flex-wrap">
-          {/* Pokédex-Fortschritt */}
-          {pokedexCollected !== null && (
-            <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />
-                Pokédex
+        <>
+          {/* Mobile: kompakt in einer Zeile (Pokédex-Fortschritt + Gesamtwert) */}
+          <div className="sm:hidden flex items-center justify-between bg-pokemon-card rounded-lg px-3 py-2 mb-4 text-sm">
+            <span className="flex items-center gap-1.5 font-semibold text-pokemon-pokedex">
+              <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />
+              {pokedexCollected ?? 0} <span className="text-gray-500 font-normal">/ 1025</span>
+            </span>
+            {statsTotal?.wert && (
+              <span className="font-semibold text-yellow-400">{formatEur(statsTotal.wert)}</span>
+            )}
+          </div>
+
+          {/* Desktop: Karten (Gesammelt-Karte entfernt – steht in den Statistiken) */}
+          <div className="hidden sm:flex gap-4 mb-6 text-sm flex-wrap">
+            {pokedexCollected !== null && (
+              <div className="bg-pokemon-card rounded-lg px-4 py-3">
+                <div className="text-gray-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />
+                  Pokédex
+                </div>
+                <div className="text-2xl font-bold text-pokemon-pokedex">
+                  {pokedexCollected}{" "}
+                  <span className="text-gray-500 text-base">/ 1025</span>
+                </div>
+                <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
+                  <div
+                    className="h-full bg-pokemon-pokedex rounded-full"
+                    style={{ width: `${(pokedexCollected / 1025) * 100}%` }}
+                  />
+                </div>
               </div>
-              <div className="text-2xl font-bold text-pokemon-pokedex">
-                {pokedexCollected}{" "}
-                <span className="text-gray-500 text-base">/ 1025</span>
+            )}
+            {statsTotal?.wert && (
+              <div className="bg-pokemon-card rounded-lg px-4 py-3">
+                <div className="text-gray-400">{t.home_total_value}</div>
+                <div className="text-2xl font-bold text-yellow-400">
+                  {formatEur(statsTotal.wert)}
+                </div>
               </div>
-              <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
-                <div
-                  className="h-full bg-pokemon-pokedex rounded-full"
-                  style={{ width: `${(pokedexCollected / 1025) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-          {/* Gesamtzahl besessener Karten (inkl. Duplikate) */}
-          {statsTotal && (
-            <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400">{t.home_collected}</div>
-              <div className="text-2xl font-bold text-white">
-                {statsTotal.besessen}{" "}
-                <span className="text-gray-500 text-base">/ {statsTotal.gesamt}</span>
-              </div>
-              <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
-                <div
-                  className="h-full bg-green-500 rounded-full"
-                  style={{
-                    width: `${statsTotal.gesamt ? (statsTotal.besessen / statsTotal.gesamt) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-          {statsTotal?.wert && (
-            <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400">{t.home_total_value}</div>
-              <div className="text-2xl font-bold text-yellow-400">
-                {formatEur(statsTotal.wert)}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </>
       )}
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+      <div className="flex flex-col gap-4">
         <FilterSidebar
           filters={filters}
           onChange={handleFilters}

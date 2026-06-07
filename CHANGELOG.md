@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.9.2] – 2026-06-07 (Filter horizontal, Pokédex-Header schlanker)
+
+- **Filter horizontal über den Karten** (Pokédex + „Alle besessenen") statt
+  linker Sidebar – wie im Katalog. Weiterhin ein-/ausklappbar.
+- **Katalog: „Filter zurücksetzen"** ergänzt.
+- **Pokédex-Header:** „Gesammelt x/y"-Karte entfernt (steht in den Statistiken).
+  Auf Mobile stehen Pokédex-Fortschritt und Gesamtwert in einer Zeile.
+
 ## [v0.9.1] – 2026-06-07 (Katalog: Filter, Detail, Auto-Enrichment)
 
 - **Enrichment automatisiert:** `POST /catalog/enrich-all` läuft selbstständig
