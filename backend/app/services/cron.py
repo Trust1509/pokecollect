@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models.card import PokemonCard
-from app.services.cardmarket import refresh_prices_for_cards
+from app.services.pricing import refresh_prices_for_cards
 
 log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -29,7 +29,7 @@ async def _daily_price_update():
     finally:
         db.close()
     if ids:
-        refresh_prices_for_cards(ids)
+        await refresh_prices_for_cards(ids)
     else:
         log.info("Keine besessenen Karten – nichts zu aktualisieren.")
 

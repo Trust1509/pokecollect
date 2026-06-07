@@ -36,9 +36,17 @@ export type Card = {
   notizen: string | null;
   zustand: string | null;
   bild_pokedex_url: string | null;
-  bild_karte_url: string | null;       // auto: pokemon.com
+  bild_karte_url: string | null;       // auto: TCGdex high.webp
   bild_karte_pfad: string | null;
   bild_thumbnail_pfad: string | null;
+  // TCGdex-Anreicherung (v0.7.0)
+  tcgdex_card_id: string | null;
+  set_id: string | null;
+  dex_id: number | null;
+  variants_normal: boolean | null;
+  variants_reverse: boolean | null;
+  variants_holo: boolean | null;
+  variants_firstedition: boolean | null;
   hinzugefuegt_am: string;
   aktualisiert_am: string;
 };
@@ -134,12 +142,21 @@ export type PokemonSet = {
   code: string;
   name: string;
   max_card_nr: number | null;
+  // TCGdex-Anreicherung (v0.7.0)
+  set_id?: string | null;
+  name_en?: string | null;
+  series_id?: string | null;
+  card_count_official?: number | null;
+  card_count_total?: number | null;
+  logo_url?: string | null;
+  symbol_url?: string | null;
 };
 
 export const setsApi = {
   list: () => api.get<PokemonSet[]>("/sets"),
-  create: (data: PokemonSet) => api.post<PokemonSet>("/sets", data),
+  create: (data: Partial<PokemonSet>) => api.post<PokemonSet>("/sets", data),
   update: (code: string, data: Partial<PokemonSet>) => api.put<PokemonSet>(`/sets/${code}`, data),
+  sync: () => api.post("/sets/sync"),
 };
 
 export type AppSettings = {

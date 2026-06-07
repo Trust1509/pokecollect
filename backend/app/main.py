@@ -127,6 +127,25 @@ def _run_light_migrations():
         "ALTER TABLE collections ADD COLUMN IF NOT EXISTS binder_slots INTEGER",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS im_pokedex BOOLEAN NOT NULL DEFAULT FALSE",
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_im_pokedex ON pokemon_cards (im_pokedex)",
+        # ── TCGdex-Integration (v0.7.0) ──────────────────────────────────────
+        # Set-Anreicherung
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS set_id TEXT",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS name_en TEXT",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS series_id TEXT",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS card_count_official INTEGER",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS card_count_total INTEGER",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS logo_url TEXT",
+        "ALTER TABLE pokemon_sets ADD COLUMN IF NOT EXISTS symbol_url TEXT",
+        "CREATE INDEX IF NOT EXISTS ix_pokemon_sets_set_id ON pokemon_sets (set_id)",
+        # Karten-Anreicherung (stabile TCGdex-Referenz + Varianten)
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS tcgdex_card_id TEXT",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS set_id TEXT",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS dex_id INTEGER",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_normal BOOLEAN",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_reverse BOOLEAN",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_holo BOOLEAN",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_firstedition BOOLEAN",
+        "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id ON pokemon_cards (tcgdex_card_id)",
         # Einmalmigration: erste besessene Karte je Pokédex-Nr. automatisch als Pokédex-Vertreter setzen
         """
         UPDATE pokemon_cards
@@ -150,6 +169,13 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _run_light_migrations()
     _seed_sets()
+    # TCGdex-Brücke offline anwenden (set_id auf bekannten Sets setzen).
+    # Der eigentliche Set-Sync (Netzzugriff) läuft auf Anfrage via POST /sets/sync.
+    try:
+        from app.services.set_sync import apply_bridge_to_seed
+        apply_bridge_to_seed()
+    except Exception as exc:  # niemals den Start blockieren
+        logging.getLogger(__name__).warning("Bridge-Anwendung fehlgeschlagen: %s", exc)
     start_scheduler()
     yield
 

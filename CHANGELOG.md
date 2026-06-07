@@ -1,5 +1,34 @@
 # Changelog
 
+## [v0.7.0] – 2026-06-07 (TCGdex-Integration)
+
+### Features – Backend
+- **TCGdex als zentrale Datenquelle** (`services/tcgdex.py`): kostenlose offene
+  REST-API ohne Key – liefert Kartendaten, Bilder und Preise. Typisierte
+  Pydantic-Modelle, Sprach-Mapping (DE/EN/CN→zh-tw/JP→ja/…), Fallback-Sprachen.
+- **Bild-URLs aus TCGdex** (`high.webp`): ersetzt die komplette pokemon.com-Logik
+  (Set-Code-Mapping, HEAD-Probing, Nummern-Mismatch entfallen). Eigenes Foto /
+  manuelle URL behalten weiterhin Vorrang, Pokédex-Artwork bleibt Platzhalter.
+- **Set-Sync** (`POST /api/v1/sets/sync`): reichert die Set-Tabelle aus
+  `/en/sets` + `/de/sets` an (Name EN/DE, Kartenzahlen, Logo, Symbol, Serie),
+  Merge über die stabile `set_id`. Offline-Brücke `ptcgo_code → set_id`
+  (inkl. aufgelöster Fälle MEG→me01, PFL→me02, ASC→me02.5, WHT→sv10.5w, BLK→sv10.5b).
+- **Preise via TCGdex** (`services/pricing.py`): Cardmarket EUR mit Holo-Logik
+  (avg30 / avg30-holo + Fallbacks), Preisverlauf in `preis_historie`.
+  zh-tw ohne Preis bleibt unverändert (kein 0-Wert). Cardmarket-OAuth nur noch
+  optionaler Fallback.
+- **Bild-Proxy/Cache** (`GET /api/v1/images/proxy`): holt Bilder einmal
+  serverseitig (Offline-Fähigkeit + Datenschutz), Host-Allowlist (assets.tcgdex.net),
+  nur https.
+- Additive DB-Felder: `pokemon_sets` (set_id, name_en, series_id, card_count_*,
+  logo_url, symbol_url) und `pokemon_cards` (tcgdex_card_id, set_id, dex_id,
+  variants_normal/reverse/holo/firstedition). Keine bestehenden Daten verändert.
+
+### Geplant für v0.7.x / 0.8.0
+- Teil 2: Karten-Scan im Web (Webcam) + serverseitige Erkennung (`POST /api/v1/scan`)
+- Teil 3: Mobile-First-Refactor + PWA (manifest, service worker)
+- Optional: Gemini-Scan (Variante B) hinter `GEMINI_API_KEY`
+
 ## [v0.1.0-pre] – 2026-06-04 (Pre-Release)
 
 ### Features

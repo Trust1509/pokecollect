@@ -15,7 +15,11 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db, SessionLocal
-from app.services.card_image_service import fetch_card_image_url
+from app.services.card_image_service import (
+    apply_card_to_model,
+    fetch_tcgdex_card,
+    resolve_set_id,
+)
 from app.models.card import PokemonCard, PreisHistorie
 from app.models.collection import Collection, collection_cards
 from app.schemas.card import (
@@ -188,16 +192,25 @@ def get_card_collections(card_id: int, db: Session = Depends(get_db)):
 
 
 async def _trigger_image_fetch(card_id: int):
-    """Holt die pokemon.com URL im Hintergrund und speichert sie."""
+    """
+    Holt TCGdex-Daten (Bild high.webp, dexId, Varianten, tcgdex_card_id) im
+    Hintergrund und speichert sie. Eigenes Foto / manuelle URL behalten Vorrang
+    fürs Anzeigen – die Metadaten (Varianten/dexId) werden trotzdem gesetzt.
+    """
     db = SessionLocal()
     try:
         card = db.get(PokemonCard, card_id)
-        if not card or not card.besessen or card.bild_karte_pfad or card.bild_pokedex_url:
-            return  # nur besessene Karten, eigenes Foto / manuelle URL hat Vorrang
-        url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
-        if url:
-            card.bild_karte_url = url
-            db.commit()
+        if not card or not card.besessen:
+            return
+        set_id = card.set_id or resolve_set_id(db, card.set_edition)
+        if not set_id:
+            return
+        tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache)
+        if not tc:
+            return
+        overwrite = not (card.bild_karte_pfad or card.bild_pokedex_url)
+        apply_card_to_model(card, tc, overwrite_image=overwrite)
+        db.commit()
     finally:
         db.close()
 
@@ -264,9 +277,10 @@ def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTask
         )
     for field, value in updated.items():
         setattr(card, field, value)
-    # Bild neu abrufen wenn relevante Felder geändert wurden
+    # Bild + TCGdex-Referenz neu abrufen wenn relevante Felder geändert wurden
     if any(k in updated for k in ("set_edition", "karten_nr", "sprache")):
         card.bild_karte_url = None  # wird neu gesetzt
+        card.set_id = None          # erzwingt Neuauflösung aus set_edition
         background_tasks.add_task(_trigger_image_fetch, card.id)
     db.commit()
     db.refresh(card)
@@ -428,7 +442,7 @@ def get_enums():
 
 async def _backfill_images_task(force: bool = False):
     """
-    Holt pokemon.com URLs für alle Karten die noch kein Bild haben.
+    Holt TCGdex-Daten (Bild high.webp + Metadaten) für alle besessenen Karten.
     force=True überschreibt auch bereits vorhandene bild_karte_url.
     """
     db = SessionLocal()
@@ -442,12 +456,17 @@ async def _backfill_images_task(force: bool = False):
         log.info(f"Backfill gestartet: {len(cards)} Karten")
         ok = 0
         for card in cards:
-            url = await fetch_card_image_url(card.set_edition, card.karten_nr, card.sprache)
-            if url:
-                card.bild_karte_url = url
-                ok += 1
+            set_id = card.set_id or resolve_set_id(db, card.set_edition)
+            if not set_id:
+                continue
+            tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache)
+            if not tc:
+                continue
+            overwrite = force or not (card.bild_karte_pfad or card.bild_pokedex_url)
+            apply_card_to_model(card, tc, overwrite_image=overwrite)
+            ok += 1
         db.commit()
-        log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Bilder gefunden")
+        log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Karten angereichert")
     finally:
         db.close()
 

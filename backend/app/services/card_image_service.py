@@ -1,145 +1,103 @@
 """
-Automatische Kartenbilder von pokemon.com.
+Kartendaten-Auflösung über TCGdex (ersetzt die alte pokemon.com-URL-Logik).
 
-URL-Muster:
-  https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web/{CODE}/{CODE}_{LANG}_{NR}.png
+Ablauf:
+  set_edition ("Paldeas Schicksale (PAF)") → Kürzel "PAF"
+  → pokemon_sets.set_id ("sv04.5")   (aus Brücke/Sync, offline)
+  → karten_nr "007/091" → localId "7"
+  → GET /v2/{lang}/sets/{set_id}/{localId}
+  → Bild (high.webp), tcgdex_card_id, dexId, variants, Preise.
 
-WICHTIG: Die URL-Nummer entspricht NICHT der aufgedruckten Kartennummer.
-Pokemon.com verwendet eine eigene interne Sortierung pro Set.
-→ URL nie direkt aus der Kartennummer konstruieren.
-→ Für SV-Era Sets stimmt die Nummerierung zufällig überein (internationale
-   Simultanveröffentlichung). Für SWSH/XY-era deutsche Subsets weicht sie ab.
+Damit entfällt das Set-Code-Mapping, das HEAD-Probing und das
+Nummern-Mismatch-Problem der alten pokemon.com-Logik vollständig.
 
-Aktueller Stand:
-  - SV-Era: direkte Nummerierung funktioniert, gecacht in bild_karte_url
-  - SWSH/XY DE-Subsets: nicht automatisch möglich → manuelle URL oder Pokédex-Artwork
-  - Zukünftig (v0.7.0): PokémonTCG.io API für korrekte sprachspezifische Kartendaten
-
-Bild-Priorität in der App:
+Bild-Priorität in der App (unverändert):
   1. bild_karte_pfad  – eigenes Foto (Upload), immer bevorzugt
   2. bild_pokedex_url – manuell gesetzte URL
-  3. bild_karte_url   – auto von pokemon.com (dieses Modul, nur SV-Era zuverlässig)
-  4. Pokédex-Artwork  – immer verfügbar als letzter Fallback
+  3. bild_karte_url   – auto von TCGdex (dieses Modul)
+  4. Pokédex-Artwork  – Platzhalter als letzter Fallback
 """
+
+from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
 from typing import Optional
 
-import httpx
+from sqlalchemy.orm import Session
+
+from app.models.card import PokemonCard
+from app.models.pokemon_set import PokemonSet
+from app.services import tcgdex
+from app.services.tcgdex import TcgdexCard
 
 log = logging.getLogger(__name__)
 
-# ── Set-Code Mapping ──────────────────────────────────────────────────────────
-# Nur Sets wo aufgedruckte Kartennummer = pokemon.com URL-Nummer (SV-Era ✓)
-# SWSH/XY-era deutsche Sets absichtlich ausgelassen: Nummerierung weicht ab
-# → würden falsche Kartenbilder zeigen
-POKEMON_COM_SET_CODES: dict[str, Optional[str]] = {
-    # SV-Ära — internationale Simultanveröffentlichung, Nummerierung identisch ✓
-    "SVI":   "SV01",     # Scharlachrot & Violett Basis ✓
-    "PAL":   None,       # Entwicklungen in Paldea — DE-Nummerierung weicht ab
-    "OBF":   "SV03",     # Obsidian Flammen ✓
-    "MEW":   "SV3PT5",   # Pokémon 151 ✓
-    "151":   "SV3PT5",   # Pokémon 151 (alternatives Kürzel) ✓
-    "PAR":   None,       # Paradox Rift — DE-Nummerierung weicht ab
-    "PAF":   "SV4PT5",   # Paldeas Schicksale ✓ verifiziert
-    "TEF":   "SV05",     # Temporale Kräfte ✓
-    "TWM":   "SV06",     # Masken der Wandlung ✓
-    "SFA":   "SV6PT5",   # Schicksalsfunken ✓
-    "SCR":   "SV07",     # Sternenglanz ✓
-    "SSP":   "SV08",     # Surging Sparks ✓ verifiziert
-    "PRE":   "SV8PT5",   # Prismatische Entwicklungen ✓ verifiziert
-    "JTG":   "SV09",     # Reisegefährten / Journey Together ✓ verifiziert
-    "DRI":   "SV10",     # Ewige Rivalen / Destined Rivals ✓ verifiziert
-    "SVE":   "SVE",      # SV Energie-Karten ✓
-    # SWSH/XY-Ära: deutsche Subsets haben andere Nummerierung → nicht gelistet
-    # ASC, PFL, BLK, BRS, WHT, MEG etc. → manuelle URL über "Bild-URL hinterlegen"
-    # oder zukünftig via PokémonTCG.io API (v0.7.0)
-}
 
-LOCALE_MAP: dict[str, str] = {
-    "DE": "de-de",
-    "EN": "en-us",
-    "FR": "fr-fr",
-    "ES": "es-es",
-    "IT": "it-it",
-    "PT": "pt-br",
-}
-
-BASE_URL = "https://www.pokemon.com/static-assets/content-assets/cms2-{locale}/img/cards/web/{code}/{code}_{lang}_{nr}.png"
-
-
-def _extract_set_code(set_edition: Optional[str]) -> Optional[str]:
-    """
-    Extrahiert das Kürzel aus dem set_edition-Feld.
-    'Paldeas Schicksale (PAF)' → 'PAF'
-    '151 (151C) - Chinesisch'  → '151C'
-    'Erhabene Helden (Ascended Heroes)' → None (zu lang, kein gültiges Kürzel)
-    """
+def extract_set_code(set_edition: Optional[str]) -> Optional[str]:
+    """'Paldeas Schicksale (PAF)' → 'PAF'. None wenn kein Kürzel erkennbar."""
     if not set_edition:
         return None
-    for m in re.finditer(r"\(([A-Z0-9]{1,6})\)", set_edition):
-        return m.group(1)
-    return None
+    m = re.search(r"\(([A-Z0-9.]{1,8})\)\s*$", set_edition)
+    return m.group(1) if m else None
 
 
-def _extract_card_nr(karten_nr: Optional[str]) -> Optional[str]:
-    """
-    Extrahiert die Nummer ohne führende Nullen.
-    '007/091' → '7', '195/091' → '195'
-    'TG01/TG30' → None (Buchstaben-Präfix nicht unterstützt)
-
-    HINWEIS: Diese Nummer entspricht nur bei SV-Era Sets der URL-Nummer.
-    Für ältere Sets weicht die interne pokemon.com Nummerierung ab.
-    """
-    if not karten_nr:
+def resolve_set_id(db: Session, set_edition: Optional[str]) -> Optional[str]:
+    """Kürzel aus set_edition → pokemon_sets.set_id (offline, aus DB)."""
+    code = extract_set_code(set_edition)
+    if not code:
         return None
-    nr_part = karten_nr.split("/")[0].lstrip("0")
-    if not nr_part.isdigit():
-        return None
-    return nr_part or "1"
+    row = db.get(PokemonSet, code)
+    return row.set_id if row else None
 
 
-def build_url(set_edition: Optional[str], karten_nr: Optional[str], sprache: Optional[str]) -> Optional[str]:
-    """Konstruiert die pokemon.com URL ohne HEAD-Check. None wenn Set nicht unterstützt."""
-    code_key = _extract_set_code(set_edition)
-    if not code_key:
-        return None
-    pokemon_code = POKEMON_COM_SET_CODES.get(code_key)
-    if not pokemon_code:
-        return None  # Set explizit als None markiert oder nicht im Mapping
-
-    lang = sprache or "DE"
-    locale = LOCALE_MAP.get(lang, "en-us")
-    nr = _extract_card_nr(karten_nr)
-    if not nr:
-        return None
-
-    return BASE_URL.format(locale=locale, code=pokemon_code, lang=lang, nr=nr)
+@dataclass
+class ResolvedCard:
+    card: TcgdexCard
+    image_url: Optional[str]
 
 
-async def fetch_card_image_url(
-    set_edition: Optional[str],
+async def fetch_tcgdex_card(
+    set_id: str,
     karten_nr: Optional[str],
     sprache: Optional[str],
-) -> Optional[str]:
+) -> Optional[TcgdexCard]:
     """
-    Konstruiert die URL und prüft via HEAD ob das Bild existiert.
-    Gibt None zurück wenn Set nicht im Mapping, Set explizit None ist,
-    oder Bild nicht vorhanden (HTTP ≠ 200).
+    Holt die TCGdex-Karte über Set-ID + aufgedruckte Nummer.
+    Versucht zuerst die Kartensprache, dann EN/DE als Fallback
+    (Bild/Preise sind dort i.d.R. vollständiger).
     """
-    url = build_url(set_edition, karten_nr, sprache)
-    if not url:
+    local_id = tcgdex.local_id_from_card_nr(karten_nr)
+    if not set_id or not local_id:
         return None
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.head(url)
-            if resp.status_code == 200:
-                log.debug(f"Kartenbild gefunden: {url}")
-                return url
-            log.debug(f"Kartenbild nicht gefunden (HTTP {resp.status_code}): {url}")
-    except Exception as e:
-        log.warning(f"HEAD-Check fehlgeschlagen für {url}: {e}")
-
+    primary = tcgdex.normalize_lang(sprache)
+    langs: list[str] = [primary] + [l for l in tcgdex.FALLBACK_LANGS if l != primary]
+    for lang in langs:
+        card = await tcgdex.get_card_by_set(set_id, local_id, lang)
+        if card:
+            return card
     return None
+
+
+def apply_card_to_model(card: PokemonCard, tc: TcgdexCard, *, overwrite_image: bool = True) -> None:
+    """
+    Überträgt TCGdex-Felder additiv auf die DB-Karte.
+    Überschreibt NUR die automatischen Felder; eigenes Foto / manuelle URL
+    bleiben unangetastet (Bild-Priorität wird im Frontend entschieden).
+    """
+    card.tcgdex_card_id = tc.id
+    if tc.set and tc.set.id:
+        card.set_id = tc.set.id
+    if tc.dex_id is not None:
+        card.dex_id = tc.dex_id
+    if tc.variants:
+        card.variants_normal = tc.variants.normal
+        card.variants_reverse = tc.variants.reverse
+        card.variants_holo = tc.variants.holo
+        card.variants_firstedition = tc.variants.firstEdition
+    if overwrite_image:
+        url = tcgdex.image_url(tc.image)
+        if url:
+            card.bild_karte_url = url

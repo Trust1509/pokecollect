@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.card import PokemonCard, PreisHistorie
 from app.schemas.card import PreisHistorieResponse
-from app.services.cardmarket import refresh_prices_for_cards
+from app.services.pricing import refresh_prices_for_cards
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 

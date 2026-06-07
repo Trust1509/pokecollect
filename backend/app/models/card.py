@@ -28,9 +28,17 @@ class PokemonCard(Base):
     notizen = Column(Text, nullable=True)
     zustand = Column(Text, nullable=True)
     bild_pokedex_url = Column(Text, nullable=True)
-    bild_karte_url = Column(Text, nullable=True)   # auto: pokemon.com
+    bild_karte_url = Column(Text, nullable=True)   # auto: TCGdex high.webp (vorher pokemon.com)
     bild_karte_pfad = Column(Text, nullable=True)
     bild_thumbnail_pfad = Column(Text, nullable=True)
+    # ── TCGdex-Referenz + Varianten (v0.7.0, additiv) ────────────────────────
+    tcgdex_card_id = Column(Text, nullable=True, index=True)   # "swsh3-136"
+    set_id = Column(Text, nullable=True)                       # "swsh3"
+    dex_id = Column(Integer, nullable=True)                    # aus dexId[0]
+    variants_normal = Column(Boolean, nullable=True)
+    variants_reverse = Column(Boolean, nullable=True)
+    variants_holo = Column(Boolean, nullable=True)
+    variants_firstedition = Column(Boolean, nullable=True)
     hinzugefuegt_am = Column(DateTime, default=datetime.utcnow)
     aktualisiert_am = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
