@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.9.1] – 2026-06-07 (Katalog: Filter, Detail, Auto-Enrichment)
+
+- **Enrichment automatisiert:** `POST /catalog/enrich-all` läuft selbstständig
+  durch, bis alle Karten angereichert sind (einmal aufrufen). Täglicher Cron
+  ergänzt Neues. Kein wiederholtes curl mehr nötig.
+- **Set-Filter** als durchsuchbares Dropdown, **nach Serie geclustert**
+  (Schwert & Schild, Karmesin & Purpur …) mit **Set-Logo** je Eintrag.
+- **Illustrator-Filter** als eigenes durchsuchbares Dropdown (`GET /catalog/illustrators`).
+- **Katalog-Karten anklickbar** → Detail-Dialog mit Großbild + Infos und Aktionen
+  „Zur Wunschliste" sowie „Zu Sammlung hinzufügen".
+
 ## [v0.9.0] – 2026-06-07 (Lokaler TCGdex-Katalog + Voll-Set-Sync)
 
 ### Sets vollständig

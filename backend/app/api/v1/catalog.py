@@ -99,6 +99,25 @@ async def trigger_catalog_enrich(background_tasks: BackgroundTasks, limit: int =
     return {"detail": f"Enrichment für bis zu {limit} Karten gestartet."}
 
 
+@router.post("/enrich-all")
+async def trigger_catalog_enrich_all(background_tasks: BackgroundTasks):
+    """Reichert ALLE noch offenen Karten an (läuft selbstständig durch). Einmal aufrufen."""
+    background_tasks.add_task(catalog_svc.enrich_all)
+    return {"detail": "Enrichment aller Karten gestartet – läuft im Hintergrund bis fertig."}
+
+
+@router.get("/illustrators")
+def list_illustrators(db: Session = Depends(get_db)):
+    """Alle bekannten Illustratoren (für das Filter-Dropdown)."""
+    rows = db.scalars(
+        select(TcgdexCatalog.illustrator)
+        .where(TcgdexCatalog.illustrator.isnot(None))
+        .distinct()
+        .order_by(TcgdexCatalog.illustrator)
+    ).all()
+    return [r for r in rows if r]
+
+
 @router.post("/{card_id}/wishlist")
 async def catalog_to_wishlist(card_id: str, prioritaet: str | None = Body(None, embed=True), db: Session = Depends(get_db)):
     new_id = await catalog_svc.add_to_wishlist(db, card_id, prioritaet)

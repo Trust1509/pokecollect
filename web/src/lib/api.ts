@@ -331,8 +331,10 @@ export type CatalogListResponse = {
 export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
   meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
+  illustrators: () => api.get<string[]>("/catalog/illustrators"),
   sync: () => api.post("/catalog/sync"),
   enrich: (limit = 500) => api.post(`/catalog/enrich?limit=${limit}`),
+  enrichAll: () => api.post("/catalog/enrich-all"),
   addWishlist: (cardId: string, prioritaet?: string | null) =>
     api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, { prioritaet: prioritaet ?? null }),
   addCollection: (cardId: string, collectionId: number) =>

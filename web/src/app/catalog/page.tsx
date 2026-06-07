@@ -1,23 +1,41 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Star } from "lucide-react";
-import { CatalogItem, CatalogListResponse, PokemonSet, catalogApi, setsApi } from "@/lib/api";
+import {
+  CatalogItem, CatalogListResponse, Collection, PokemonSet,
+  catalogApi, collectionApi, setsApi,
+} from "@/lib/api";
+import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
+import CatalogCardModal from "@/components/CatalogCardModal";
 import { useI18n } from "@/lib/i18n";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+// Serie-ID → Anzeigename (für die Cluster-Überschriften im Set-Dropdown)
+const SERIES_LABEL: Record<string, string> = {
+  sv: "Karmesin & Purpur", me: "Mega-Entwicklung", swsh: "Schwert & Schild",
+  sm: "Sonne & Mond", xy: "XY", bw: "Schwarz & Weiß", hgss: "HeartGold & SoulSilver",
+  dp: "Diamant & Perl", pl: "Platin", ex: "EX", base: "Base", neo: "Neo",
+  gym: "Gym", ecard: "e-Card", col: "Call of Legends", pop: "POP", tk: "Trainer Kits",
+};
+const seriesLabel = (id?: string | null) => (id ? (SERIES_LABEL[id] ?? id.toUpperCase()) : "—");
 
 export default function CatalogPage() {
   const { t, lang } = useI18n();
   const [data, setData] = useState<CatalogListResponse | null>(null);
   const [sets, setSets] = useState<PokemonSet[]>([]);
+  const [illustrators, setIllustrators] = useState<string[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [meta, setMeta] = useState<{ total: number; enriched: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<CatalogItem | null>(null);
 
   const [q, setQ] = useState("");
   const [setCode, setSetCode] = useState("");
+  const [illustrator, setIllustrator] = useState("");
   const [generation, setGeneration] = useState("");
   const [sort, setSort] = useState<"set" | "name" | "dex">("set");
   const [page, setPage] = useState(1);
@@ -25,7 +43,28 @@ export default function CatalogPage() {
   useEffect(() => {
     setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
+    catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
+    collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
   }, []);
+
+  const setOptions: SelectOption[] = useMemo(() => {
+    const order = Object.keys(SERIES_LABEL);
+    const sorted = [...sets].sort((a, b) => {
+      const ai = order.indexOf(a.series_id ?? ""); const bi = order.indexOf(b.series_id ?? "");
+      const ag = ai === -1 ? 999 : ai; const bg = bi === -1 ? 999 : bi;
+      if (ag !== bg) return ag - bg;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+    return sorted.map((s) => ({
+      value: s.code,
+      label: `${s.name}${s.code ? ` (${s.code})` : ""}`,
+      group: seriesLabel(s.series_id),
+      image: s.logo_url ?? null,
+    }));
+  }, [sets]);
+
+  const illuOptions: SelectOption[] = useMemo(
+    () => illustrators.map((i) => ({ value: i, label: i })), [illustrators]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,30 +72,24 @@ export default function CatalogPage() {
       const params: Record<string, unknown> = { sort, page, limit: 60 };
       if (q.trim()) params.q = q.trim();
       if (setCode) params.set_code = setCode;
+      if (illustrator) params.illustrator = illustrator;
       if (generation) params.generation = Number(generation);
       const r = await catalogApi.list(params);
       setData(r.data);
     } finally {
       setLoading(false);
     }
-  }, [q, setCode, generation, sort, page]);
+  }, [q, setCode, illustrator, generation, sort, page]);
 
-  // Debounce Suche/Filter
-  useEffect(() => {
-    const h = setTimeout(load, 300);
-    return () => clearTimeout(h);
-  }, [load]);
-
-  useEffect(() => { setPage(1); }, [q, setCode, generation, sort]);
+  useEffect(() => { const h = setTimeout(load, 300); return () => clearTimeout(h); }, [load]);
+  useEffect(() => { setPage(1); }, [q, setCode, illustrator, generation, sort]);
 
   const addWishlist = async (c: CatalogItem) => {
     try {
       await catalogApi.addWishlist(c.card_id);
       setAdded((a) => ({ ...a, [c.card_id]: true }));
       toast.success(t.catalog_added_wishlist);
-    } catch {
-      toast.error(t.collections_error);
-    }
+    } catch { toast.error(t.collections_error); }
   };
 
   return (
@@ -72,18 +105,21 @@ export default function CatalogPage() {
       </div>
 
       {/* Filterleiste */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t.catalog_search_placeholder}
           className="col-span-2 md:col-span-1 bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
         />
-        <select value={setCode} onChange={(e) => setSetCode(e.target.value)}
-          className="bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm">
-          <option value="">{t.filter_all_sets}</option>
-          {sets.map((s) => <option key={s.code} value={s.code}>{s.code} · {s.name}</option>)}
-        </select>
+        <SearchableSelect
+          value={setCode} onChange={setSetCode} options={setOptions}
+          allLabel={t.filter_all_sets} placeholder={t.filter_set}
+        />
+        <SearchableSelect
+          value={illustrator} onChange={setIllustrator} options={illuOptions}
+          allLabel={t.catalog_all_illustrators} placeholder={t.catalog_illustrator}
+        />
         <select value={generation} onChange={(e) => setGeneration(e.target.value)}
           className="bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm">
           <option value="">{t.filter_generation}: {t.filter_all}</option>
@@ -97,7 +133,6 @@ export default function CatalogPage() {
         </select>
       </div>
 
-      {/* Paginierung oben */}
       {data && data.pages > 1 && (
         <div className="flex justify-end items-center gap-2 text-sm mb-2">
           <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
@@ -119,36 +154,36 @@ export default function CatalogPage() {
             const isAdded = added[c.card_id];
             return (
               <div key={c.card_id} className="relative rounded-lg border border-gray-700 overflow-hidden bg-pokemon-card">
-                <div className="aspect-[63/88] relative bg-gray-800">
-                  {c.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.image_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-600 text-[11px] text-center p-2">{name}</div>
-                  )}
-                  {/* Stern → Wunschliste */}
-                  <button
-                    onClick={() => addWishlist(c)}
-                    title={t.catalog_add_wishlist}
-                    className={`absolute top-1 right-1 rounded-full p-1.5 ${isAdded ? "bg-pokemon-yellow text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
-                  >
-                    <Star size={16} fill={isAdded ? "currentColor" : "none"} />
-                  </button>
-                </div>
-                <div className="px-1.5 py-1">
-                  <div className="text-xs text-white truncate">{name}</div>
-                  <div className="flex items-center justify-between text-[10px] text-gray-400">
-                    <span className="font-mono">{c.set_code ?? c.set_id}</span>
-                    <span>{c.local_id ?? ""}</span>
+                <button onClick={() => setSelected(c)} className="block w-full text-left" title={name}>
+                  <div className="aspect-[63/88] relative bg-gray-800">
+                    {c.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.image_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-600 text-[11px] text-center p-2">{name}</div>
+                    )}
                   </div>
-                </div>
+                  <div className="px-1.5 py-1">
+                    <div className="text-xs text-white truncate">{name}</div>
+                    <div className="flex items-center justify-between text-[10px] text-gray-400">
+                      <span className="font-mono">{c.set_code ?? c.set_id}</span>
+                      <span>{c.local_id ?? ""}</span>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => addWishlist(c)}
+                  title={t.catalog_add_wishlist}
+                  className={`absolute top-1 right-1 rounded-full p-1.5 ${isAdded ? "bg-pokemon-yellow text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
+                >
+                  <Star size={16} fill={isAdded ? "currentColor" : "none"} />
+                </button>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Paginierung unten */}
       {data && data.pages > 1 && (
         <div className="flex justify-center items-center gap-2 text-sm mt-4 pb-2">
           <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
@@ -157,6 +192,10 @@ export default function CatalogPage() {
           <button disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
             className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40">›</button>
         </div>
+      )}
+
+      {selected && (
+        <CatalogCardModal card={selected} collections={collections} onClose={() => setSelected(null)} />
       )}
     </div>
   );

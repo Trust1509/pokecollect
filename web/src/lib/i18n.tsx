@@ -116,6 +116,10 @@ const DE = {
   catalog_empty: "Keine Karten gefunden. Katalog evtl. noch nicht synchronisiert.",
   catalog_tile: "Alle Karten (Katalog)",
   catalog_tile_desc: "Gesamter TCGdex-Bestand zum Durchsuchen – zählt nicht zur Sammlung",
+  catalog_illustrator: "Illustrator",
+  catalog_all_illustrators: "Alle Illustratoren",
+  catalog_add_collection: "Zu Sammlung hinzufügen",
+  catalog_added_collection: "Zur Sammlung hinzugefügt",
   detail_back_generic: "← Zurück",
 
   // Card form – wishlist
@@ -398,6 +402,10 @@ const EN: typeof DE = {
   catalog_empty: "No cards found. Catalog may not be synced yet.",
   catalog_tile: "All cards (catalog)",
   catalog_tile_desc: "Full TCGdex catalog to browse – not part of your collection",
+  catalog_illustrator: "Illustrator",
+  catalog_all_illustrators: "All illustrators",
+  catalog_add_collection: "Add to collection",
+  catalog_added_collection: "Added to collection",
   detail_back_generic: "← Back",
 
   form_wishlist: "Add to wishlist",
