@@ -318,6 +318,8 @@ export type CatalogItem = {
   variants_holo: boolean | null;
   variants_firstedition: boolean | null;
   enriched: boolean | null;
+  owned: boolean;
+  in_pokedex: boolean;
 };
 
 export type CatalogListResponse = {

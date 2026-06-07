@@ -1,3 +1,15 @@
+// Serie-ID → Anzeigename (für geclusterte Set-Dropdowns)
+export const SERIES_LABEL: Record<string, string> = {
+  sv: "Karmesin & Purpur", me: "Mega-Entwicklung", swsh: "Schwert & Schild",
+  sm: "Sonne & Mond", xy: "XY", bw: "Schwarz & Weiß", hgss: "HeartGold & SoulSilver",
+  dp: "Diamant & Perl", pl: "Platin", ex: "EX", base: "Base", neo: "Neo",
+  gym: "Gym", ecard: "e-Card", col: "Call of Legends", pop: "POP", tk: "Trainer Kits",
+};
+
+export function seriesLabel(id?: string | null): string {
+  return id ? (SERIES_LABEL[id] ?? id.toUpperCase()) : "—";
+}
+
 export function generation(pokedexNr: number | null): number | null {
   if (!pokedexNr) return null;
   const ranges: [number, number][] = [

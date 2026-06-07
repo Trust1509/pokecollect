@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Enums } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { Enums, PokemonSet } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { rarityOptionLabel } from "@/components/RarityBadge";
+import { seriesLabel, SERIES_LABEL } from "@/lib/utils";
+import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
 
 export type Filters = {
   besessen?: boolean;
@@ -19,7 +21,7 @@ type Props = {
   filters: Filters;
   onChange: (f: Filters) => void;
   enums: Enums | null;
-  sets: string[];
+  sets: PokemonSet[];
 };
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -37,6 +39,22 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
 
   const activeCount = (["besessen", "generation", "set", "seltenheit", "sprache", "search", "bild_status"] as const)
     .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
+
+  const setOptions: SelectOption[] = useMemo(() => {
+    const order = Object.keys(SERIES_LABEL);
+    const sorted = [...sets].sort((a, b) => {
+      const ag = order.indexOf(a.series_id ?? ""); const bg = order.indexOf(b.series_id ?? "");
+      const av = ag === -1 ? 999 : ag; const bv = bg === -1 ? 999 : bg;
+      if (av !== bv) return av - bv;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+    return sorted.map((s) => ({
+      value: s.code,
+      label: `${s.name}${s.code ? ` (${s.code})` : ""}`,
+      group: seriesLabel(s.series_id),
+      image: s.logo_url ?? null,
+    }));
+  }, [sets]);
 
   return (
     <aside className="w-full text-sm">
@@ -90,16 +108,13 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
 
       <div>
         <label className="block text-gray-400 mb-1">{t.filter_set}</label>
-        <select
+        <SearchableSelect
           value={filters.set ?? ""}
-          onChange={(e) => update("set", e.target.value)}
-          className="w-full bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white"
-        >
-          <option value="">{t.filter_all_sets}</option>
-          {sets.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+          onChange={(v) => update("set", v)}
+          options={setOptions}
+          allLabel={t.filter_all_sets}
+          placeholder={t.filter_set}
+        />
       </div>
 
       <div>

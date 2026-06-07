@@ -20,6 +20,8 @@ class CatalogItem(BaseModel):
     variants_holo: Optional[bool] = None
     variants_firstedition: Optional[bool] = None
     enriched: Optional[bool] = None
+    owned: bool = False
+    in_pokedex: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { cardApi, CardListResponse, Enums, settingsApi, AppSettings } from "@/lib/api";
+import { cardApi, setsApi, CardListResponse, Enums, PokemonSet, settingsApi, AppSettings } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
@@ -14,7 +14,7 @@ export default function HomePage() {
   const { t } = useI18n();
   const [data, setData] = useState<CardListResponse | null>(null);
   const [enums, setEnums] = useState<Enums | null>(null);
-  const [sets, setSets] = useState<string[]>([]);
+  const [sets, setSets] = useState<PokemonSet[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState<number>(1);
@@ -76,7 +76,7 @@ export default function HomePage() {
 
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
-    cardApi.sets().then((r) => setSets(r.data));
+    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     settingsApi.get().then((r) => {
       setAppSettings(r.data);
       setFilters((f) => ({ ...f, sort: f.sort ?? r.data.default_sort }));

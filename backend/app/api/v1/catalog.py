@@ -10,8 +10,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
-from app.schemas.catalog import CatalogListResponse
+from app.schemas.catalog import CatalogItem, CatalogListResponse
 from app.services import catalog as catalog_svc
 from app.services.set_sync import sync_sets
 
@@ -66,7 +67,29 @@ def list_catalog(
         )
 
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    items = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
+    rows = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
+
+    # Besitz-/Pokédex-Status der angezeigten Karten ermitteln (grüner/roter Punkt)
+    ids = [r.card_id for r in rows]
+    owned_ids: set[str] = set()
+    pokedex_ids: set[str] = set()
+    if ids:
+        owned_ids = set(db.scalars(
+            select(PokemonCard.tcgdex_card_id).where(
+                PokemonCard.tcgdex_card_id.in_(ids), PokemonCard.besessen == True)  # noqa: E712
+        ).all())
+        pokedex_ids = set(db.scalars(
+            select(PokemonCard.tcgdex_card_id).where(
+                PokemonCard.tcgdex_card_id.in_(ids), PokemonCard.im_pokedex == True)  # noqa: E712
+        ).all())
+
+    items = []
+    for r in rows:
+        ci = CatalogItem.model_validate(r)
+        ci.owned = r.card_id in owned_ids
+        ci.in_pokedex = r.card_id in pokedex_ids
+        items.append(ci)
+
     return CatalogListResponse(
         items=items, total=total, page=page, limit=limit,
         pages=math.ceil(total / limit) if total else 1,

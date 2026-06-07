@@ -53,6 +53,7 @@ export default function BinderView({
   const { cols, rows } = parseLayout(layout);
   const perPage = cols * rows;
 
+  const [showOpts, setShowOpts] = useState(false);
   const [page, setPage] = useState<number>(() => {
     if (storageKey && typeof window !== "undefined") {
       const v = Number(sessionStorage.getItem(storageKey));
@@ -260,9 +261,16 @@ export default function BinderView({
 
   return (
     <div className="flex flex-col items-center w-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {/* Steuerleiste */}
-      <div className="flex items-center gap-4 mb-3 flex-wrap justify-center">
-        {onLayoutChange && (
+      {/* Steuerleiste – Raster/Größe hinter ⚙, spart Platz (v.a. mobil) */}
+      <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
+        <button
+          onClick={() => setShowOpts((o) => !o)}
+          title={t.binder_display_options}
+          className={`text-sm rounded px-2 py-1 ${showOpts ? "bg-pokemon-accent text-white" : "bg-pokemon-card text-gray-300 hover:text-white"}`}
+        >
+          ⚙
+        </button>
+        {showOpts && onLayoutChange && (
           <label className="flex items-center gap-2 text-sm text-gray-400">
             {t.binder_layout_label}
             <select
@@ -276,15 +284,17 @@ export default function BinderView({
             </select>
           </label>
         )}
-        <label className="flex items-center gap-2 text-sm text-gray-400">
-          {t.binder_card_size}
-          <input
-            type="range" min={70} max={260} step={10}
-            value={cardSize}
-            onChange={(e) => setSize(Number(e.target.value))}
-            className="accent-pokemon-yellow"
-          />
-        </label>
+        {showOpts && (
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            {t.binder_card_size}
+            <input
+              type="range" min={70} max={260} step={10}
+              value={cardSize}
+              onChange={(e) => setSize(Number(e.target.value))}
+              className="accent-pokemon-yellow"
+            />
+          </label>
+        )}
         {editable && onAddPage && (
           <button onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
             {t.binder_add_page}

@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.9.3] – 2026-06-07 (UI-Vereinheitlichung: Katalog-Punkte, Owned ohne Binder, Set-Filter mit Logos)
+
+- **Katalog-Karten** zeigen jetzt grünen (besessen) / roten (im Pokédex) Punkt.
+- **„Alle besessenen Karten"**: kein Binder mehr (nur Raster) + Anzahl/Wert-Header
+  (mobil in einer Zeile, wie im Pokédex).
+- **Einheitlicher Set-Filter** überall: durchsuchbares Dropdown, nach Serie
+  geclustert, mit Set-Logo (Pokédex + Owned nutzen denselben wie der Katalog).
+- **Binder-Steuerung kompakt**: Seiten-Raster + Größe hinter einem ⚙-Schalter
+  (spart Platz, v.a. mobil).
+
+### Noch offen (nächste Runde)
+- Sticky-Header (UI fix, nur Karten/Binder scrollen)
+- Mobile: Filter-Lupe direkt in die Anzahl/Wert-Zeile integrieren
+- Illustrator-Filter auch im Pokédex/Owned (braucht Illustrator-Feld an Karten)
+
 ## [v0.9.2] – 2026-06-07 (Filter horizontal, Pokédex-Header schlanker)
 
 - **Filter horizontal über den Karten** (Pokédex + „Alle besessenen") statt
