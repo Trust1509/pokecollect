@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.7.5] – 2026-06-07 (Binder zeigt jetzt den ganzen Pokédex)
+
+### Fix
+- Binder-Ansicht im Pokédex zeigte nur ~11 Seiten: Das Frontend lädt im Binder
+  `limit=2000`, der API-Endpunkt deckelte `limit` aber bei 1100 → 422, der
+  Ladevorgang schlug fehl und es blieben die alten ~96 Rasterkarten stehen.
+  Limit-Obergrenze auf 5000 angehoben → alle ~1025 Pokédex-Slots / ~114 Seiten.
+
 ## [v0.7.4] – 2026-06-07 (Scan-Review & Pokédex-Binder)
 
 ### Scan-Review

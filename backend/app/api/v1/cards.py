@@ -69,7 +69,7 @@ def list_cards(
     bild_status: Optional[str] = Query(None, pattern="^(eigenes_foto|externe_url|platzhalter)$"),
     sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am)$"),
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=1100),
+    limit: int = Query(50, ge=1, le=5000),  # Binder-Ansicht lädt den ganzen Pokédex auf einmal
     db: Session = Depends(get_db),
 ):
     q = select(PokemonCard)
