@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.7.11] – 2026-06-07 (Scan-Review: Pokédex-Nr. editierbar, Crop-Ausrichtung)
+
+### Scan-Review
+- **Pokédex-Nr. ist jetzt editierbar** – auch wenn die Erkennung keine findet
+  (z. B. „Team Rockets Kramurx"), kann man sie manuell eintragen; danach wird die
+  Karte dem Pokédex zuweisbar (Schalter erscheint). Manuelle Nr. überlebt das
+  Neu-Auflösen.
+- **Crop-Ausrichtung:** quer fotografierte Karten werden vor der Entzerrung auf
+  Hochformat gedreht (längere Kante = Höhe) → kein seitwärts liegender Zuschnitt mehr.
+
+### Hinweis
+- Promo-Rarität wird erkannt, sobald die Karte einen Treffer hat. Bei unsicheren
+  Karten (kein Set erkannt) erst Set wählen → Rarität/Pokédex-Nr. füllen sich.
+
 ## [v0.7.10] – 2026-06-07 (SVP-Promo-Set)
 
 - Set **SVP** (Karmesin & Purpur Black Star Promos → TCGdex `svp`) in Seed +

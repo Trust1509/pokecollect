@@ -92,7 +92,13 @@ async function cropToCardPhoto(
 
     if (opts?.quad && opts.quad.length === 4) {
       // Pixel-Eckpunkte (TL,TR,BR,BL)
-      const src = opts.quad.map(([x, y]) => [clamp(x, 0, 1) * img.width, clamp(y, 0, 1) * img.height]);
+      let src = opts.quad.map(([x, y]) => [clamp(x, 0, 1) * img.width, clamp(y, 0, 1) * img.height]);
+      // Karten sind Hochformat: liegt die Karte quer (obere Kante länger als
+      // die linke), Ecken um 1 rotieren → längere Kante wird zur Höhe.
+      const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (dist(src[0], src[1]) > dist(src[0], src[3])) {
+        src = [src[1], src[2], src[3], src[0]];
+      }
       const dst = [[0, 0], [W, 0], [W, H], [0, H]];
       const canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
@@ -395,6 +401,8 @@ export default function ScanPage() {
           set_edition: s.set_edition,
           karten_nr: s.karten_nr,
           sprache: s.sprache,
+          // manuell gesetzte Pokédex-Nr. nicht verlieren, wenn die Auflösung keine findet
+          pokedex_nr: (nc.suggested as Record<string, unknown>).pokedex_nr ?? s.pokedex_nr,
         },
       } : cc));
     } catch { /* Live-Auflösung ist optional */ }
@@ -692,6 +700,13 @@ export default function ScanPage() {
                       onSetAdded={(ns) => setSets((prev) => [...prev, ns].sort((a, b) => a.code.localeCompare(b.code)))}
                     />
                     <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="number"
+                        value={String(s.pokedex_nr ?? "")}
+                        onChange={(e) => updateField(idx, "pokedex_nr", e.target.value ? Number(e.target.value) : null)}
+                        placeholder={t.form_pokedex_nr}
+                        className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
+                      />
                       <input
                         value={String(s.karten_nr ?? "")}
                         onChange={(e) => updateField(idx, "karten_nr", e.target.value)}
