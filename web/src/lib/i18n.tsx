@@ -102,6 +102,20 @@ const DE = {
   pokedex_replace_confirm: "Ersetzen",
   collections_all_owned: "Alle besessenen Karten",
   collections_all_owned_desc: "Alle physisch vorhandenen Karten – inkl. Duplikate",
+
+  // Katalog (alle Karten)
+  catalog_title: "Alle Karten",
+  catalog_subtitle: "Gesamter TCGdex-Katalog – durchsuchen & zur Wunschliste hinzufügen",
+  catalog_cards: "Karten",
+  catalog_search_placeholder: "Name, Nr. oder Illustrator …",
+  catalog_sort_set: "Sortierung: Set + Nr.",
+  catalog_sort_name: "Sortierung: Name",
+  catalog_sort_dex: "Sortierung: Pokédex-Nr.",
+  catalog_add_wishlist: "Zur Wunschliste",
+  catalog_added_wishlist: "Zur Wunschliste hinzugefügt",
+  catalog_empty: "Keine Karten gefunden. Katalog evtl. noch nicht synchronisiert.",
+  catalog_tile: "Alle Karten (Katalog)",
+  catalog_tile_desc: "Gesamter TCGdex-Bestand zum Durchsuchen – zählt nicht zur Sammlung",
   detail_back_generic: "← Zurück",
 
   // Card form – wishlist
@@ -370,6 +384,20 @@ const EN: typeof DE = {
   pokedex_replace_confirm: "Replace",
   collections_all_owned: "All owned cards",
   collections_all_owned_desc: "All physically owned cards – including duplicates",
+
+  // Catalog (all cards)
+  catalog_title: "All cards",
+  catalog_subtitle: "Full TCGdex catalog – browse & add to wishlist",
+  catalog_cards: "cards",
+  catalog_search_placeholder: "Name, no. or illustrator …",
+  catalog_sort_set: "Sort: set + no.",
+  catalog_sort_name: "Sort: name",
+  catalog_sort_dex: "Sort: Pokédex no.",
+  catalog_add_wishlist: "Add to wishlist",
+  catalog_added_wishlist: "Added to wishlist",
+  catalog_empty: "No cards found. Catalog may not be synced yet.",
+  catalog_tile: "All cards (catalog)",
+  catalog_tile_desc: "Full TCGdex catalog to browse – not part of your collection",
   detail_back_generic: "← Back",
 
   form_wishlist: "Add to wishlist",

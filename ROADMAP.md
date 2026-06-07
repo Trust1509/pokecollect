@@ -46,13 +46,13 @@ Stand: **v0.8.1**
 
 ## 🔲 Backlog (priorisierbar)
 
-### 🅰 Lokale Karten-DB (TCGdex-Katalog) + globale Suche
-> Größter Mehrwert, Fundament für Illustrator-Filter & schnelle Wunschkarten-Suche.
-- [ ] Tabelle `tcgdex_catalog` (alle Karten: id, set_id, localId, name DE/EN, dex_id, rarity, illustrator, variants, image, pricing-Snapshot)
-- [ ] Sync-Job 1–2×/Tag (inkrementell, kein Full-Load) – nur neue/geänderte Karten
-- [ ] Globale Suche über den Gesamtbestand (Name/Set/Nr./Illustrator)
-- [ ] Wunschkarten direkt aus dem Katalog wählen (zählen NICHT zu besessen/Pokédex)
-- [ ] Scan-Resolver & Set-Picker offline aus dem Katalog bedienen (weniger API-Calls)
+### ✅ 🅰 Lokale Karten-DB (TCGdex-Katalog) + globale Suche — v0.9.0
+- [x] Tabelle `tcgdex_catalog` (alle Karten: Name DE/EN, Set, Nr., Bild; Illustrator/Rarity/dexId/Varianten via Enrichment)
+- [x] Voll-Set-Sync: alle TCGdex-Sets in `pokemon_sets` (POR etc. automatisch)
+- [x] Sync + Enrichment per Cron (04:00) in Etappen; `POST /catalog/sync` + `/enrich`
+- [x] Globale Suche/Filter/Sortierung (`GET /catalog`), Seite `/catalog` „Alle Karten"
+- [x] Stern → Wunschliste; Katalog zählt NICHT zu besessen/Pokédex/Statistik
+- [ ] Offene Punkte: „zu Sammlung hinzufügen" aus dem Katalog-UI (API steht: `POST /catalog/{id}/collection`); Scan-Resolver/Set-Picker offline aus Katalog bedienen
 
 ### 🅱 Detailseite: Navigation + Bild-Zoom/3D
 - [ ] Vor/Zurück zwischen Pokémon: Wisch (Mobile) + Buttons (Desktop)

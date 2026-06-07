@@ -158,63 +158,70 @@ async def sync_sets() -> dict:
         if isinstance(ab, dict) and ab.get("official"):
             abbr_to_id[ab["official"].upper()] = sid
 
+    def _enrich(row, src, d, de_src):
+        row.name_en = d.get("name") or (src.name if src else None) or row.name_en
+        cc = d.get("cardCount") or {}
+        official = cc.get("official") or (src.cardCount.official if src and src.cardCount else None)
+        total = cc.get("total") or (src.cardCount.total if src and src.cardCount else None)
+        if official is not None:
+            row.card_count_official = official
+        if total is not None:
+            row.card_count_total = total
+        serie = d["serie"].get("id") if isinstance(d.get("serie"), dict) else None
+        serie = serie or _series_from_logo(src.logo if src else None)
+        if serie:
+            row.series_id = serie
+        logo = d.get("logo") or (src.logo if src else None)
+        if logo and tcgdex.is_allowed_image_url(logo):
+            row.logo_url = f"{logo.rstrip('/')}.png"
+        symbol = d.get("symbol") or _symbol_url(serie, row.set_id)
+        if symbol and tcgdex.is_allowed_image_url(symbol):
+            row.symbol_url = f"{symbol.rstrip('/')}.png"
+        if de_src and de_src.name:
+            row.name = de_src.name
+
     db = SessionLocal()
     updated = 0
-    resolved: dict[str, str] = {}
-    missing: list[str] = []
+    created = 0
     try:
         rows = db.scalars(select(PokemonSet)).all()
+        by_code = {r.code: r for r in rows}
+        by_setid: dict[str, PokemonSet] = {}
+        used_codes = set(by_code.keys())
+
+        # Bestehende Zeilen: set_id auflösen (Brücke/abbreviation) + anreichern
         for row in rows:
-            # set_id auflösen: Brücke → Auto (abbreviation.official)
             if not row.set_id:
                 row.set_id = PTCGO_TO_SETID.get(row.code) or abbr_to_id.get(row.code.upper())
-            if not row.set_id or (row.set_id not in en_by_id and row.set_id not in details):
-                missing.append(row.code)
+            if row.set_id:
+                by_setid[row.set_id] = row
+                _enrich(row, en_by_id.get(row.set_id), details.get(row.set_id, {}), de_by_id.get(row.set_id))
+                updated += 1
+
+        # ALLE TCGdex-Sets übernehmen, die noch keine Zeile haben
+        for s in en:
+            sid = s.id
+            if sid in by_setid:
                 continue
+            d = details.get(sid, {})
+            ab = d.get("abbreviation") if isinstance(d.get("abbreviation"), dict) else {}
+            code = (ab.get("official") or "").strip().upper()
+            if not code or code in used_codes:
+                code = sid  # eindeutiger Fallback
+            if code in used_codes:
+                continue
+            de_src = de_by_id.get(sid)
+            row = PokemonSet(code=code, name=(de_src.name if de_src and de_src.name else s.name) or sid, set_id=sid)
+            db.add(row)
+            used_codes.add(code)
+            by_setid[sid] = row
+            _enrich(row, s, d, de_src)
+            created += 1
 
-            resolved[row.code] = row.set_id
-            src = en_by_id.get(row.set_id)
-            d = details.get(row.set_id, {})
-
-            # Name EN, Kartenzahlen
-            row.name_en = d.get("name") or (src.name if src else None) or row.name_en
-            cc = d.get("cardCount") or {}
-            official = cc.get("official") or (src.cardCount.official if src and src.cardCount else None)
-            total = cc.get("total") or (src.cardCount.total if src and src.cardCount else None)
-            if official is not None:
-                row.card_count_official = official
-            if total is not None:
-                row.card_count_total = total
-
-            # Serie (Detail bevorzugt, sonst aus Logo-Pfad)
-            serie = None
-            if isinstance(d.get("serie"), dict):
-                serie = d["serie"].get("id")
-            serie = serie or _series_from_logo(src.logo if src else None)
-            if serie:
-                row.series_id = serie
-
-            # Logo/Symbol (nur von erlaubtem Host übernehmen)
-            logo = d.get("logo") or (src.logo if src else None)
-            if logo and tcgdex.is_allowed_image_url(logo):
-                row.logo_url = f"{logo.rstrip('/')}.png"
-            symbol = d.get("symbol") or _symbol_url(serie, row.set_id)
-            if symbol and tcgdex.is_allowed_image_url(symbol):
-                row.symbol_url = f"{symbol.rstrip('/')}.png"
-
-            # Deutscher Name aus /de/sets (Fallback bleibt bestehender Name)
-            de_src = de_by_id.get(row.set_id)
-            if de_src and de_src.name:
-                row.name = de_src.name
-            updated += 1
         db.commit()
     finally:
         db.close()
 
-    log.info("Set-Sync fertig: %d Sets aktualisiert, %d ohne set_id.", updated, len(missing))
-    if resolved:
-        log.info("Aufgelöste set_id-Werte: %s",
-                 ", ".join(f"{c}->{sid}" for c, sid in sorted(resolved.items())))
-    if missing:
-        log.info("Ohne set_id (vermutlich unveröffentlicht): %s", ", ".join(sorted(missing)))
-    return {"updated": updated, "resolved": resolved, "missing": sorted(missing)}
+    log.info("Set-Sync fertig: %d aktualisiert, %d neu angelegt (Gesamt-Sets: %d).",
+             updated, created, updated + created)
+    return {"updated": updated, "created": created, "total": updated + created}

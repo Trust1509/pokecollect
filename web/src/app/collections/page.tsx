@@ -143,6 +143,18 @@ export default function CollectionsPage() {
             </div>
           </Link>
 
+          {/* TCGdex-Katalog: alle Karten zum Durchsuchen */}
+          <Link href="/catalog">
+            <div className="bg-pokemon-card rounded-lg p-4 border-2 border-dashed border-yellow-800 hover:border-pokemon-yellow transition-colors cursor-pointer h-full">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-yellow-300 hover:text-pokemon-yellow truncate">
+                  🔎 {t.catalog_tile}
+                </h2>
+                <p className="text-gray-400 text-sm">{t.catalog_tile_desc}</p>
+              </div>
+            </div>
+          </Link>
+
           {collections.length === 0 ? null : collections.map((c) => (
             <div key={c.id} className="bg-pokemon-card rounded-lg p-4">
               {editId === c.id ? (

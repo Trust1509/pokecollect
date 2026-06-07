@@ -1,5 +1,30 @@
 # Changelog
 
+## [v0.9.0] – 2026-06-07 (Lokaler TCGdex-Katalog + Voll-Set-Sync)
+
+### Sets vollständig
+- **Set-Sync übernimmt jetzt ALLE TCGdex-Sets** in `pokemon_sets` (Code =
+  offizielle Abkürzung). Kein manuelles Pflegen mehr – fehlende Sets wie
+  **POR** (Perfect Order / me03) sind nach Sync automatisch da.
+
+### Katalog (alle Karten)
+- Neue Tabelle `tcgdex_catalog` (Spiegel aller ~23.000 Karten: Name DE/EN, Set,
+  Nr., Bild; Illustrator/Rarity/dexId/Varianten werden angereichert).
+- `POST /catalog/sync` (Sets + Katalog-Basis), `POST /catalog/enrich`
+  (Volldetails in Etappen), `GET /catalog` (Suche/Filter/Sortierung),
+  `GET /catalog/meta`.
+- **Seite „Alle Karten"** (`/catalog`, verlinkt unter Sammlungen): durchsuchbar
+  nach Name/Nr./Illustrator, filterbar nach Set/Generation, sortierbar nach
+  Set+Nr./Name/Pokédex-Nr.; **Stern-Button** legt die Karte auf die Wunschliste.
+- Katalog-Karten zählen **nicht** zu besessenen/Pokédex-Karten und in keine
+  Statistik; sie sind read-only, aber per Stern auf die Wunschliste (und per API
+  in Sammlungen) übernehmbar. Ohne TCGdex-Bild (z. B. MEP) → Platzhalter.
+- Täglicher Cron 04:00: Set-/Katalog-Sync + Anreicherung in Etappen.
+
+### Hinweis
+- Illustrator-Daten füllen sich schrittweise (Enrichment) bzw. sofort beim
+  Übernehmen einer Karte. Der Illustrator-**Filter** folgt als eigenes Feature (🅲).
+
 ## [v0.8.1] – 2026-06-07 (Mobile-Detail, Binder-Swipe, Gemini-Limits)
 
 - **Detailseite mobil**: Bild + Felder stapeln am Handy (flex-col), Felder

@@ -34,7 +34,21 @@ async def _daily_price_update():
         log.info("Keine besessenen Karten – nichts zu aktualisieren.")
 
 
+async def _daily_catalog_sync():
+    """Sets + Katalog-Basis aktualisieren und einen Schwung anreichern."""
+    try:
+        from app.services.set_sync import sync_sets
+        from app.services.catalog import sync_catalog, enrich_catalog
+        log.info("Starte täglichen Katalog-Sync …")
+        await sync_sets()
+        await sync_catalog()
+        await enrich_catalog(limit=2000)  # in Etappen über mehrere Tage vollständig
+    except Exception as exc:
+        log.error("Katalog-Sync fehlgeschlagen: %s", exc)
+
+
 def start_scheduler():
     scheduler.add_job(_daily_price_update, "cron", hour=3, minute=0)
+    scheduler.add_job(_daily_catalog_sync, "cron", hour=4, minute=0)
     scheduler.start()
-    log.info("Cron-Scheduler gestartet (täglich 03:00 Uhr)")
+    log.info("Cron-Scheduler gestartet (Preise 03:00, Katalog 04:00)")

@@ -298,6 +298,47 @@ export type ScanUsage = {
   days: { day: string; requests: number; tokens: number }[];
 };
 
+// ── Katalog (alle TCGdex-Karten) ────────────────────────────────────────────
+
+export type CatalogItem = {
+  card_id: string;
+  set_id: string | null;
+  set_code: string | null;
+  set_name: string | null;
+  local_id: string | null;
+  name: string | null;
+  name_en: string | null;
+  dex_id: number | null;
+  rarity: string | null;
+  illustrator: string | null;
+  category: string | null;
+  image_url: string | null;
+  variants_normal: boolean | null;
+  variants_reverse: boolean | null;
+  variants_holo: boolean | null;
+  variants_firstedition: boolean | null;
+  enriched: boolean | null;
+};
+
+export type CatalogListResponse = {
+  items: CatalogItem[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+};
+
+export const catalogApi = {
+  list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
+  meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
+  sync: () => api.post("/catalog/sync"),
+  enrich: (limit = 500) => api.post(`/catalog/enrich?limit=${limit}`),
+  addWishlist: (cardId: string, prioritaet?: string | null) =>
+    api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, { prioritaet: prioritaet ?? null }),
+  addCollection: (cardId: string, collectionId: number) =>
+    api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/collection?collection_id=${collectionId}`),
+};
+
 export const scanApi = {
   status: () => api.get<ScanStatus>("/scan/status"),
   usage: () => api.get<ScanUsage>("/scan/usage"),
