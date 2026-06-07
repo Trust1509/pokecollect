@@ -261,52 +261,6 @@ export default function BinderView({
 
   return (
     <div className="flex flex-col items-center w-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {/* Steuerleiste – Raster/Größe hinter ⚙, spart Platz (v.a. mobil) */}
-      <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
-        <button
-          onClick={() => setShowOpts((o) => !o)}
-          title={t.binder_display_options}
-          className={`text-sm rounded px-2 py-1 ${showOpts ? "bg-pokemon-accent text-white" : "bg-pokemon-card text-gray-300 hover:text-white"}`}
-        >
-          ⚙
-        </button>
-        {showOpts && onLayoutChange && (
-          <label className="flex items-center gap-2 text-sm text-gray-400">
-            {t.binder_layout_label}
-            <select
-              value={layout}
-              onChange={(e) => onLayoutChange(e.target.value)}
-              className="bg-pokemon-card border border-gray-700 rounded px-2 py-1 text-white text-sm"
-            >
-              {BINDER_LAYOUTS.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        {showOpts && (
-          <label className="flex items-center gap-2 text-sm text-gray-400">
-            {t.binder_card_size}
-            <input
-              type="range" min={70} max={260} step={10}
-              value={cardSize}
-              onChange={(e) => setSize(Number(e.target.value))}
-              className="accent-pokemon-yellow"
-            />
-          </label>
-        )}
-        {editable && onAddPage && (
-          <button onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
-            {t.binder_add_page}
-          </button>
-        )}
-        {editable && onDeleteLastPage && totalPages > 1 && (
-          <button onClick={handleDeleteLastPage} className="text-xs bg-red-950/60 text-red-300 hover:text-red-100 rounded px-2 py-1">
-            {t.binder_delete_last_page}
-          </button>
-        )}
-      </div>
-
       {editable && <p className="text-gray-500 text-xs mb-2 text-center">{t.binder_dnd_hint}</p>}
 
       {/* Seiten */}
@@ -334,8 +288,47 @@ export default function BinderView({
         )}
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center gap-4 mt-4 text-sm">
+      {/* Darstellungsoptionen (über ⚙ in der Navigationszeile, keine extra Zeile) */}
+      {showOpts && (
+        <div className="flex items-center gap-3 mt-4 flex-wrap justify-center bg-pokemon-card/60 rounded px-3 py-2">
+          {onLayoutChange && (
+            <label className="flex items-center gap-2 text-sm text-gray-400">
+              {t.binder_layout_label}
+              <select
+                value={layout}
+                onChange={(e) => onLayoutChange(e.target.value)}
+                className="bg-pokemon-card border border-gray-700 rounded px-2 py-1 text-white text-sm"
+              >
+                {BINDER_LAYOUTS.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            {t.binder_card_size}
+            <input
+              type="range" min={70} max={260} step={10}
+              value={cardSize}
+              onChange={(e) => setSize(Number(e.target.value))}
+              className="accent-pokemon-yellow"
+            />
+          </label>
+          {editable && onAddPage && (
+            <button onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
+              {t.binder_add_page}
+            </button>
+          )}
+          {editable && onDeleteLastPage && totalPages > 1 && (
+            <button onClick={handleDeleteLastPage} className="text-xs bg-red-950/60 text-red-300 hover:text-red-100 rounded px-2 py-1">
+              {t.binder_delete_last_page}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Navigation (mit ⚙ direkt daneben) */}
+      <div className="flex items-center gap-3 mt-4 text-sm">
         <button
           disabled={leftVisible <= 0}
           onClick={goPrev}
@@ -350,6 +343,13 @@ export default function BinderView({
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ›
+        </button>
+        <button
+          onClick={() => setShowOpts((o) => !o)}
+          title={t.binder_display_options}
+          className={`px-3 py-1.5 rounded ${showOpts ? "bg-pokemon-accent text-white" : "bg-pokemon-card text-gray-300 hover:text-white"}`}
+        >
+          ⚙
         </button>
       </div>
     </div>

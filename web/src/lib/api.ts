@@ -43,6 +43,7 @@ export type Card = {
   tcgdex_card_id: string | null;
   set_id: string | null;
   dex_id: number | null;
+  illustrator: string | null;
   variants_normal: boolean | null;
   variants_reverse: boolean | null;
   variants_holo: boolean | null;

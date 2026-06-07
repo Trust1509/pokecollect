@@ -39,8 +39,10 @@ export default function CatalogPage() {
   const [generation, setGeneration] = useState("");
   const [sort, setSort] = useState<"set" | "name" | "dex">("set");
   const [page, setPage] = useState(1);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 768) setFilterOpen(true);
     setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
     catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
@@ -104,8 +106,15 @@ export default function CatalogPage() {
         <Link href="/collections" className="text-gray-500 hover:text-white text-sm">{t.collection_back}</Link>
       </div>
 
-      {/* Filterleiste */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+      {/* Filterleiste (ein-/ausklappbar wie überall) */}
+      <button
+        onClick={() => setFilterOpen((o) => !o)}
+        className="w-full md:w-auto flex items-center justify-between gap-3 bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200 mb-3"
+      >
+        <span>🔍 {t.filter_title}</span>
+        <span className="text-gray-500">{filterOpen ? "▲" : "▼"}</span>
+      </button>
+      <div className={`${filterOpen ? "grid" : "hidden"} grid-cols-2 md:grid-cols-5 gap-2 mb-4`}>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}

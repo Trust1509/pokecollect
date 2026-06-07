@@ -144,6 +144,7 @@ def _run_light_migrations():
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS tcgdex_card_id TEXT",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS set_id TEXT",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS dex_id INTEGER",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS illustrator TEXT",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_normal BOOLEAN",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_reverse BOOLEAN",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_holo BOOLEAN",

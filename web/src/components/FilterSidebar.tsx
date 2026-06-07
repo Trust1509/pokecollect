@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Enums, PokemonSet } from "@/lib/api";
+import { Enums, PokemonSet, catalogApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { rarityOptionLabel } from "@/components/RarityBadge";
 import { seriesLabel, SERIES_LABEL } from "@/lib/utils";
@@ -12,6 +12,7 @@ export type Filters = {
   set?: string;
   seltenheit?: string;
   sprache?: string;
+  illustrator?: string;
   search?: string;
   sort?: string;
   bild_status?: string;
@@ -29,16 +30,21 @@ const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 export default function FilterSidebar({ filters, onChange, enums, sets }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [illustrators, setIllustrators] = useState<string[]>([]);
   // Auf Desktop standardmäßig geöffnet, auf Mobile eingeklappt (nach Mount,
   // damit kein SSR-Hydration-Mismatch entsteht).
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth >= 768) setOpen(true);
+    catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
   }, []);
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
 
-  const activeCount = (["besessen", "generation", "set", "seltenheit", "sprache", "search", "bild_status"] as const)
+  const activeCount = (["besessen", "generation", "set", "seltenheit", "sprache", "illustrator", "search", "bild_status"] as const)
     .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
+
+  const illuOptions: SelectOption[] = useMemo(
+    () => illustrators.map((i) => ({ value: i, label: i })), [illustrators]);
 
   const setOptions: SelectOption[] = useMemo(() => {
     const order = Object.keys(SERIES_LABEL);
@@ -143,6 +149,17 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="block text-gray-400 mb-1">{t.catalog_illustrator}</label>
+        <SearchableSelect
+          value={filters.illustrator ?? ""}
+          onChange={(v) => update("illustrator", v)}
+          options={illuOptions}
+          allLabel={t.catalog_all_illustrators}
+          placeholder={t.catalog_illustrator}
+        />
       </div>
 
       <div>

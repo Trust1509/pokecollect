@@ -35,6 +35,7 @@ class PokemonCard(Base):
     tcgdex_card_id = Column(Text, nullable=True, index=True)   # "swsh3-136"
     set_id = Column(Text, nullable=True)                       # "swsh3"
     dex_id = Column(Integer, nullable=True)                    # aus dexId[0]
+    illustrator = Column(Text, nullable=True, index=True)      # aus TCGdex
     variants_normal = Column(Boolean, nullable=True)
     variants_reverse = Column(Boolean, nullable=True)
     variants_holo = Column(Boolean, nullable=True)

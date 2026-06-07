@@ -63,6 +63,7 @@ def list_cards(
     set: Optional[str] = None,
     seltenheit: Optional[str] = None,
     sprache: Optional[str] = None,
+    illustrator: Optional[str] = None,
     generation: Optional[int] = None,
     search: Optional[str] = None,
     pokedex_nr: Optional[int] = None,
@@ -122,6 +123,8 @@ def list_cards(
         q = q.where(PokemonCard.seltenheit == seltenheit)
     if sprache:
         q = q.where(PokemonCard.sprache == sprache)
+    if illustrator:
+        q = q.where(PokemonCard.illustrator.ilike(f"%{illustrator}%"))
     if pokedex_nr is not None:
         q = q.where(PokemonCard.pokedex_nr == pokedex_nr)
     if search:

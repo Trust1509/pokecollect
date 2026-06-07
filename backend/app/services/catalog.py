@@ -193,6 +193,7 @@ async def _build_card_from_catalog(db: Session, row: TcgdexCatalog) -> dict:
         "tcgdex_card_id": row.card_id,
         "set_id": row.set_id,
         "dex_id": row.dex_id,
+        "illustrator": row.illustrator,
         "bild_karte_url": row.image_url if tcgdex.is_allowed_image_url(row.image_url) else None,
     }
 

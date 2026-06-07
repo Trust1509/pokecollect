@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.9.4] – 2026-06-07 (Illustrator-Filter, Filter angeglichen, Binder-⚙ in Navizeile)
+
+- **Illustrator an Karten**: neues Feld `illustrator`, automatisch aus TCGdex
+  befüllt (Bild-Backfill, Katalog-Übernahme). Filter `illustrator` in der cards-API.
+- **Illustrator-Filter** jetzt auch in Pokédex + „Alle besessenen" (durchsuchbares
+  Dropdown) → gleiche Felder wie im Katalog.
+- **Katalog-Filterleiste einklappbar** („🔍 Filter") wie überall → einheitliche Optik.
+- **Binder-⚙** sitzt jetzt in der Navigationszeile (‹ Seite › ⚙) statt in einer
+  eigenen Zeile; Optionen klappen darüber auf.
+
+### Hinweis
+- Illustrator füllt sich bei neuen/aktualisierten Karten. Für bestehende besessene
+  Karten einmal Bild-Backfill laufen lassen:
+  `curl -X POST "…/api/v1/cards/meta/backfill-images?force=true"`
+
 ## [v0.9.3] – 2026-06-07 (UI-Vereinheitlichung: Katalog-Punkte, Owned ohne Binder, Set-Filter mit Logos)
 
 - **Katalog-Karten** zeigen jetzt grünen (besessen) / roten (im Pokédex) Punkt.

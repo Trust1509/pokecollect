@@ -99,6 +99,8 @@ def apply_card_to_model(card: PokemonCard, tc: TcgdexCard, *, overwrite_image: b
         card.set_id = tc.set.id
     if tc.dex_id is not None:
         card.dex_id = tc.dex_id
+    if tc.illustrator:
+        card.illustrator = tc.illustrator
     if tc.variants:
         card.variants_normal = tc.variants.normal
         card.variants_reverse = tc.variants.reverse

@@ -86,6 +86,7 @@ class CardResponse(CardBase):
     tcgdex_card_id: Optional[str] = None
     set_id: Optional[str] = None
     dex_id: Optional[int] = None
+    illustrator: Optional[str] = None
     variants_normal: Optional[bool] = None
     variants_reverse: Optional[bool] = None
     variants_holo: Optional[bool] = None
