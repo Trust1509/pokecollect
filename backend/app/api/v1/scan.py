@@ -92,7 +92,15 @@ async def scan(
         reads = ocr.extract(data, mode=mode, rows=rows, cols=cols)
         engine = "ocr"
 
-    candidates = await resolve_reads(db, reads or [], default_lang=default_language)
+    reads = reads or []
+    # Einzelkarten-Modus: nur die Hauptkarte behalten (größte Bounding-Box),
+    # falls versehentlich eine Karte darunter mit erkannt wurde.
+    if mode == "single" and len(reads) > 1:
+        def _area(r) -> float:
+            return (r.bbox[2] * r.bbox[3]) if (r.bbox and len(r.bbox) == 4) else 0.0
+        reads = [max(reads, key=_area)]
+
+    candidates = await resolve_reads(db, reads, default_lang=default_language)
     return ScanResponse(engine=engine, mode=mode, candidates=candidates)
 
 

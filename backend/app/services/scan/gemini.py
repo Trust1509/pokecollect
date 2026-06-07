@@ -34,6 +34,8 @@ Gib für JEDE eindeutig erkennbare Pokémon-Karte ein Objekt zurück mit:
 - "number": die aufgedruckte Kartennummer wie sie dasteht (z.B. "007/091", "201/091"); null wenn unlesbar
 - "language": Sprache der Karte als Kürzel: "DE", "EN", "JP", "CN", "FR", "ES", "IT"; null wenn unklar
 - "position": die Position im Raster, von links nach rechts und oben nach unten gezählt, beginnend bei 0; bei Einzelkarte 0
+- "bbox": die Bounding-Box der Karte als [x, y, w, h], jeweils als Anteil 0.0–1.0
+  der Bildbreite/-höhe (x,y = linke obere Ecke; w,h = Breite/Höhe), möglichst eng um die Karte
 - "confidence": deine Sicherheit 0.0–1.0, wie zuverlässig du Name UND Nummer gelesen hast
 
 Leere/keine Karte enthaltende Fächer NICHT ausgeben.
@@ -69,6 +71,9 @@ async def extract(
         "generationConfig": {
             "responseMimeType": "application/json",
             "temperature": 0.0,
+            # "Thinking" für diese reine Extraktionsaufgabe abschalten → deutlich
+            # schneller. (Wird von älteren Modellen ignoriert.)
+            "thinkingConfig": {"thinkingBudget": 0},
         },
     }
     url = _ENDPOINT.format(model=model)
@@ -112,6 +117,7 @@ async def extract(
             language=_norm_lang(item.get("language")),
             position=_int(item.get("position"), default=idx),
             confidence=_float(item.get("confidence")),
+            bbox=_bbox(item.get("bbox")),
         )
         out.append(read)
     return out
@@ -136,6 +142,20 @@ def _float(v) -> Optional[float]:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _bbox(v) -> Optional[list[float]]:
+    """[x,y,w,h] als Floats 0..1; sonst None."""
+    if not isinstance(v, (list, tuple)) or len(v) != 4:
+        return None
+    try:
+        box = [float(x) for x in v]
+    except (TypeError, ValueError):
+        return None
+    # plausibilisieren (manche Modelle liefern 0..100 statt 0..1)
+    if any(x > 1.5 for x in box):
+        box = [x / 100.0 for x in box]
+    return box
 
 
 def _norm_lang(v) -> Optional[str]:

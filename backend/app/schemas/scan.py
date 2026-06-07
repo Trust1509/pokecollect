@@ -17,6 +17,7 @@ class ScanRawRead(BaseModel):
     language: Optional[str] = None       # DE/EN/CN/JP …
     position: Optional[int] = None       # Slot-Index bei Binder-Scan (0-basiert)
     confidence: Optional[float] = None   # Roh-Sicherheit der Engine (0..1)
+    bbox: Optional[list[float]] = None   # [x,y,w,h] als Anteil 0..1 des Bildes
 
 
 class ScanMatch(BaseModel):

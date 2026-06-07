@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.7.6] – 2026-06-07 (Scan: Foto-Zuschnitt, Tempo, Pokédex-Nr.)
+
+### Scan
+- **Schneller:** Gemini-„Thinking" abgeschaltet (thinkingBudget 0) und Bild vor
+  dem Upload auf max. 1600 px verkleinert → deutlich kürzere Analyse, gleiche
+  Erkennungsqualität.
+- **Bounding-Box-Zuschnitt:** Gemini liefert jetzt die Position jeder Karte im
+  Bild. Das eigene Foto wird damit **genau auf die Karte zugeschnitten** (statt
+  mittig-grob) – funktioniert auch je Karte bei Binder/Multi.
+- **Bildquelle wählbar:** je Karte „Eigenes Foto" vs. API-Bild umschaltbar.
+- **Einzelkarten-Scan** behält nur die Hauptkarte (größte Box), falls eine Karte
+  darunter mit aufs Bild geriet.
+- **Pokédex-Nr. immer ermittelt:** auch ohne exakten Set-Treffer wird die
+  National-Pokédex-Nr. über den Namen bestimmt → die Karte erscheint im Pokédex
+  und bekommt den „Im Pokédex"-Schalter (vorher fehlte beides bei unsicheren).
+
 ## [v0.7.5] – 2026-06-07 (Binder zeigt jetzt den ganzen Pokédex)
 
 ### Fix

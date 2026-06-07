@@ -122,6 +122,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     # localId eindeutig machen (robust gegen falsch erkannte Set-Kürzel).
     via_search = False
     via_number = False
+    results: list[dict] = []
     if tc is None and read.name:
         results = await tcgdex.search_cards({"name": read.name}, tcg_lang)
 
@@ -141,6 +142,19 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             via_search = True
             if tc and tc.set and tc.set.id:
                 set_id = tc.set.id
+
+    # Auch ohne exakten Treffer: National-Pokédex-Nr. + EN-Name aus dem ersten
+    # Namens-Suchergebnis ableiten (gleiche Spezies → gleiche dexId). So bekommt
+    # die Karte trotzdem eine Pokédex-Nr. und taucht im Pokédex auf.
+    fallback_dex: Optional[int] = None
+    fallback_en: Optional[str] = None
+    if tc is None and results:
+        first_id = results[0].get("id")
+        if first_id:
+            species = await tcgdex.get_card(first_id, "en")
+            if species:
+                fallback_dex = species.dex_id
+                fallback_en = species.name
 
     uncertain: list[str] = []
     if not read.name:
@@ -198,9 +212,12 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             "dex_id": tc.dex_id,
         }
     else:
-        # Kein Treffer – nur das Rohgelesene als Vorbefüllung anbieten
+        # Kein Treffer – Rohgelesenes + (falls ermittelbar) Pokédex-Nr./EN-Name
         suggested = {
             "kartenname": read.name or "",
+            "englischer_name": fallback_en,
+            "pokedex_nr": fallback_dex,
+            "dex_id": fallback_dex,
             "set_edition": _set_edition(db, set_id, read.set_code),
             "karten_nr": read.number,
             "sprache": app_lang,

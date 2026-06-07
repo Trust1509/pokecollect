@@ -12,7 +12,11 @@ import { useI18n } from "@/lib/i18n";
 
 type Step = "setup" | "review" | "done";
 
-type EditableCandidate = ScanCandidate & { include: boolean };
+type EditableCandidate = ScanCandidate & {
+  include: boolean;
+  usePhoto: boolean;        // eigenes Foto (true) vs. API-Bild (false)
+  cropUrl: string | null;   // Vorschau des zugeschnittenen eigenen Fotos
+};
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
 
@@ -29,34 +33,72 @@ function parseLayout(layout: string): { cols: number; rows: number } {
   return { cols: Number(m[1]), rows: Number(m[2]) };
 }
 
-/** Zentriert auf Karten-Seitenverhältnis (63:88) zuschneiden + skalieren → JPEG-File. */
-async function cropToCardPhoto(blob: Blob): Promise<File> {
+function loadImg(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = url;
+  });
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Schneidet das Kartenfoto zu. Mit bbox [x,y,w,h] (0..1) wird genau die Karte
+ * ausgeschnitten (mit etwas Rand); ohne bbox zentriert auf Karten-Format 63:88.
+ */
+async function cropToCardPhoto(blob: Blob, bbox?: number[] | null): Promise<File> {
   const url = URL.createObjectURL(blob);
   try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = url;
-    });
-    const ratio = 63 / 88;
-    let cw = img.width;
-    let ch = Math.round(cw / ratio);
-    if (ch > img.height) {
-      ch = img.height;
-      cw = Math.round(ch * ratio);
+    const img = await loadImg(url);
+    let sx: number, sy: number, sw: number, sh: number;
+    if (bbox && bbox.length === 4) {
+      const pad = 0.03;
+      const [bx, by, bw, bh] = bbox;
+      sx = clamp((bx - pad) * img.width, 0, img.width);
+      sy = clamp((by - pad) * img.height, 0, img.height);
+      sw = clamp((bw + 2 * pad) * img.width, 1, img.width - sx);
+      sh = clamp((bh + 2 * pad) * img.height, 1, img.height - sy);
+    } else {
+      const ratio = 63 / 88;
+      sw = img.width;
+      sh = Math.round(sw / ratio);
+      if (sh > img.height) { sh = img.height; sw = Math.round(sh * ratio); }
+      sx = Math.round((img.width - sw) / 2);
+      sy = Math.round((img.height - sh) / 2);
     }
-    const sx = Math.round((img.width - cw) / 2);
-    const sy = Math.round((img.height - ch) / 2);
     const maxW = 600;
-    const scale = cw > maxW ? maxW / cw : 1;
+    const scale = sw > maxW ? maxW / sw : 1;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(cw * scale);
-    canvas.height = Math.round(ch * scale);
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
     const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, sx, sy, cw, ch, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
     return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Verkleinert das Bild vor dem Upload (schnellere Analyse), max. Kantenlänge maxDim. */
+async function downscaleImage(blob: Blob, maxDim = 1600): Promise<Blob> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImg(url);
+    const longest = Math.max(img.width, img.height);
+    if (longest <= maxDim) return blob;
+    const scale = maxDim / longest;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.88));
+    return out ?? blob;
+  } catch {
+    return blob;
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -201,14 +243,17 @@ export default function ScanPage() {
       canvas.toBlob((b) => resolve(b), "image/jpeg", 0.9);
     });
 
-  const runScan = useCallback(async (blob: Blob) => {
-    sourceBlobRef.current = blob;
-    setSourceUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(blob);
-    });
+  const runScan = useCallback(async (rawBlob: Blob) => {
     setBusy(true);
     try {
+      // Vor dem Senden verkleinern → schnellere Analyse. bbox bezieht sich auf
+      // genau dieses Bild, daher merken wir es als Quelle für die Foto-Zuschnitte.
+      const blob = await downscaleImage(rawBlob);
+      sourceBlobRef.current = blob;
+      setSourceUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
       const { cols, rows } = parseLayout(layout);
       const res = await scanApi.scan(blob, {
         mode,
@@ -216,13 +261,27 @@ export default function ScanPage() {
         cols: mode === "binder" ? cols : 0,
         default_language: "DE",
       });
-      const list = res.data.candidates.map((c) => ({ ...c, include: true }));
+      const list: EditableCandidate[] = res.data.candidates.map((c) => ({
+        ...c,
+        include: true,
+        usePhoto: !!(c.raw?.bbox),
+        cropUrl: null,
+      }));
       if (!list.length) {
         toast.error(t.scan_no_results);
         return;
       }
       setCandidates(list);
       setStep("review");
+      // Foto-Zuschnitte je Karte (aus der bbox) für Vorschau erzeugen
+      list.forEach(async (c, idx) => {
+        if (!c.raw?.bbox || !sourceBlobRef.current) return;
+        try {
+          const f = await cropToCardPhoto(sourceBlobRef.current, c.raw.bbox);
+          const u = URL.createObjectURL(f);
+          setCandidates((prev) => prev.map((cc, i) => (i === idx ? { ...cc, cropUrl: u } : cc)));
+        } catch { /* Vorschau optional */ }
+      });
     } catch {
       toast.error(t.scan_error);
     } finally {
@@ -241,6 +300,9 @@ export default function ScanPage() {
     if (f) runScan(f);
     e.target.value = "";
   };
+
+  const toggleUsePhoto = (idx: number) =>
+    setCandidates((prev) => prev.map((c, i) => (i === idx ? { ...c, usePhoto: !c.usePhoto } : c)));
 
   const updateField = (idx: number, key: string, value: unknown) => {
     setCandidates((prev) =>
@@ -299,8 +361,9 @@ export default function ScanPage() {
           sprache: (s.sprache as string) ?? "DE",
           tcgdex_card_id: c.match?.tcgdex_card_id ?? null,
           set_id: c.match?.set_id ?? null,
-          dex_id: c.match?.dex_id ?? null,
-          bild_karte_url: c.match?.image_url ?? null,
+          dex_id: c.match?.dex_id ?? (s.dex_id as number) ?? null,
+          // API-Bild nur senden, wenn der Nutzer NICHT sein eigenes Foto will
+          bild_karte_url: c.usePhoto ? null : (c.match?.image_url ?? null),
           position: c.position ?? null,
         };
       });
@@ -310,14 +373,16 @@ export default function ScanPage() {
         set_im_pokedex: setPokedexRep,
         items,
       });
-      // Einzelkarte: das aufgenommene Foto direkt als Kartenfoto verwenden
-      // (zugeschnitten/skaliert) – hat in der App Anzeige-Vorrang.
-      if (mode === "single" && res.data.card_ids.length === 1 && sourceBlobRef.current) {
+      // Für jede Karte mit „eigenes Foto" die Aufnahme (per bbox zugeschnitten)
+      // als Kartenfoto hochladen – hat in der App Anzeige-Vorrang.
+      const ids = res.data.card_ids;
+      await Promise.all(chosen.map(async (c, k) => {
+        if (!c.usePhoto || !sourceBlobRef.current || ids[k] == null) return;
         try {
-          const file = await cropToCardPhoto(sourceBlobRef.current);
-          await cardApi.uploadImage(res.data.card_ids[0], file);
-        } catch { /* Foto-Upload optional – nicht kritisch */ }
-      }
+          const file = await cropToCardPhoto(sourceBlobRef.current, c.raw?.bbox ?? undefined);
+          await cardApi.uploadImage(ids[k], file);
+        } catch { /* Foto-Upload optional */ }
+      }));
       setSavedCount(res.data.created);
       setStep("done");
       toast.success(t.scan_saved(res.data.created));
@@ -482,11 +547,13 @@ export default function ScanPage() {
                 className={`rounded-lg border p-3 flex gap-3 ${
                   !c.include ? "border-gray-800 opacity-50" : uncertain ? "border-pokemon-red" : "border-gray-700"
                 } bg-pokemon-card`}>
-                {/* Bild – bei Einzelkarte das aufgenommene Foto, sonst TCGdex-Treffer.
+                {/* Bild – eigenes Foto (Zuschnitt) oder TCGdex-Treffer, je nach Wahl.
                     Klick öffnet das Bild groß zur Kontrolle. */}
                 <div className="w-28 sm:w-36 shrink-0">
                   {(() => {
-                    const big = (mode === "single" && sourceUrl) ? sourceUrl : c.match?.image_url ?? null;
+                    const own = c.cropUrl ?? (mode === "single" ? sourceUrl : null);
+                    const big = c.usePhoto ? (own ?? c.match?.image_url ?? null)
+                                           : (c.match?.image_url ?? own ?? null);
                     return big ? (
                       <a href={big} target="_blank" rel="noreferrer" title="Groß anzeigen">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -499,6 +566,13 @@ export default function ScanPage() {
                   <div className="mt-1 text-center text-[10px] text-gray-500">
                     {t.scan_confidence}: {Math.round(c.confidence * 100)}%
                   </div>
+                  {/* Bildquelle wählen: eigenes Foto vs. API-Bild */}
+                  {(c.cropUrl || (mode === "single" && sourceUrl)) && c.match?.image_url && (
+                    <label className="mt-1 flex items-center justify-center gap-1 text-[10px] text-gray-300">
+                      <input type="checkbox" checked={c.usePhoto} onChange={() => toggleUsePhoto(idx)} />
+                      {t.scan_use_photo}
+                    </label>
+                  )}
                 </div>
 
                 {/* Felder */}

@@ -238,6 +238,7 @@ export type ScanCandidate = {
     language: string | null;
     position: number | null;
     confidence: number | null;
+    bbox: number[] | null;
   };
   match: ScanMatch | null;
   suggested: Record<string, unknown>;
