@@ -77,13 +77,14 @@ class ScanCommitItem(BaseModel):
     dex_id: Optional[int] = None
     bild_karte_url: Optional[str] = None   # TCGdex high.webp (wird host-validiert)
     position: Optional[int] = None         # Binder-Slot (0-basiert) für die Ablage
+    im_pokedex: bool = False               # je Karte: als Pokédex-Vertreter setzen
+    prioritaet: Optional[str] = None       # nur für Wunschliste
 
 
 class ScanCommitRequest(BaseModel):
-    # Ziel: "pokedex" (nur als besessene Karte) oder Sammlung per ID
-    target: Literal["pokedex", "collection"] = "pokedex"
+    # Ziel: Pokédex (besessen), Sammlung, oder Wunschliste (nicht besessen)
+    target: Literal["pokedex", "collection", "wishlist"] = "pokedex"
     collection_id: Optional[int] = None
-    set_im_pokedex: bool = False           # je pokedex_nr als Pokédex-Vertreter setzen
     items: list[ScanCommitItem]
 
 

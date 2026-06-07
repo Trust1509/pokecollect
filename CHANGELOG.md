@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.7.7] – 2026-06-07 (Scan-Review: Zuschnitt-Fix, Pokédex je Karte, Wunschkarte)
+
+### Scan
+- **Zuschnitt korrekt:** Gemini-Bounding-Box wird jetzt im nativen Format
+  `[ymin,xmin,ymax,xmax]` (0–1000) interpretiert → das eigene Foto sitzt sauber
+  auf der Karte (vorher daneben).
+- **Pokédex je Karte:** Pokédex-Nr. wird in der Review angezeigt; „Im Pokédex"
+  ist jetzt **pro Karte nach dem Scan** umschaltbar (Setup-Häkchen bleibt als
+  Standard für alle).
+- **Wunschkarte scannen:** neues Ziel „Wunschliste" (mit Priorität) – Karte
+  wird als nicht besessen auf die Wunschliste gelegt.
+- **Mobile Review:** Karten-Layout stapelt am Handy (Bild oben, Felder darunter),
+  Set-Auswahl/Felder laufen nicht mehr aus der Box (min-w-0).
+
 ## [v0.7.6] – 2026-06-07 (Scan: Foto-Zuschnitt, Tempo, Pokédex-Nr.)
 
 ### Scan

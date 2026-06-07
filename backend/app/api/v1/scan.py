@@ -116,9 +116,13 @@ async def scan_resolve(read: ScanRawRead, db: Session = Depends(get_db)):
 @router.post("/commit", response_model=ScanCommitResponse)
 def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
     """
-    Legt die bestätigten Karten an (besessen=True), weist sie optional einer
-    Sammlung zu (mit Binder-Slot) und setzt optional den Pokédex-Vertreter.
+    Legt die bestätigten Karten an. Ziel:
+      - pokedex     → besessen, optional je Karte Pokédex-Vertreter
+      - collection  → besessen + Sammlung (mit Binder-Slot)
+      - wishlist    → nicht besessen, auf Wunschliste (mit Priorität)
     """
+    is_wishlist = payload.target == "wishlist"
+
     collection: Collection | None = None
     if payload.target == "collection":
         if not payload.collection_id:
@@ -127,6 +131,7 @@ def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
         if not collection:
             raise HTTPException(status_code=404, detail="Sammlung nicht gefunden")
 
+    flagged_nrs: set[int] = set()  # je pokedex_nr nur einen Vertreter im Batch
     created_ids: list[int] = []
     for item in payload.items:
         card = PokemonCard(
@@ -141,7 +146,9 @@ def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
             sprache=item.sprache or "DE",
             zustand=item.zustand,
             notizen=item.notizen,
-            besessen=True,
+            besessen=not is_wishlist,
+            wunschliste=is_wishlist,
+            prioritaet=(item.prioritaet if is_wishlist else None),
             tcgdex_card_id=item.tcgdex_card_id,
             set_id=item.set_id,
             dex_id=item.dex_id,
@@ -150,16 +157,18 @@ def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
         db.add(card)
         db.flush()  # ID
 
-        # Pokédex-Vertreter setzen (exklusiv pro pokedex_nr)
-        if payload.set_im_pokedex and card.pokedex_nr:
-            existing = db.scalar(
-                select(func.count(PokemonCard.id))
-                .where(PokemonCard.pokedex_nr == card.pokedex_nr)
-                .where(PokemonCard.im_pokedex == True)
-                .where(PokemonCard.id != card.id)
-            )
-            if existing == 0:
-                card.im_pokedex = True
+        # Pokédex-Vertreter je Karte setzen (exklusiv pro pokedex_nr)
+        if item.im_pokedex and card.pokedex_nr and not is_wishlist:
+            if card.pokedex_nr not in flagged_nrs:
+                existing = db.scalar(
+                    select(func.count(PokemonCard.id))
+                    .where(PokemonCard.pokedex_nr == card.pokedex_nr)
+                    .where(PokemonCard.im_pokedex == True)
+                    .where(PokemonCard.id != card.id)
+                )
+                if existing == 0:
+                    card.im_pokedex = True
+                    flagged_nrs.add(card.pokedex_nr)
 
         # Sammlung + Binder-Slot
         if collection:

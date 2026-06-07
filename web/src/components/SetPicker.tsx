@@ -84,7 +84,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
   return (
     <div ref={wrapRef} className="col-span-2 grid grid-cols-2 gap-3">
       {/* Code-Dropdown */}
-      <div className="relative">
+      <div className="relative min-w-0">
         <label className="text-gray-400 text-xs block mb-1">{t.form_set_code}</label>
         <input
           type="text"
@@ -117,7 +117,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
       </div>
 
       {/* Auto-befüllter Set-Name */}
-      <div>
+      <div className="min-w-0">
         <label className="text-gray-400 text-xs block mb-1">{t.form_set_name}</label>
         <div className="flex gap-1">
           <input
@@ -125,7 +125,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
             value={selectedName}
             readOnly
             placeholder="—"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-gray-400 text-sm cursor-not-allowed"
+            className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-gray-400 text-sm cursor-not-allowed"
           />
           {value && (
             <button

@@ -16,6 +16,7 @@ type EditableCandidate = ScanCandidate & {
   include: boolean;
   usePhoto: boolean;        // eigenes Foto (true) vs. API-Bild (false)
   cropUrl: string | null;   // Vorschau des zugeschnittenen eigenen Fotos
+  imPokedex: boolean;       // je Karte: in den Pokédex
 };
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
@@ -112,10 +113,11 @@ export default function ScanPage() {
   const [sets, setSets] = useState<PokemonSet[]>([]);
 
   const [mode, setMode] = useState<ScanMode>("single");
-  const [target, setTarget] = useState<"pokedex" | "collection">("pokedex");
+  const [target, setTarget] = useState<"pokedex" | "collection" | "wishlist">("pokedex");
   const [collectionId, setCollectionId] = useState<number | null>(null);
   const [layout, setLayout] = useState("3x3");
   const [setPokedexRep, setSetPokedexRep] = useState(false);
+  const [priority, setPriority] = useState("");  // für Wunschkarten-Scan
 
   const [step, setStep] = useState<Step>("setup");
   const [busy, setBusy] = useState(false);
@@ -266,6 +268,7 @@ export default function ScanPage() {
         include: true,
         usePhoto: !!(c.raw?.bbox),
         cropUrl: null,
+        imPokedex: setPokedexRep,
       }));
       if (!list.length) {
         toast.error(t.scan_no_results);
@@ -287,7 +290,7 @@ export default function ScanPage() {
     } finally {
       setBusy(false);
     }
-  }, [layout, mode, t]);
+  }, [layout, mode, t, setPokedexRep]);
 
   const handleCapture = async () => {
     const blob = await blobFromVideo();
@@ -303,6 +306,8 @@ export default function ScanPage() {
 
   const toggleUsePhoto = (idx: number) =>
     setCandidates((prev) => prev.map((c, i) => (i === idx ? { ...c, usePhoto: !c.usePhoto } : c)));
+  const togglePokedex = (idx: number) =>
+    setCandidates((prev) => prev.map((c, i) => (i === idx ? { ...c, imPokedex: !c.imPokedex } : c)));
 
   const updateField = (idx: number, key: string, value: unknown) => {
     setCandidates((prev) =>
@@ -365,12 +370,13 @@ export default function ScanPage() {
           // API-Bild nur senden, wenn der Nutzer NICHT sein eigenes Foto will
           bild_karte_url: c.usePhoto ? null : (c.match?.image_url ?? null),
           position: c.position ?? null,
+          im_pokedex: target !== "wishlist" && c.imPokedex,
+          prioritaet: target === "wishlist" ? (priority || null) : null,
         };
       });
       const res = await scanApi.commit({
         target,
         collection_id: target === "collection" ? collectionId : null,
-        set_im_pokedex: setPokedexRep,
         items,
       });
       // Für jede Karte mit „eigenes Foto" die Aufnahme (per bbox zugeschnitten)
@@ -446,11 +452,12 @@ export default function ScanPage() {
               <label className="text-gray-400 text-xs block mb-1">{t.scan_target}</label>
               <select
                 value={target}
-                onChange={(e) => setTarget(e.target.value as "pokedex" | "collection")}
+                onChange={(e) => setTarget(e.target.value as "pokedex" | "collection" | "wishlist")}
                 className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
               >
                 <option value="pokedex">{t.scan_target_pokedex}</option>
                 <option value="collection">{t.scan_target_collection}</option>
+                <option value="wishlist">{t.scan_target_wishlist}</option>
               </select>
             </div>
             {target === "collection" && (
@@ -464,6 +471,21 @@ export default function ScanPage() {
                   <option value="">–</option>
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {target === "wishlist" && (
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">{t.form_priority}</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+                >
+                  <option value="">–</option>
+                  {(enums?.prioritaet ?? []).map((p) => (
+                    <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
               </div>
@@ -482,10 +504,12 @@ export default function ScanPage() {
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-white">
-            <input type="checkbox" checked={setPokedexRep} onChange={(e) => setSetPokedexRep(e.target.checked)} />
-            {t.scan_set_pokedex_rep}
-          </label>
+          {target !== "wishlist" && (
+            <label className="flex items-center gap-2 text-sm text-white">
+              <input type="checkbox" checked={setPokedexRep} onChange={(e) => setSetPokedexRep(e.target.checked)} />
+              {t.scan_set_pokedex_rep} <span className="text-gray-500 text-xs">({t.scan_default_all})</span>
+            </label>
+          )}
 
           {/* Kamera / Datei */}
           <div className="rounded-lg border border-gray-700 bg-pokemon-card p-4">
@@ -542,111 +566,125 @@ export default function ScanPage() {
             const s = c.suggested as Record<string, unknown>;
             const uncertain = c.uncertain_fields.length > 0;
             const foilOptions = c.foil_options.length ? c.foil_options : (enums?.folierung ?? ["Normal"]);
+            const pokedexNr = (s.pokedex_nr as number) ?? c.match?.dex_id ?? null;
             return (
               <div key={idx}
-                className={`rounded-lg border p-3 flex gap-3 ${
+                className={`rounded-lg border p-3 ${
                   !c.include ? "border-gray-800 opacity-50" : uncertain ? "border-pokemon-red" : "border-gray-700"
                 } bg-pokemon-card`}>
-                {/* Bild – eigenes Foto (Zuschnitt) oder TCGdex-Treffer, je nach Wahl.
-                    Klick öffnet das Bild groß zur Kontrolle. */}
-                <div className="w-28 sm:w-36 shrink-0">
-                  {(() => {
-                    const own = c.cropUrl ?? (mode === "single" ? sourceUrl : null);
-                    const big = c.usePhoto ? (own ?? c.match?.image_url ?? null)
-                                           : (c.match?.image_url ?? own ?? null);
-                    return big ? (
-                      <a href={big} target="_blank" rel="noreferrer" title="Groß anzeigen">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={big} alt="" className="w-full rounded hover:opacity-90" />
-                      </a>
-                    ) : (
-                      <div className="aspect-[63/88] bg-gray-800 rounded flex items-center justify-center text-gray-600 text-xs">?</div>
-                    );
-                  })()}
-                  <div className="mt-1 text-center text-[10px] text-gray-500">
-                    {t.scan_confidence}: {Math.round(c.confidence * 100)}%
-                  </div>
-                  {/* Bildquelle wählen: eigenes Foto vs. API-Bild */}
-                  {(c.cropUrl || (mode === "single" && sourceUrl)) && c.match?.image_url && (
-                    <label className="mt-1 flex items-center justify-center gap-1 text-[10px] text-gray-300">
-                      <input type="checkbox" checked={c.usePhoto} onChange={() => toggleUsePhoto(idx)} />
-                      {t.scan_use_photo}
+                {/* Kopfzeile: Pokédex-Nr. + Übernehmen / Im Pokédex */}
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <span className="text-xs text-gray-400">
+                    {pokedexNr != null ? `#${String(pokedexNr).padStart(4, "0")}` : <span className="text-gray-600">{t.scan_no_dex}</span>}
+                  </span>
+                  <div className="flex items-center gap-3 text-xs">
+                    {target !== "wishlist" && pokedexNr != null && (
+                      <label className="flex items-center gap-1 text-gray-300">
+                        <input type="checkbox" checked={c.imPokedex} onChange={() => togglePokedex(idx)} />
+                        {t.detail_pokedex_flag}
+                      </label>
+                    )}
+                    <label className="flex items-center gap-1 text-gray-300">
+                      <input type="checkbox" checked={c.include} onChange={() => toggleInclude(idx)} />
+                      {t.scan_include}
                     </label>
-                  )}
+                  </div>
                 </div>
 
-                {/* Felder */}
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {uncertain && (
-                    <div className="text-pokemon-red text-xs">⚠ {t.scan_uncertain} ({c.uncertain_fields.join(", ")})</div>
-                  )}
-                  <input
-                    value={String(s.kartenname ?? "")}
-                    onChange={(e) => updateField(idx, "kartenname", e.target.value)}
-                    placeholder={t.scan_field_name}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-                  />
-                  {/* Set-Auswahl (Dropdown wie beim manuellen Anlegen) */}
-                  <SetPicker
-                    value={String(s.set_edition ?? "")}
-                    sets={sets}
-                    onChange={(setEdition) => {
-                      updateField(idx, "set_edition", setEdition || null);
-                      void refreshCandidate(idx, { set_edition: setEdition || null });
-                    }}
-                    onSetAdded={(ns) => setSets((prev) => [...prev, ns].sort((a, b) => a.code.localeCompare(b.code)))}
-                  />
-                  <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* Bild – eigenes Foto (Zuschnitt) oder TCGdex-Treffer, je nach Wahl. */}
+                  <div className="w-32 mx-auto sm:mx-0 sm:w-36 shrink-0">
+                    {(() => {
+                      const own = c.cropUrl ?? (mode === "single" ? sourceUrl : null);
+                      const big = c.usePhoto ? (own ?? c.match?.image_url ?? null)
+                                             : (c.match?.image_url ?? own ?? null);
+                      return big ? (
+                        <a href={big} target="_blank" rel="noreferrer" title="Groß anzeigen">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={big} alt="" className="w-full rounded hover:opacity-90" />
+                        </a>
+                      ) : (
+                        <div className="aspect-[63/88] bg-gray-800 rounded flex items-center justify-center text-gray-600 text-xs">?</div>
+                      );
+                    })()}
+                    <div className="mt-1 text-center text-[10px] text-gray-500">
+                      {t.scan_confidence}: {Math.round(c.confidence * 100)}%
+                    </div>
+                    {(c.cropUrl || (mode === "single" && sourceUrl)) && c.match?.image_url && (
+                      <label className="mt-1 flex items-center justify-center gap-1 text-[10px] text-gray-300">
+                        <input type="checkbox" checked={c.usePhoto} onChange={() => toggleUsePhoto(idx)} />
+                        {t.scan_use_photo}
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Felder */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {uncertain && (
+                      <div className="text-pokemon-red text-xs">⚠ {t.scan_uncertain} ({c.uncertain_fields.join(", ")})</div>
+                    )}
                     <input
-                      value={String(s.karten_nr ?? "")}
-                      onChange={(e) => updateField(idx, "karten_nr", e.target.value)}
-                      onBlur={() => void refreshCandidate(idx)}
-                      placeholder={t.scan_field_nr}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs font-mono"
+                      value={String(s.kartenname ?? "")}
+                      onChange={(e) => updateField(idx, "kartenname", e.target.value)}
+                      placeholder={t.scan_field_name}
+                      className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
                     />
-                    <select
-                      value={String(s.sprache ?? "DE")}
-                      onChange={(e) => { updateField(idx, "sprache", e.target.value); void refreshCandidate(idx, { sprache: e.target.value }); }}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
-                    >
-                      {LANGS.map((l) => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 items-start">
-                    {/* Folierung – alle Möglichkeiten; laut Karte mögliche zuerst */}
-                    <select
-                      value={String(s.folierung ?? "")}
-                      onChange={(e) => updateField(idx, "folierung", e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-xs"
-                    >
-                      <option value="">{t.scan_field_foiling}</option>
-                      {(() => {
-                        const all = enums?.folierung ?? foilOptions;
-                        const pref = foilOptions.filter((f) => all.includes(f));
-                        const rest = all.filter((f) => !pref.includes(f));
-                        return [...pref, ...rest].map((f) => <option key={f} value={f}>{f}</option>);
-                      })()}
-                    </select>
-                    {/* Seltenheit mit Symbol (wie beim manuellen Anlegen) */}
-                    <RaritySelect
-                      value={String(s.seltenheit ?? "")}
-                      onChange={(v) => updateField(idx, "seltenheit", v)}
-                      options={(() => {
-                        const opts = enums?.seltenheit ?? [];
-                        const cur = String(s.seltenheit ?? "");
-                        return cur && !opts.includes(cur) ? [cur, ...opts] : opts;
-                      })()}
-                      language={String(s.sprache ?? "DE")}
+                    {/* Set-Auswahl (Dropdown wie beim manuellen Anlegen) */}
+                    <SetPicker
+                      value={String(s.set_edition ?? "")}
+                      sets={sets}
+                      onChange={(setEdition) => {
+                        updateField(idx, "set_edition", setEdition || null);
+                        void refreshCandidate(idx, { set_edition: setEdition || null });
+                      }}
+                      onSetAdded={(ns) => setSets((prev) => [...prev, ns].sort((a, b) => a.code.localeCompare(b.code)))}
                     />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        value={String(s.karten_nr ?? "")}
+                        onChange={(e) => updateField(idx, "karten_nr", e.target.value)}
+                        onBlur={() => void refreshCandidate(idx)}
+                        placeholder={t.scan_field_nr}
+                        className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs font-mono"
+                      />
+                      <select
+                        value={String(s.sprache ?? "DE")}
+                        onChange={(e) => { updateField(idx, "sprache", e.target.value); void refreshCandidate(idx, { sprache: e.target.value }); }}
+                        className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
+                      >
+                        {LANGS.map((l) => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 items-start">
+                      {/* Folierung – alle Möglichkeiten; laut Karte mögliche zuerst */}
+                      <select
+                        value={String(s.folierung ?? "")}
+                        onChange={(e) => updateField(idx, "folierung", e.target.value)}
+                        className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-xs"
+                      >
+                        <option value="">{t.scan_field_foiling}</option>
+                        {(() => {
+                          const all = enums?.folierung ?? foilOptions;
+                          const pref = foilOptions.filter((f) => all.includes(f));
+                          const rest = all.filter((f) => !pref.includes(f));
+                          return [...pref, ...rest].map((f) => <option key={f} value={f}>{f}</option>);
+                        })()}
+                      </select>
+                      {/* Seltenheit mit Symbol (wie beim manuellen Anlegen) */}
+                      <div className="min-w-0">
+                        <RaritySelect
+                          value={String(s.seltenheit ?? "")}
+                          onChange={(v) => updateField(idx, "seltenheit", v)}
+                          options={(() => {
+                            const opts = enums?.seltenheit ?? [];
+                            const cur = String(s.seltenheit ?? "");
+                            return cur && !opts.includes(cur) ? [cur, ...opts] : opts;
+                          })()}
+                          language={String(s.sprache ?? "DE")}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-
-                {/* Übernehmen-Toggle */}
-                <div className="shrink-0 flex items-start">
-                  <label className="flex items-center gap-1 text-xs text-gray-300">
-                    <input type="checkbox" checked={c.include} onChange={() => toggleInclude(idx)} />
-                    {t.scan_include}
-                  </label>
                 </div>
               </div>
             );

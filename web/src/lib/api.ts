@@ -270,12 +270,13 @@ export type ScanCommitItem = {
   dex_id?: number | null;
   bild_karte_url?: string | null;
   position?: number | null;
+  im_pokedex?: boolean;
+  prioritaet?: string | null;
 };
 
 export type ScanCommitRequest = {
-  target: "pokedex" | "collection";
+  target: "pokedex" | "collection" | "wishlist";
   collection_id?: number | null;
-  set_im_pokedex?: boolean;
   items: ScanCommitItem[];
 };
 
