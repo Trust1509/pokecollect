@@ -18,6 +18,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
+from app.models.gemini_usage import GeminiUsage
 from app.models.setting import AppSetting
 from app.schemas.scan import (
     ScanCandidate, ScanCommitRequest, ScanCommitResponse, ScanMode,
@@ -54,6 +55,28 @@ def scan_status(db: Session = Depends(get_db)):
         "gemini": gem,
         "ocr": ocr.is_enabled(),
         "active": "gemini" if gem else ("ocr" if ocr.is_enabled() else "none"),
+    }
+
+
+@router.get("/usage")
+def scan_usage(db: Session = Depends(get_db)):
+    """Gemini-Nutzung: heute + Summe (zur Kostenkontrolle / Free-Tier-Überblick)."""
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    rows = db.scalars(
+        select(GeminiUsage).order_by(GeminiUsage.day.desc()).limit(30)
+    ).all()
+    today_row = next((r for r in rows if r.day == today), None)
+    total_req = db.scalar(select(func.coalesce(func.sum(GeminiUsage.requests), 0))) or 0
+    total_tok = db.scalar(select(func.coalesce(func.sum(GeminiUsage.tokens), 0))) or 0
+    return {
+        "today": {
+            "day": today,
+            "requests": today_row.requests if today_row else 0,
+            "tokens": today_row.tokens if today_row else 0,
+        },
+        "total": {"requests": int(total_req), "tokens": int(total_tok)},
+        "days": [{"day": r.day, "requests": r.requests, "tokens": r.tokens} for r in rows],
     }
 
 

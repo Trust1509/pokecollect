@@ -287,8 +287,15 @@ export type ScanRawRead = {
   language?: string | null;
 };
 
+export type ScanUsage = {
+  today: { day: string; requests: number; tokens: number };
+  total: { requests: number; tokens: number };
+  days: { day: string; requests: number; tokens: number }[];
+};
+
 export const scanApi = {
   status: () => api.get<ScanStatus>("/scan/status"),
+  usage: () => api.get<ScanUsage>("/scan/usage"),
   scan: (file: Blob, opts: { mode: ScanMode; rows?: number; cols?: number; default_language?: string }) => {
     const form = new FormData();
     form.append("file", file, "scan.jpg");

@@ -81,6 +81,10 @@ def list_cards(
             PokemonCard.im_pokedex == True,
             PokemonCard.pokedex_nr.isnot(None),
         )
+        owned_nrs = select(PokemonCard.pokedex_nr).where(
+            PokemonCard.besessen == True,
+            PokemonCard.pokedex_nr.isnot(None),
+        )
         fallback = (
             select(func.min(PokemonCard.id))
             .where(
@@ -95,9 +99,11 @@ def list_cards(
             or_(
                 PokemonCard.im_pokedex == True,
                 PokemonCard.id.in_(fallback),
+                # Platzhalter nur, wenn die Spezies weder geflaggt noch besessen ist
                 and_(
                     PokemonCard.besessen == False,
                     ~PokemonCard.pokedex_nr.in_(flagged),
+                    ~PokemonCard.pokedex_nr.in_(owned_nrs),
                 ),
             ),
         )

@@ -104,6 +104,7 @@ export default function CardDetailPage() {
   const autoFilled = useRef({ kartenname: false, englischer_name: false });
   const lookupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
@@ -440,12 +441,21 @@ export default function CardDetailPage() {
             )}
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="w-full mt-2 text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
-          >
-            {card.bild_karte_pfad ? t.detail_replace_photo : t.detail_upload_photo}
-          </button>
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
+          <div className="mt-2 grid grid-cols-2 gap-1">
+            <button
+              onClick={() => cameraRef.current?.click()}
+              className="text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
+            >
+              {t.detail_take_photo}
+            </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
+            >
+              {card.bild_karte_pfad ? t.detail_replace_photo : t.detail_upload_photo}
+            </button>
+          </div>
           {!card.bild_karte_pfad && (
             <button
               onClick={() => { setShowUrlInput((v) => !v); setUrlInput(card.bild_pokedex_url ?? ""); }}

@@ -95,6 +95,7 @@ async def extract(
 
     try:
         data = resp.json()
+        _record_usage(data.get("usageMetadata", {}).get("totalTokenCount", 0))
         text = data["candidates"][0]["content"]["parts"][0]["text"]
         parsed = json.loads(text)
     except (KeyError, IndexError, ValueError, TypeError) as exc:
@@ -121,6 +122,28 @@ async def extract(
         )
         out.append(read)
     return out
+
+
+def _record_usage(total_tokens: int) -> None:
+    """Zählt eine Gemini-Anfrage + Tokens für den aktuellen UTC-Tag."""
+    try:
+        from datetime import datetime, timezone
+        from app.database import SessionLocal
+        from app.models.gemini_usage import GeminiUsage
+        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        db = SessionLocal()
+        try:
+            row = db.get(GeminiUsage, day)
+            if row:
+                row.requests = (row.requests or 0) + 1
+                row.tokens = (row.tokens or 0) + int(total_tokens or 0)
+            else:
+                db.add(GeminiUsage(day=day, requests=1, tokens=int(total_tokens or 0)))
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:  # Nutzung tracken darf den Scan nie stören
+        log.debug("Gemini-Usage konnte nicht gezählt werden: %s", exc)
 
 
 def _str(v) -> Optional[str]:

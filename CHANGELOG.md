@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.7.8] – 2026-06-07 (Pokédex-Dublette, Foto aufnehmen, Gemini-Tracking)
+
+### Fix
+- **Pokédex-Dublette behoben:** Besitzt man eine Karte einer Spezies (auch ohne
+  „Im Pokédex"-Flag), wurde zusätzlich noch der graue Platzhalter derselben
+  Nummer angezeigt. Platzhalter erscheinen jetzt nur noch für Spezies, die weder
+  geflaggt noch besessen sind.
+
+### Features
+- **Kartenfoto neu aufnehmen:** Auf der Kartenseite gibt es jetzt „Foto
+  aufnehmen" (Kamera) zusätzlich zu „Foto austauschen/hochladen" (Galerie).
+- **Gemini-Nutzungs-Tracking:** Requests + Tokens werden pro Tag gezählt
+  (`gemini_usage`), Anzeige in den Einstellungen (heute / gesamt) mit Hinweis
+  zum täglichen Free-Tier-Reset. Endpoint `GET /scan/usage`.
+
+### Hinweis (Verhalten, kein Bug)
+- Eine **besessene** Karte erscheint immer im Pokédex (eine je Spezies). Das
+  „Im Pokédex"-Flag wählt nur aus, **welche** Karte erscheint, wenn man mehrere
+  derselben Spezies besitzt.
+
 ## [v0.7.7] – 2026-06-07 (Scan-Review: Zuschnitt-Fix, Pokédex je Karte, Wunschkarte)
 
 ### Scan

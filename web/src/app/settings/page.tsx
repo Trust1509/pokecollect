@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, cardApi, AppSettings } from "@/lib/api";
+import { settingsApi, cardApi, scanApi, AppSettings, ScanUsage } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 
 const SECTION = "bg-pokemon-card rounded-lg p-5 space-y-4";
@@ -45,9 +45,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
+  const [usage, setUsage] = useState<ScanUsage | null>(null);
 
   useEffect(() => {
     settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error("Einstellungen konnten nicht geladen werden"));
+    scanApi.usage().then((r) => setUsage(r.data)).catch(() => {});
   }, []);
 
   const save = async (patch: Partial<AppSettings>) => {
@@ -230,6 +232,27 @@ export default function SettingsPage() {
             Scan-Einstellungen speichern
           </button>
         </div>
+        {usage && (
+          <div className="mt-3 border-t border-gray-700 pt-3 text-sm">
+            <p className="text-gray-400 text-xs mb-2">Gemini-Nutzung (Tracking)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-900 rounded p-2">
+                <div className="text-gray-500 text-xs">Heute</div>
+                <div className="text-white">{usage.today.requests} Anfragen</div>
+                <div className="text-gray-400 text-xs">{usage.today.tokens.toLocaleString("de")} Tokens</div>
+              </div>
+              <div className="bg-gray-900 rounded p-2">
+                <div className="text-gray-500 text-xs">Gesamt</div>
+                <div className="text-white">{usage.total.requests} Anfragen</div>
+                <div className="text-gray-400 text-xs">{usage.total.tokens.toLocaleString("de")} Tokens</div>
+              </div>
+            </div>
+            <p className="text-gray-600 text-xs mt-2">
+              Free-Tier-Limits gelten pro Tag und werden täglich zurückgesetzt
+              (ca. 09:00 MEZ / Mitternacht US-Pazifik).
+            </p>
+          </div>
+        )}
       </Section>
 
       {/* Bilder */}
