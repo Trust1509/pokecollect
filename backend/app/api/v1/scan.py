@@ -20,10 +20,11 @@ from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.setting import AppSetting
 from app.schemas.scan import (
-    ScanCommitRequest, ScanCommitResponse, ScanMode, ScanResponse,
+    ScanCandidate, ScanCommitRequest, ScanCommitResponse, ScanMode,
+    ScanRawRead, ScanResponse,
 )
 from app.services.scan import gemini, ocr
-from app.services.scan.resolver import resolve_reads
+from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
 
 log = logging.getLogger(__name__)
@@ -93,6 +94,15 @@ async def scan(
 
     candidates = await resolve_reads(db, reads or [], default_lang=default_language)
     return ScanResponse(engine=engine, mode=mode, candidates=candidates)
+
+
+@router.post("/resolve", response_model=ScanCandidate)
+async def scan_resolve(read: ScanRawRead, db: Session = Depends(get_db)):
+    """
+    Löst eine (manuell angepasste) Erkennung neu gegen TCGdex auf – für die
+    Live-Vorschau im Bestätigungs-Dialog, wenn der Nutzer Set/Nummer ändert.
+    """
+    return await resolve_one(db, read, default_lang=read.language or "DE")
 
 
 @router.post("/commit", response_model=ScanCommitResponse)

@@ -3,9 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  Collection, Enums, ScanCandidate, ScanCommitItem, ScanMode, ScanStatus,
-  cardApi, collectionApi, scanApi,
+  Collection, Enums, PokemonSet, ScanCandidate, ScanCommitItem, ScanMode, ScanStatus,
+  cardApi, collectionApi, scanApi, setsApi,
 } from "@/lib/api";
+import SetPicker from "@/components/SetPicker";
+import RaritySelect from "@/components/RaritySelect";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "setup" | "review" | "done";
@@ -13,6 +15,13 @@ type Step = "setup" | "review" | "done";
 type EditableCandidate = ScanCandidate & { include: boolean };
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
+
+/** "Paldeas Schicksale (PAF)" → "PAF" */
+function codeFromEdition(edition: string | null | undefined): string | null {
+  if (!edition) return null;
+  const m = edition.match(/\(([A-Z0-9.]{1,8})\)\s*$/);
+  return m ? m[1] : null;
+}
 
 function parseLayout(layout: string): { cols: number; rows: number } {
   const m = layout.match(/^(\d+)x(\d+)$/);
@@ -58,6 +67,7 @@ export default function ScanPage() {
   const [status, setStatus] = useState<ScanStatus | null>(null);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [sets, setSets] = useState<PokemonSet[]>([]);
 
   const [mode, setMode] = useState<ScanMode>("single");
   const [target, setTarget] = useState<"pokedex" | "collection">("pokedex");
@@ -86,6 +96,7 @@ export default function ScanPage() {
     scanApi.status().then((r) => setStatus(r.data)).catch(() => {});
     cardApi.enums().then((r) => setEnums(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
+    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -238,6 +249,37 @@ export default function ScanPage() {
   };
   const toggleInclude = (idx: number) =>
     setCandidates((prev) => prev.map((c, i) => (i === idx ? { ...c, include: !c.include } : c)));
+
+  // Karte anhand der (geänderten) Set/Nummer neu auflösen → Live-Bild + Treffer.
+  // Behält die Nutzer-Auswahl für Set/Nummer/Sprache bei.
+  const refreshCandidate = async (idx: number, overrides: Record<string, unknown> = {}) => {
+    const c = candidates[idx];
+    if (!c) return;
+    const s = { ...(c.suggested as Record<string, unknown>), ...overrides };
+    try {
+      const r = await scanApi.resolve({
+        name: String(s.kartenname ?? c.raw.name ?? ""),
+        set_code: codeFromEdition(s.set_edition as string),
+        number: (s.karten_nr as string) ?? null,
+        language: (s.sprache as string) ?? "DE",
+      });
+      const nc = r.data;
+      setCandidates((prev) => prev.map((cc, i) => i === idx ? {
+        ...cc,
+        match: nc.match,
+        foil_options: nc.foil_options,
+        uncertain_fields: nc.uncertain_fields,
+        confidence: nc.confidence,
+        suggested: {
+          ...nc.suggested,
+          // Nutzer-Eingaben behalten
+          set_edition: s.set_edition,
+          karten_nr: s.karten_nr,
+          sprache: s.sprache,
+        },
+      } : cc));
+    } catch { /* Live-Auflösung ist optional */ }
+  };
 
   const handleSave = async () => {
     const chosen = candidates.filter((c) => c.include);
@@ -470,49 +512,59 @@ export default function ScanPage() {
                     placeholder={t.scan_field_name}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
                   />
+                  {/* Set-Auswahl (Dropdown wie beim manuellen Anlegen) */}
+                  <SetPicker
+                    value={String(s.set_edition ?? "")}
+                    sets={sets}
+                    onChange={(setEdition) => {
+                      updateField(idx, "set_edition", setEdition || null);
+                      void refreshCandidate(idx, { set_edition: setEdition || null });
+                    }}
+                    onSetAdded={(ns) => setSets((prev) => [...prev, ns].sort((a, b) => a.code.localeCompare(b.code)))}
+                  />
                   <div className="grid grid-cols-2 gap-1.5">
-                    <input
-                      value={String(s.set_edition ?? "")}
-                      onChange={(e) => updateField(idx, "set_edition", e.target.value)}
-                      placeholder={t.scan_field_set}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
-                    />
                     <input
                       value={String(s.karten_nr ?? "")}
                       onChange={(e) => updateField(idx, "karten_nr", e.target.value)}
+                      onBlur={() => void refreshCandidate(idx)}
                       placeholder={t.scan_field_nr}
                       className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs font-mono"
                     />
                     <select
                       value={String(s.sprache ?? "DE")}
-                      onChange={(e) => updateField(idx, "sprache", e.target.value)}
+                      onChange={(e) => { updateField(idx, "sprache", e.target.value); void refreshCandidate(idx, { sprache: e.target.value }); }}
                       className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
                     >
                       {LANGS.map((l) => <option key={l} value={l}>{l}</option>)}
                     </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 items-start">
+                    {/* Folierung – alle Möglichkeiten; laut Karte mögliche zuerst */}
                     <select
                       value={String(s.folierung ?? "")}
                       onChange={(e) => updateField(idx, "folierung", e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
+                      className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-xs"
                     >
                       <option value="">{t.scan_field_foiling}</option>
-                      {foilOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                      {(() => {
+                        const all = enums?.folierung ?? foilOptions;
+                        const pref = foilOptions.filter((f) => all.includes(f));
+                        const rest = all.filter((f) => !pref.includes(f));
+                        return [...pref, ...rest].map((f) => <option key={f} value={f}>{f}</option>);
+                      })()}
                     </select>
+                    {/* Seltenheit mit Symbol (wie beim manuellen Anlegen) */}
+                    <RaritySelect
+                      value={String(s.seltenheit ?? "")}
+                      onChange={(v) => updateField(idx, "seltenheit", v)}
+                      options={(() => {
+                        const opts = enums?.seltenheit ?? [];
+                        const cur = String(s.seltenheit ?? "");
+                        return cur && !opts.includes(cur) ? [cur, ...opts] : opts;
+                      })()}
+                      language={String(s.sprache ?? "DE")}
+                    />
                   </div>
-                  {/* Seltenheit */}
-                  <select
-                    value={String(s.seltenheit ?? "")}
-                    onChange={(e) => updateField(idx, "seltenheit", e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-xs"
-                  >
-                    <option value="">{t.scan_field_rarity}</option>
-                    {(() => {
-                      const opts = enums?.seltenheit ?? [];
-                      const cur = String(s.seltenheit ?? "");
-                      const all = cur && !opts.includes(cur) ? [cur, ...opts] : opts;
-                      return all.map((r) => <option key={r} value={r}>{r}</option>);
-                    })()}
-                  </select>
                 </div>
 
                 {/* Übernehmen-Toggle */}

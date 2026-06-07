@@ -55,11 +55,14 @@ export default function HomePage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Pokédex-Ansicht: immer dedupliziert (eine Karte je Pokémon)
+      // Im Binder paginiert die Binder-Ansicht selbst → alle Karten laden,
+      // damit es nicht zwei konkurrierende Seitenwechsler gibt und neue Karten
+      // auf späteren Seiten sichtbar sind.
+      const isBinder = view === "binder";
       const params: Record<string, unknown> = {
         ...filters,
-        page,
-        limit: appSettings?.cards_per_page ?? 48,
+        page: isBinder ? 1 : page,
+        limit: isBinder ? 2000 : (appSettings?.cards_per_page ?? 48),
         pokedex_view: true,
       };
       const res = await cardApi.list(params);
@@ -67,7 +70,7 @@ export default function HomePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, page, appSettings]);
+  }, [filters, page, appSettings, view]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -168,7 +171,7 @@ export default function HomePage() {
                   </span>
                   <ViewToggle value={view} onChange={setView} />
                 </div>
-                {data && data.pages > 1 && (
+                {view !== "binder" && data && data.pages > 1 && (
                   <div className="flex gap-2 text-sm items-center">
                     <button
                       disabled={page <= 1}

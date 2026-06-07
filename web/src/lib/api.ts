@@ -278,6 +278,13 @@ export type ScanCommitRequest = {
   items: ScanCommitItem[];
 };
 
+export type ScanRawRead = {
+  name?: string | null;
+  set_code?: string | null;
+  number?: string | null;
+  language?: string | null;
+};
+
 export const scanApi = {
   status: () => api.get<ScanStatus>("/scan/status"),
   scan: (file: Blob, opts: { mode: ScanMode; rows?: number; cols?: number; default_language?: string }) => {
@@ -289,6 +296,7 @@ export const scanApi = {
     form.append("default_language", opts.default_language ?? "DE");
     return api.post<ScanResponse>("/scan", form);
   },
+  resolve: (read: ScanRawRead) => api.post<ScanCandidate>("/scan/resolve", read),
   commit: (payload: ScanCommitRequest) =>
     api.post<{ created: number; card_ids: number[] }>("/scan/commit", payload),
 };

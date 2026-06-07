@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.7.4] – 2026-06-07 (Scan-Review & Pokédex-Binder)
+
+### Scan-Review
+- **Set per Dropdown** (wie beim manuellen Anlegen) statt Freitext – inkl.
+  „Neues Set anlegen". Auswahl löst die Karte live neu auf.
+- **Seltenheit mit Symbol** (RaritySelect) im Review; in der Kartenübersicht
+  werden die Symbole bereits angezeigt.
+- **Folierung**: alle Möglichkeiten wählbar (laut Karte mögliche zuerst).
+- **Live-Bild**: ändert man Set, Nummer oder Sprache, wird die Karte über
+  `POST /scan/resolve` neu aufgelöst und das Trefferbild aktualisiert – so sieht
+  man sofort, ob die richtige Karte getroffen wurde.
+
+### Pokédex-Binder
+- **Nur noch ein Seitenwechsler:** In der Binder-Ansicht werden jetzt alle
+  Karten geladen, der zusätzliche Daten-Pager oben ist ausgeblendet. Damit
+  erscheinen auch neu hinzugefügte Karten auf den richtigen Seiten.
+
+### Hinweis
+- Unsicher erkannte Karten ohne Treffer bekommen keine Pokédex-Nr. und tauchen
+  daher nicht in der Pokédex-Ansicht auf – im Review jetzt einfach das Set
+  wählen, dann wird die Karte korrekt aufgelöst (inkl. Pokédex-Nr.).
+
 ## [v0.7.3] – 2026-06-07 (Scan- & Binder-Fixes)
 
 ### Fixes
