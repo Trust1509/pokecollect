@@ -149,7 +149,7 @@ export default function HomePage() {
         </div>
       )}
 
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         <FilterSidebar
           filters={filters}
           onChange={handleFilters}

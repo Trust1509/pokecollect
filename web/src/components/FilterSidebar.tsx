@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Enums } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { rarityOptionLabel } from "@/components/RarityBadge";
@@ -25,11 +26,25 @@ const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 export default function FilterSidebar({ filters, onChange, enums, sets }: Props) {
   const { t } = useI18n();
+  const [open, setOpen] = useState(false);
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
 
+  const activeCount = (["besessen", "generation", "set", "seltenheit", "sprache", "search", "bild_status"] as const)
+    .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
+
   return (
-    <aside className="w-56 shrink-0 space-y-5 text-sm">
+    <aside className="w-full md:w-56 shrink-0 text-sm">
+      {/* Mobile: Filter ein-/ausklappen */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="md:hidden w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
+      >
+        <span>🔍 {t.filter_title}{activeCount > 0 ? ` (${activeCount})` : ""}</span>
+        <span className="text-gray-500">{open ? "▲" : "▼"}</span>
+      </button>
+
+      <div className={`${open ? "block" : "hidden"} md:block space-y-5 mt-3 md:mt-0`}>
       <div>
         <label className="block text-gray-400 mb-1">{t.filter_search}</label>
         <input
@@ -143,6 +158,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
       >
         {t.filter_reset}
       </button>
+      </div>
     </aside>
   );
 }

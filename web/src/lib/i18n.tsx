@@ -12,6 +12,7 @@ const DE = {
   nav_settings: "Einstellungen",
   nav_add_card: "+ Karte",
   nav_scan: "📷 Scannen",
+  nav_scan_short: "Scan",
 
   // View toggle
   view_grid: "Raster",
@@ -165,6 +166,7 @@ const DE = {
   scan_error: "Scan fehlgeschlagen",
 
   // FilterSidebar
+  filter_title: "Filter",
   filter_search: "Suche",
   filter_search_placeholder: "Name oder Pokédex-Nr. …",
   filter_status: "Status",
@@ -283,6 +285,7 @@ const EN: typeof DE = {
   nav_settings: "Settings",
   nav_add_card: "+ Card",
   nav_scan: "📷 Scan",
+  nav_scan_short: "Scan",
 
   view_grid: "Grid",
   view_binder: "Binder",
@@ -428,6 +431,7 @@ const EN: typeof DE = {
   scan_back: "← Back",
   scan_error: "Scan failed",
 
+  filter_title: "Filters",
   filter_search: "Search",
   filter_search_placeholder: "Name or Pokédex no. …",
   filter_status: "Status",

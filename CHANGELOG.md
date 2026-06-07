@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.8.0] – 2026-06-07 (Teil 3: Mobile-First + PWA)
+
+### Mobile
+- **Bottom-Navigation** auf dem Smartphone (Pokédex / Sammlungen / Scan /
+  Wunschliste / Einstellungen) mit Icons; Scan-Button hervorgehoben. Desktop-Nav
+  unverändert (Links blenden auf Mobile aus → keine abgeschnittene Top-Leiste mehr).
+- **Filter als ein-/ausklappbares Sheet** auf Mobile (mit Anzahl aktiver Filter);
+  Pokédex- und „Alle besessenen"-Seite stapeln Filter/Inhalt sauber (flex-col).
+- Layout-Abstand für die Bottom-Nav, Safe-Area berücksichtigt.
+
+### PWA
+- **Installierbar:** Web-App-Manifest + App-Icons (Pokéball), Theme-Color,
+  Standalone-Anzeige → „Zum Startbildschirm hinzufügen".
+- **Service Worker** (`/sw.js`): App-Shell-Cache + stale-while-revalidate für
+  GET/API/Bilder → Offline-Lesezugriff auf die zuletzt geladene Sammlung.
+  Nicht-GET-Anfragen werden nie abgefangen.
+
+### Hinweis
+- Installation + Offline + (Live-Kamera) brauchen **HTTPS**. Über HTTP im LAN
+  läuft die App normal, aber ohne Installier-/Offline-Funktion und ohne
+  Live-Webcam. → Caddy-TLS einrichten, dann ist alles aktiv.
+
 ## [v0.7.11] – 2026-06-07 (Scan-Review: Pokédex-Nr. editierbar, Crop-Ausrichtung)
 
 ### Scan-Review
