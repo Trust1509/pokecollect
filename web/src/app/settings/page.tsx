@@ -237,37 +237,33 @@ export default function SettingsPage() {
         </div>
         {usage && (
           <div className="mt-3 border-t border-gray-700 pt-3 text-sm">
-            <p className="text-gray-400 text-xs mb-2">Gemini-Nutzung (Tracking)</p>
+            <p className="text-gray-400 text-xs mb-2">Gemini-Nutzung & Free-Tier ({usage.model})</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-900 rounded p-2">
-                <div className="text-gray-500 text-xs">Heute</div>
-                <div className="text-white">
-                  {usage.today.requests}{s.gemini_daily_limit > 0 ? ` / ${s.gemini_daily_limit}` : ""} Anfragen
+                <div className="text-gray-500 text-xs">Heute (Anfragen/Tag)</div>
+                <div className="text-white">{usage.today.requests} / {usage.limits.rpd}</div>
+                <div className="mt-1 h-1.5 bg-gray-700 rounded-full">
+                  <div
+                    className={`h-full rounded-full ${usage.today.requests >= usage.limits.rpd ? "bg-pokemon-red" : "bg-green-500"}`}
+                    style={{ width: `${Math.min(100, (usage.today.requests / usage.limits.rpd) * 100)}%` }}
+                  />
                 </div>
-                <div className="text-gray-400 text-xs">{usage.today.tokens.toLocaleString("de")} Tokens</div>
-                {s.gemini_daily_limit > 0 && (
-                  <>
-                    <div className="mt-1 h-1.5 bg-gray-700 rounded-full">
-                      <div
-                        className={`h-full rounded-full ${usage.today.requests >= s.gemini_daily_limit ? "bg-pokemon-red" : "bg-green-500"}`}
-                        style={{ width: `${Math.min(100, (usage.today.requests / s.gemini_daily_limit) * 100)}%` }}
-                      />
-                    </div>
-                    <div className="text-gray-500 text-xs mt-0.5">
-                      {Math.max(0, s.gemini_daily_limit - usage.today.requests)} übrig
-                    </div>
-                  </>
-                )}
+                <div className="text-gray-500 text-xs mt-0.5">
+                  {Math.max(0, usage.limits.rpd - usage.today.requests)} Scans übrig heute
+                </div>
+                <div className="text-gray-400 text-xs mt-1">{usage.today.tokens.toLocaleString("de")} Tokens heute</div>
               </div>
               <div className="bg-gray-900 rounded p-2">
-                <div className="text-gray-500 text-xs">Gesamt</div>
-                <div className="text-white">{usage.total.requests} Anfragen</div>
-                <div className="text-gray-400 text-xs">{usage.total.tokens.toLocaleString("de")} Tokens</div>
+                <div className="text-gray-500 text-xs">Pro Scan / Limits</div>
+                <div className="text-white">≈ {usage.avg_tokens_per_scan.toLocaleString("de")} Tokens/Scan</div>
+                <div className="text-gray-400 text-xs mt-1">{usage.limits.rpm} Anfragen/Min</div>
+                <div className="text-gray-400 text-xs">{(usage.limits.tpm / 1_000_000).toLocaleString("de")} Mio Tokens/Min</div>
+                <div className="text-gray-500 text-xs mt-1">Gesamt: {usage.total.requests} Scans</div>
               </div>
             </div>
             <p className="text-gray-600 text-xs mt-2">
-              Free-Tier-Limits gelten pro Tag und werden täglich zurückgesetzt
-              (ca. 09:00 MEZ / Mitternacht US-Pazifik).
+              Free-Tier: Limit pro Tag (RPD) wird täglich zurückgesetzt (~09:00 MEZ).
+              „Tägliches Limit" oben überschreibt die RPD-Anzeige.
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Enums } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { rarityOptionLabel } from "@/components/RarityBadge";
@@ -27,6 +27,11 @@ const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 export default function FilterSidebar({ filters, onChange, enums, sets }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  // Auf Desktop standardmäßig geöffnet, auf Mobile eingeklappt (nach Mount,
+  // damit kein SSR-Hydration-Mismatch entsteht).
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 768) setOpen(true);
+  }, []);
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
 
@@ -35,16 +40,16 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
 
   return (
     <aside className="w-full md:w-56 shrink-0 text-sm">
-      {/* Mobile: Filter ein-/ausklappen */}
+      {/* Filter ein-/ausklappen (Mobile + Desktop) */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="md:hidden w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
+        className="w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
       >
         <span>🔍 {t.filter_title}{activeCount > 0 ? ` (${activeCount})` : ""}</span>
         <span className="text-gray-500">{open ? "▲" : "▼"}</span>
       </button>
 
-      <div className={`${open ? "block" : "hidden"} md:block space-y-5 mt-3 md:mt-0`}>
+      <div className={`${open ? "block" : "hidden"} space-y-5 mt-3`}>
       <div>
         <label className="block text-gray-400 mb-1">{t.filter_search}</label>
         <input

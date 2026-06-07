@@ -292,6 +292,9 @@ export type ScanRawRead = {
 export type ScanUsage = {
   today: { day: string; requests: number; tokens: number };
   total: { requests: number; tokens: number };
+  avg_tokens_per_scan: number;
+  model: string;
+  limits: { rpd: number; rpm: number; tpm: number };
   days: { day: string; requests: number; tokens: number }[];
 };
 

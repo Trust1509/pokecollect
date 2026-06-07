@@ -58,24 +58,44 @@ def scan_status(db: Session = Depends(get_db)):
     }
 
 
+# Google-AI-Studio Free-Tier-Limits (Stand 2025/2026). Flash vs Pro.
+_GEMINI_FREE_LIMITS = {
+    "flash": {"rpd": 1500, "rpm": 15, "tpm": 1_000_000},
+    "pro": {"rpd": 50, "rpm": 2, "tpm": 2_000_000},
+}
+
+
 @router.get("/usage")
 def scan_usage(db: Session = Depends(get_db)):
-    """Gemini-Nutzung: heute + Summe (zur Kostenkontrolle / Free-Tier-Überblick)."""
+    """Gemini-Nutzung + Free-Tier-Limits (zur Kostenkontrolle / Überblick)."""
     from datetime import datetime, timezone
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     rows = db.scalars(
         select(GeminiUsage).order_by(GeminiUsage.day.desc()).limit(30)
     ).all()
     today_row = next((r for r in rows if r.day == today), None)
-    total_req = db.scalar(select(func.coalesce(func.sum(GeminiUsage.requests), 0))) or 0
-    total_tok = db.scalar(select(func.coalesce(func.sum(GeminiUsage.tokens), 0))) or 0
+    total_req = int(db.scalar(select(func.coalesce(func.sum(GeminiUsage.requests), 0))) or 0)
+    total_tok = int(db.scalar(select(func.coalesce(func.sum(GeminiUsage.tokens), 0))) or 0)
+
+    _, model = _gemini_config(db)
+    tier = "pro" if "pro" in (model or "").lower() else "flash"
+    limits = dict(_GEMINI_FREE_LIMITS[tier])
+    # Manuelles Tageslimit überschreibt (falls gesetzt > 0)
+    manual = int(_setting(db, "gemini_daily_limit", "0") or 0)
+    if manual > 0:
+        limits["rpd"] = manual
+
+    avg_tokens = round(total_tok / total_req) if total_req else 0
     return {
         "today": {
             "day": today,
             "requests": today_row.requests if today_row else 0,
             "tokens": today_row.tokens if today_row else 0,
         },
-        "total": {"requests": int(total_req), "tokens": int(total_tok)},
+        "total": {"requests": total_req, "tokens": total_tok},
+        "avg_tokens_per_scan": avg_tokens,
+        "model": model,
+        "limits": limits,
         "days": [{"day": r.day, "requests": r.requests, "tokens": r.tokens} for r in rows],
     }
 

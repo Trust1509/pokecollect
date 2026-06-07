@@ -417,9 +417,9 @@ export default function CardDetailPage() {
         <button onClick={handleBack} className="text-gray-500 hover:text-white text-sm">{t.detail_back_generic}</button>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
         {/* Kartenbild */}
-        <div className="shrink-0 w-52">
+        <div className="shrink-0 w-full max-w-[13rem] mx-auto md:mx-0 md:w-52">
           <div className="aspect-[63/88] relative bg-gray-800 rounded-lg overflow-hidden">
             {imgSrc ? (
               <>
@@ -515,7 +515,7 @@ export default function CardDetailPage() {
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 gap-3 text-sm">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             {field("kartenname", t.field_card_name)}
             {/* Pokédex-Nr. mit Auto-Namens-Lookup */}
             {editing ? (

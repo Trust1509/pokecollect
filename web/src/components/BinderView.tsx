@@ -1,5 +1,5 @@
 "use client";
-import { DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent as ReactDragEvent, TouchEvent as ReactTouchEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, BINDER_LAYOUTS } from "@/lib/api";
@@ -131,6 +131,24 @@ export default function BinderView({
     else setPage(leftVisible === 0 ? 1 : leftVisible + 2);
   };
 
+  // Wischen links/rechts zum Blättern (Mobile)
+  const touchX = useRef<number | null>(null);
+  const touchY = useRef<number | null>(null);
+  const onTouchStart = (e: ReactTouchEvent) => {
+    touchX.current = e.touches[0].clientX;
+    touchY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e: ReactTouchEvent) => {
+    if (touchX.current == null || touchY.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    const dy = e.changedTouches[0].clientY - touchY.current;
+    touchX.current = null; touchY.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) { if (rightVisible < totalPages - 1) goNext(); }
+      else { if (leftVisible > 0) goPrev(); }
+    }
+  };
+
   const flipThrottle = useRef(0);
   const handleEdgeOver = (dir: "prev" | "next") => (e: ReactDragEvent) => {
     e.preventDefault();
@@ -241,7 +259,7 @@ export default function BinderView({
     : t.binder_page((leftVisible ?? 0) + 1, totalPages);
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className="flex flex-col items-center w-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Steuerleiste */}
       <div className="flex items-center gap-4 mb-3 flex-wrap justify-center">
         {onLayoutChange && (

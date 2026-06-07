@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.8.1] – 2026-06-07 (Mobile-Detail, Binder-Swipe, Gemini-Limits)
+
+- **Detailseite mobil**: Bild + Felder stapeln am Handy (flex-col), Felder
+  einspaltig auf kleinen Screens.
+- **Binder blättern per Wisch** (links/rechts) auf Mobile.
+- **Filter ein-/ausklappbar auch am Desktop** (auf Desktop offen voreingestellt).
+- **Gemini Free-Tier-Anzeige**: Limits je Modell (Flash 1500 RPD/15 RPM/1M TPM,
+  Pro 50 RPD/2 RPM/2M TPM) – „heute X / RPD" mit Balken + „Scans übrig",
+  Ø Tokens/Scan, RPM/TPM-Info.
+
 ## [v0.8.0] – 2026-06-07 (Teil 3: Mobile-First + PWA)
 
 ### Mobile
