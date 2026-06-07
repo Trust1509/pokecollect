@@ -53,6 +53,7 @@ PTCGO_TO_SETID: dict[str, str] = {
     "WHT": "sv10.5w",
     "BLK": "sv10.5b",
     "SVE": "sve",
+    "SVP": "svp",   # Scarlet & Violet Black Star Promos
     # Mega-Generation (parallel zu SV)
     "MEG": "me01",
     "PFL": "me02",

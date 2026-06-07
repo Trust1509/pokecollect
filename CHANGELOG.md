@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.7.10] – 2026-06-07 (SVP-Promo-Set)
+
+- Set **SVP** (Karmesin & Purpur Black Star Promos → TCGdex `svp`) in Seed +
+  Brücke ergänzt. Nach Deploy im Set-Picker verfügbar; Bilder/Preise lösen auf.
+
 ## [v0.7.9] – 2026-06-07 (Foto-Entzerrung, Foto-Löschen-Fix, Gemini-Limit)
 
 ### Scan

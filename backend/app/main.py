@@ -46,6 +46,7 @@ _SET_SEED = [
     ("WHT",  "Weiße Flammen",                     None),  # ~100, noch nicht final
     ("BLK",  "Schwarze Blitze",                   None),  # ~100, noch nicht final
     ("SVE",  "SV Energie-Karten",                   30),
+    ("SVP",  "Karmesin & Purpur Promos",          None),  # TCGdex: svp
     # ── Schwert & Schild / Sword & Shield ────────────────────────────────────
     ("SSH",  "Schwert & Schild",                   202),
     ("RCL",  "Clash der Rebellen",                 192),
