@@ -68,7 +68,7 @@ def list_cards(
     search: Optional[str] = None,
     pokedex_nr: Optional[int] = None,
     bild_status: Optional[str] = Query(None, pattern="^(eigenes_foto|externe_url|platzhalter)$"),
-    sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am)$"),
+    sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am|set)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=5000),  # Binder-Ansicht lädt den ganzen Pokédex auf einmal
     db: Session = Depends(get_db),
@@ -152,12 +152,16 @@ def list_cards(
         if r:
             q = q.where(PokemonCard.pokedex_nr.between(r[0], r[1]))
 
-    sort_col = {
-        "pokedex_nr": PokemonCard.pokedex_nr,
-        "wert": PokemonCard.wert_eur,
-        "hinzugefuegt_am": PokemonCard.hinzugefuegt_am,
-    }[sort]
-    q = q.order_by(sort_col.nulls_last())
+    if sort == "set":
+        # Nach Set, dann aufgedruckter Kartennummer (Format NNN/… ist nullgepolstert)
+        q = q.order_by(PokemonCard.set_edition.nulls_last(), PokemonCard.karten_nr.nulls_last())
+    else:
+        sort_col = {
+            "pokedex_nr": PokemonCard.pokedex_nr,
+            "wert": PokemonCard.wert_eur,
+            "hinzugefuegt_am": PokemonCard.hinzugefuegt_am,
+        }[sort]
+        q = q.order_by(sort_col.nulls_last())
 
     total = db.scalar(select(func.count()).select_from(q.subquery()))
     items = db.scalars(q.offset((page - 1) * limit).limit(limit)).all()

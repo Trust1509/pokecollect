@@ -10,6 +10,57 @@ export function seriesLabel(id?: string | null): string {
   return id ? (SERIES_LABEL[id] ?? id.toUpperCase()) : "—";
 }
 
+export type FilterCriteria = {
+  besessen?: boolean;
+  generation?: number;
+  set?: string;
+  seltenheit?: string;
+  sprache?: string;
+  illustrator?: string;
+  search?: string;
+  bild_status?: string;
+};
+
+export function hasActiveFilters(f: FilterCriteria): boolean {
+  return Boolean(
+    f.besessen !== undefined || f.generation || f.set || f.seltenheit ||
+    f.sprache || f.illustrator || f.search || f.bild_status
+  );
+}
+
+type MatchCard = {
+  kartenname?: string | null; englischer_name?: string | null;
+  pokedex_nr?: number | null; set_edition?: string | null;
+  seltenheit?: string | null; sprache?: string | null; illustrator?: string | null;
+  besessen?: boolean; bild_karte_pfad?: string | null; bild_pokedex_url?: string | null;
+};
+
+/** Client-seitiger Filter-Abgleich (für Dimmen im Binder, gleiche Logik wie Backend). */
+export function cardMatchesFilters(card: MatchCard, f: FilterCriteria): boolean {
+  if (f.besessen !== undefined && Boolean(card.besessen) !== f.besessen) return false;
+  if (f.generation && generation(card.pokedex_nr ?? null) !== f.generation) return false;
+  if (f.set && !(card.set_edition ?? "").toLowerCase().includes(f.set.toLowerCase())) return false;
+  if (f.seltenheit && card.seltenheit !== f.seltenheit) return false;
+  if (f.sprache && card.sprache !== f.sprache) return false;
+  if (f.illustrator && !(card.illustrator ?? "").toLowerCase().includes(f.illustrator.toLowerCase())) return false;
+  if (f.search) {
+    const term = f.search.toLowerCase();
+    const hit =
+      (card.kartenname ?? "").toLowerCase().includes(term) ||
+      (card.englischer_name ?? "").toLowerCase().includes(term) ||
+      String(card.pokedex_nr ?? "").includes(term);
+    if (!hit) return false;
+  }
+  if (f.bild_status) {
+    const own = !!card.bild_karte_pfad;
+    const url = !!card.bild_pokedex_url;
+    if (f.bild_status === "eigenes_foto" && !own) return false;
+    if (f.bild_status === "externe_url" && !(!own && url)) return false;
+    if (f.bild_status === "platzhalter" && !(!own && !url)) return false;
+  }
+  return true;
+}
+
 export function generation(pokedexNr: number | null): number | null {
   if (!pokedexNr) return null;
   const ranges: [number, number][] = [

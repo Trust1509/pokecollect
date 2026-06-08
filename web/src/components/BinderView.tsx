@@ -23,6 +23,8 @@ type Props = {
   onDeleteLastPage?: (cardIdsOnLastPage: number[], newSlots: number) => void;
   /** sessionStorage-Key, um die aktuelle Binder-Seite über Navigation hinweg zu merken */
   storageKey?: string;
+  /** Wenn gesetzt: Karten, deren id NICHT enthalten ist, werden ausgegraut (Filter-Hervorhebung). */
+  highlightIds?: Set<number> | null;
 };
 
 export const ASSIGN_DRAG_TYPE = "application/x-pokecollect-add";
@@ -47,7 +49,7 @@ const SIZE_KEY = "binder_card_size";
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
   onLayoutChange, editable = false, onMoveToSlot, onAddAtSlot,
-  binderSlots, onAddPage, onDeleteLastPage, storageKey,
+  binderSlots, onAddPage, onDeleteLastPage, storageKey, highlightIds,
 }: Props) {
   const { t, lang } = useI18n();
   const { cols, rows } = parseLayout(layout);
@@ -214,6 +216,7 @@ export default function BinderView({
             const { src, isPlaceholder } = cardImageSrc(card, apiBase, placeholderEnabled);
             const name = lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname;
             const code = extractSetCode(card.set_edition);
+            const dimmed = highlightIds ? !highlightIds.has(card.id) : false;
             return (
               <div
                 key={slot}
@@ -223,7 +226,7 @@ export default function BinderView({
                 onDragEnd={editable ? () => setDragId(null) : undefined}
                 className={`aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800 ring-1 ring-black/40 transition-transform hover:scale-[1.03] hover:ring-pokemon-yellow ${
                   editable ? "cursor-move" : ""
-                } ${card.besessen ? "" : "opacity-50"}`}
+                } ${dimmed ? "opacity-20 grayscale" : card.besessen ? "" : "opacity-50"}`}
               >
                 <Link href={`/cards/${card.id}`} draggable={false} className="block w-full h-full">
                   {src ? (

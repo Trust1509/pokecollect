@@ -23,19 +23,26 @@ type Props = {
   onChange: (f: Filters) => void;
   enums: Enums | null;
   sets: PokemonSet[];
+  // Optional gesteuert (z.B. über eine Lupe in der Statistik-Zeile); ohne diese
+  // Props verwaltet die Komponente das Auf-/Zuklappen selbst und zeigt einen Toggle.
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-export default function FilterSidebar({ filters, onChange, enums, sets }: Props) {
+export default function FilterSidebar({ filters, onChange, enums, sets, open, onOpenChange }: Props) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const controlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const actualOpen = controlled ? !!open : internalOpen;
+  const setOpen = (v: boolean) => { if (controlled) onOpenChange?.(v); else setInternalOpen(v); };
   const [illustrators, setIllustrators] = useState<string[]>([]);
-  // Auf Desktop standardmäßig geöffnet, auf Mobile eingeklappt (nach Mount,
-  // damit kein SSR-Hydration-Mismatch entsteht).
+  // Auf Desktop standardmäßig geöffnet, auf Mobile eingeklappt (nur ungesteuert).
   useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth >= 768) setOpen(true);
+    if (!controlled && typeof window !== "undefined" && window.innerWidth >= 768) setInternalOpen(true);
     catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
@@ -64,16 +71,18 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
 
   return (
     <aside className="w-full text-sm">
-      {/* Filter ein-/ausklappen (Mobile + Desktop) */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
-      >
-        <span>🔍 {t.filter_title}{activeCount > 0 ? ` (${activeCount})` : ""}</span>
-        <span className="text-gray-500">{open ? "▲" : "▼"}</span>
-      </button>
+      {/* Toggle nur im ungesteuerten Modus (sonst übernimmt die Seite die Lupe) */}
+      {!controlled && (
+        <button
+          onClick={() => setOpen(!actualOpen)}
+          className="w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
+        >
+          <span>🔍 {t.filter_title}{activeCount > 0 ? ` (${activeCount})` : ""}</span>
+          <span className="text-gray-500">{actualOpen ? "▲" : "▼"}</span>
+        </button>
+      )}
 
-      <div className={`${open ? "grid" : "hidden"} grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-3 items-end`}>
+      <div className={`${actualOpen ? "grid" : "hidden"} grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 ${controlled ? "" : "mt-3"} items-end`}>
       <div>
         <label className="block text-gray-400 mb-1">{t.filter_search}</label>
         <input
@@ -184,6 +193,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets }: Props)
           className="w-full bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white"
         >
           <option value="pokedex_nr">{t.filter_sort_pokedex}</option>
+          <option value="set">{t.filter_sort_set}</option>
           <option value="wert">{t.filter_sort_value}</option>
           <option value="hinzugefuegt_am">{t.filter_sort_added}</option>
         </select>

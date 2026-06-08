@@ -96,7 +96,8 @@ export default function CatalogPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+      <div className="sticky top-0 z-30 bg-pokemon-dark pt-1 pb-2">
+      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-white">{t.catalog_title}</h1>
           <p className="text-gray-400 text-sm">
@@ -145,11 +146,12 @@ export default function CatalogPage() {
       {(q || setCode || illustrator || generation || sort !== "set") && (
         <button
           onClick={() => { setQ(""); setSetCode(""); setIllustrator(""); setGeneration(""); setSort("set"); }}
-          className="text-gray-400 hover:text-white text-xs underline mb-3"
+          className="text-gray-400 hover:text-white text-xs underline"
         >
           {t.filter_reset}
         </button>
       )}
+      </div>
 
       {data && data.pages > 1 && (
         <div className="flex justify-end items-center gap-2 text-sm mb-2">

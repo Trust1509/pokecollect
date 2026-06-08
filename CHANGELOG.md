@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.9.5] – 2026-06-07 (Set-Sortierung, Binder-Dimmen, Sticky-Header, Mobile-Lupe)
+
+- **Sortierung „Set + Nr."** in cards-API + Filter (Pokédex/Owned) – sortiert nach
+  Set und aufgedruckter Kartennummer.
+- **Binder: Filter dimmt statt zu entfernen.** In der Binder-Ansicht (Pokédex)
+  bleiben alle Karten an ihrem festen Platz; nicht passende werden ausgegraut
+  (Suche, Set, Seltenheit, Sprache, Illustrator, Generation …). Im Raster wird
+  weiter klassisch gefiltert.
+- **Sticky-Header:** Statistik + Filter + Steuerung bleiben oben fixiert, nur die
+  Karten/der Binder scrollen (Pokédex, „Alle besessenen", Katalog).
+- **Mobile-Filter-Lupe:** Der Filter wird über eine 🔍-Lupe in der Anzahl/Wert-Zeile
+  auf-/zugeklappt (spart eine Zeile); FilterSidebar ist dafür steuerbar gemacht.
+
 ## [v0.9.4] – 2026-06-07 (Illustrator-Filter, Filter angeglichen, Binder-⚙ in Navizeile)
 
 - **Illustrator an Karten**: neues Feld `illustrator`, automatisch aus TCGdex
