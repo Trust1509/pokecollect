@@ -197,6 +197,7 @@ export async function cropToCardPhoto(
     const img = await loadImg(url);
     const W = 460, H = Math.round((W * 88) / 63);
     let canvas = document.createElement("canvas");
+    let usedQuad = false;
 
     if (opts?.quad && opts.quad.length === 4) {
       let src = opts.quad.map(([x, y]) => [clamp(x, 0, 1) * img.width, clamp(y, 0, 1) * img.height]);
@@ -207,14 +208,25 @@ export async function cropToCardPhoto(
       if (dist(src[0], src[1]) > dist(src[0], src[3])) {
         src = [src[1], src[2], src[3], src[0]];
       }
-      canvas.width = W; canvas.height = H;
-      const ctx = canvas.getContext("2d")!;
-      if (!warpPerspective(ctx, img, src, W, H)) {
-        const dst = [[0, 0], [W, 0], [W, H], [0, H]];
-        drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
-        drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+      // Plausibilität: ein Karten-Viereck ist ~0.72:1. Im Auto-Pfad einen stark
+      // entarteten Streifen (Fehlerkennung bei mehreren Karten) verwerfen und auf
+      // bbox/zentriert zurückfallen, statt ein verzerrtes Bild zu erzeugen.
+      const wAvg = (dist(src[0], src[1]) + dist(src[3], src[2])) / 2;
+      const hAvg = (dist(src[0], src[3]) + dist(src[1], src[2])) / 2;
+      const ratio = Math.max(wAvg, hAvg) > 0 ? Math.min(wAvg, hAvg) / Math.max(wAvg, hAvg) : 0;
+      if (!opts.autoOrient || ratio >= 0.42) {
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext("2d")!;
+        if (!warpPerspective(ctx, img, src, W, H)) {
+          const dst = [[0, 0], [W, 0], [W, H], [0, H]];
+          drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
+          drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+        }
+        usedQuad = true;
       }
-    } else {
+    }
+
+    if (!usedQuad) {
       let sx: number, sy: number, sw: number, sh: number;
       const bbox = opts?.bbox;
       if (bbox && bbox.length === 4) {
