@@ -189,6 +189,9 @@ const DE = {
   scan_corners_apply: "Übernehmen",
   scan_corners_reset: "Ecken zurücksetzen",
   scan_corners_reset_view: "Ansicht",
+  scan_corners_rotate: "90° drehen",
+  scan_corners_fliph: "Horizontal spiegeln",
+  scan_corners_flipv: "Vertikal spiegeln",
   scan_corners_cancel: "Abbrechen",
 
   // FilterSidebar
@@ -252,6 +255,7 @@ const DE = {
   detail_upload_photo: "📷 Foto hochladen",
   detail_take_photo: "📷 Foto aufnehmen",
   detail_replace_photo: "📷 Foto austauschen",
+  detail_edit_photo: "Foto bearbeiten (Zuschnitt/Drehen)",
   detail_set_url: "🔗 Bild-URL hinterlegen",
   detail_change_url: "🔗 Bild-URL ändern",
   detail_delete_photo: "Foto löschen",
@@ -483,6 +487,9 @@ const EN: typeof DE = {
   scan_corners_apply: "Apply",
   scan_corners_reset: "Reset corners",
   scan_corners_reset_view: "View",
+  scan_corners_rotate: "Rotate 90°",
+  scan_corners_fliph: "Flip horizontal",
+  scan_corners_flipv: "Flip vertical",
   scan_corners_cancel: "Cancel",
 
   filter_title: "Filters",
@@ -543,6 +550,7 @@ const EN: typeof DE = {
   detail_upload_photo: "📷 Upload photo",
   detail_take_photo: "📷 Take photo",
   detail_replace_photo: "📷 Replace photo",
+  detail_edit_photo: "Edit photo (crop/rotate)",
   detail_set_url: "🔗 Set image URL",
   detail_change_url: "🔗 Change image URL",
   detail_delete_photo: "Delete photo",

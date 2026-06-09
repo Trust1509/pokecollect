@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.9.9] – 2026-06-09 (Eck-Editor: Gesten/Flip/Rotate, Auto-Ausrichtung, Detail-Bearbeiten)
+
+### Fixes (Feedback zu v0.9.8)
+- **Bild stand auf dem Kopf / gespiegelt (Auto-Zuschnitt):** Die Ecken aus der
+  Erkennung werden jetzt **nach Bildposition sortiert** (TL,TR,BR,BL) – verhindert
+  gespiegelte/kopfstehende und gestauchte Zuschnitte beim automatischen Zuschnitt.
+- **Eck-Editor – Bedienung am Smartphone:** Das Foto ist jetzt komplett sichtbar
+  (alle 4 Ecken erreichbar), **Zoom & Verschieben per Fingergesten** (Pinch-Zoom,
+  1-Finger-Verschieben) und am Desktop **Mausrad-Zoom + Linksklick-halten zum
+  Verschieben**. Layout für kleine Screens überarbeitet.
+- **Manuelle Ausrichtungs-Korrektur:** Im Eck-Editor neu **⟳ 90° drehen**,
+  **horizontal/vertikal spiegeln** – falls ein Foto doch mal falsch herum ist,
+  kann es per Hand korrigiert werden.
+- **Foto nachträglich bearbeiten (Detailseite):** Für eigene Fotos gibt es jetzt
+  zusätzlich zu Aufnehmen/Austauschen/URL die Option **„Foto bearbeiten
+  (Zuschnitt/Drehen)"** – das gespeicherte Bild wird erneut im Eck-Editor geöffnet
+  (Zuschnitt/Flip/Drehen) und ersetzt.
+
+### Hinweise
+- Fotos werden **nur als zugeschnittene Karte** gespeichert (nicht das ganze
+  Originalfoto). Nachträgliches Bearbeiten arbeitet auf dem gespeicherten Zuschnitt.
+- Multi-Scan mit gemischten Ausrichtungen (Hoch-/Querformat) kann je nach Foto noch
+  unzuverlässig erkennen – Einzelscan bzw. manuelle Nacharbeit hilft.
+
 ## [v0.9.8] – 2026-06-09 (Eck-Editor mit Lupe/Zoom, Detailseiten-Zuschnitt, Dex-Nr.-Fix)
 
 ### Fixes (Feedback zu v0.9.7)

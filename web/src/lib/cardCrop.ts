@@ -125,28 +125,63 @@ function warpPerspective(
 }
 
 /**
+ * Sortiert 4 Punkte (Pixel) nach Bildposition in die Reihenfolge
+ * TL,TR,BR,BL. Robust gegen falsche Eck-Reihenfolge der Erkennung (verhindert
+ * gespiegelte/auf-dem-Kopf-stehende Zuschnitte). Nur für den Auto-Pfad – bei
+ * manueller Eingabe legt der Nutzer die Reihenfolge selbst fest.
+ */
+function orderQuad(pts: number[][]): number[][] {
+  const byY = [...pts].sort((a, b) => a[1] - b[1]);
+  const top = byY.slice(0, 2).sort((a, b) => a[0] - b[0]);    // TL, TR
+  const bottom = byY.slice(2, 4).sort((a, b) => a[0] - b[0]); // BL, BR
+  return [top[0], top[1], bottom[1], bottom[0]];
+}
+
+export type CropTransform = { flipH?: boolean; flipV?: boolean; rotate?: number };
+
+/** Wendet Spiegelung/Drehung (90°-Schritte) auf ein fertiges Canvas an. */
+function applyOrient(srcCanvas: HTMLCanvasElement, o: CropTransform): HTMLCanvasElement {
+  const rot = (((o.rotate ?? 0) % 360) + 360) % 360;
+  if (!o.flipH && !o.flipV && rot === 0) return srcCanvas;
+  const swap = rot === 90 || rot === 270;
+  const out = document.createElement("canvas");
+  out.width = swap ? srcCanvas.height : srcCanvas.width;
+  out.height = swap ? srcCanvas.width : srcCanvas.height;
+  const ctx = out.getContext("2d")!;
+  ctx.translate(out.width / 2, out.height / 2);
+  ctx.rotate((rot * Math.PI) / 180);
+  ctx.scale(o.flipH ? -1 : 1, o.flipV ? -1 : 1);
+  ctx.drawImage(srcCanvas, -srcCanvas.width / 2, -srcCanvas.height / 2);
+  return out;
+}
+
+/**
  * Schneidet/entzerrt das Kartenfoto zu Karten-Format (63:88):
  *  - quad (4 Ecken, normiert 0..1) → perspektivische Entzerrung (auch schräg)
  *  - bbox [x,y,w,h] → achsenparalleler Zuschnitt (Querformat → 90° gedreht)
  *  - sonst zentrierter Zuschnitt
+ * autoOrient: Ecken nach Bildposition sortieren (Auto-/Gemini-Pfad).
+ * flipH/flipV/rotate: nachträgliche manuelle Korrektur der Ausrichtung.
  */
 export async function cropToCardPhoto(
   blob: Blob,
-  opts?: { bbox?: number[] | null; quad?: number[][] | null },
+  opts?: { bbox?: number[] | null; quad?: number[][] | null; autoOrient?: boolean } & CropTransform,
 ): Promise<File> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImg(url);
     const W = 460, H = Math.round((W * 88) / 63);
+    let canvas = document.createElement("canvas");
 
     if (opts?.quad && opts.quad.length === 4) {
       let src = opts.quad.map(([x, y]) => [clamp(x, 0, 1) * img.width, clamp(y, 0, 1) * img.height]);
+      // Auto-Pfad: Ecken nach Bildposition sortieren (gegen Spiegelung/Kopfstand).
+      if (opts.autoOrient) src = orderQuad(src);
       // Karten sind Hochformat: liegt die Karte quer, Ecken um 1 rotieren.
       const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
       if (dist(src[0], src[1]) > dist(src[0], src[3])) {
         src = [src[1], src[2], src[3], src[0]];
       }
-      const canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d")!;
       if (!warpPerspective(ctx, img, src, W, H)) {
@@ -154,42 +189,42 @@ export async function cropToCardPhoto(
         drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
         drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
       }
-      const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
-      return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
+    } else {
+      let sx: number, sy: number, sw: number, sh: number;
+      const bbox = opts?.bbox;
+      if (bbox && bbox.length === 4) {
+        const pad = 0.03;
+        const [bx, by, bw, bh] = bbox;
+        sx = clamp((bx - pad) * img.width, 0, img.width);
+        sy = clamp((by - pad) * img.height, 0, img.height);
+        sw = clamp((bw + 2 * pad) * img.width, 1, img.width - sx);
+        sh = clamp((bh + 2 * pad) * img.height, 1, img.height - sy);
+      } else {
+        const ratio = 63 / 88;
+        sw = img.width;
+        sh = Math.round(sw / ratio);
+        if (sh > img.height) { sh = img.height; sw = Math.round(sh * ratio); }
+        sx = Math.round((img.width - sw) / 2);
+        sy = Math.round((img.height - sh) / 2);
+      }
+      const maxW = 600;
+      const scale = sw > maxW ? maxW / sw : 1;
+      const dw = Math.round(sw * scale);
+      const dh = Math.round(sh * scale);
+      const ctx = canvas.getContext("2d")!;
+      if (dw > dh) {
+        canvas.width = dh; canvas.height = dw;
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        canvas.width = dw; canvas.height = dh;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+      }
     }
 
-    let sx: number, sy: number, sw: number, sh: number;
-    const bbox = opts?.bbox;
-    if (bbox && bbox.length === 4) {
-      const pad = 0.03;
-      const [bx, by, bw, bh] = bbox;
-      sx = clamp((bx - pad) * img.width, 0, img.width);
-      sy = clamp((by - pad) * img.height, 0, img.height);
-      sw = clamp((bw + 2 * pad) * img.width, 1, img.width - sx);
-      sh = clamp((bh + 2 * pad) * img.height, 1, img.height - sy);
-    } else {
-      const ratio = 63 / 88;
-      sw = img.width;
-      sh = Math.round(sw / ratio);
-      if (sh > img.height) { sh = img.height; sw = Math.round(sh * ratio); }
-      sx = Math.round((img.width - sw) / 2);
-      sy = Math.round((img.height - sh) / 2);
-    }
-    const maxW = 600;
-    const scale = sw > maxW ? maxW / sw : 1;
-    const dw = Math.round(sw * scale);
-    const dh = Math.round(sh * scale);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d")!;
-    if (dw > dh) {
-      canvas.width = dh; canvas.height = dw;
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
-    } else {
-      canvas.width = dw; canvas.height = dh;
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
-    }
+    // Manuelle Ausrichtungs-Korrektur (Flip/Rotate) zuletzt anwenden.
+    canvas = applyOrient(canvas, { flipH: opts?.flipH, flipV: opts?.flipV, rotate: opts?.rotate });
     const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
     return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
   } finally {

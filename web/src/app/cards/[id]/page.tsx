@@ -11,7 +11,7 @@ import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import CornerEditor from "@/components/CornerEditor";
-import { cropToCardPhoto } from "@/lib/cardCrop";
+import { cropToCardPhoto, CropTransform } from "@/lib/cardCrop";
 import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -111,6 +111,8 @@ export default function CardDetailPage() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   // Foto-Zuschnitt/Entzerrung vor dem Upload (CornerEditor)
   const [editorUrl, setEditorUrl] = useState<string | null>(null);
+  const [editorInitQuad, setEditorInitQuad] = useState<number[][]>(
+    [[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]);
   const editorBlobRef = useRef<Blob | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
@@ -248,10 +250,31 @@ export default function CardDetailPage() {
     e.target.value = "";
     if (!file) return;
     editorBlobRef.current = file;
+    setEditorInitQuad([[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]);
     setEditorUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
+  };
+
+  // Bereits hochgeladenes eigenes Foto nachträglich bearbeiten (Zuschnitt /
+  // Flip / Drehen). Das gespeicherte Bild wird geladen und erneut bearbeitet.
+  const handleEditExisting = async () => {
+    if (!card?.bild_karte_pfad) return;
+    const src = imageUrl(card.bild_karte_pfad, API_BASE);
+    try {
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      editorBlobRef.current = blob;
+      // Vollbild als Start (Foto ist bereits zugeschnitten → v.a. Flip/Drehen).
+      setEditorInitQuad([[0.01, 0.01], [0.99, 0.01], [0.99, 0.99], [0.01, 0.99]]);
+      setEditorUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+    } catch {
+      toast.error(t.detail_upload_error);
+    }
   };
 
   const closePhotoEditor = () => {
@@ -262,12 +285,12 @@ export default function CardDetailPage() {
     editorBlobRef.current = null;
   };
 
-  const handleApplyPhoto = async (quad: number[][]) => {
+  const handleApplyPhoto = async (quad: number[][], transform: CropTransform) => {
     const blob = editorBlobRef.current;
     if (!blob) { closePhotoEditor(); return; }
     setUploadingPhoto(true);
     try {
-      const file = await cropToCardPhoto(blob, { quad });
+      const file = await cropToCardPhoto(blob, { quad, ...transform });
       const r = await cardApi.uploadImage(Number(id), file);
       setCard(r.data);
       toast.success(t.detail_photo_saved);
@@ -494,6 +517,14 @@ export default function CardDetailPage() {
               {card.bild_karte_pfad ? t.detail_replace_photo : t.detail_upload_photo}
             </button>
           </div>
+          {card.bild_karte_pfad && (
+            <button
+              onClick={() => void handleEditExisting()}
+              className="w-full mt-1 text-sm bg-gray-800 text-pokemon-blue hover:text-white rounded px-3 py-1.5"
+            >
+              ✥ {t.detail_edit_photo}
+            </button>
+          )}
           {!card.bild_karte_pfad && (
             <button
               onClick={() => { setShowUrlInput((v) => !v); setUrlInput(card.bild_pokedex_url ?? ""); }}
@@ -782,9 +813,9 @@ export default function CardDetailPage() {
       {editorUrl && (
         <CornerEditor
           imageUrl={editorUrl}
-          initialQuad={[[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]}
+          initialQuad={editorInitQuad}
           onCancel={closePhotoEditor}
-          onApply={(quad) => { if (!uploadingPhoto) void handleApplyPhoto(quad); }}
+          onApply={(quad, transform) => { if (!uploadingPhoto) void handleApplyPhoto(quad, transform); }}
         />
       )}
     </div>

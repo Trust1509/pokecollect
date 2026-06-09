@@ -9,7 +9,7 @@ import {
 import SetPicker from "@/components/SetPicker";
 import RaritySelect from "@/components/RaritySelect";
 import CornerEditor from "@/components/CornerEditor";
-import { cropToCardPhoto, loadImg } from "@/lib/cardCrop";
+import { cropToCardPhoto, loadImg, CropTransform } from "@/lib/cardCrop";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "setup" | "review" | "done";
@@ -20,6 +20,7 @@ type EditableCandidate = ScanCandidate & {
   cropUrl: string | null;   // Vorschau des zugeschnittenen eigenen Fotos
   imPokedex: boolean;       // je Karte: in den Pokédex
   editedQuad?: number[][] | null;  // manuell korrigierte Ecken (normiert 0..1, TL,TR,BR,BL)
+  editedOrient?: CropTransform;    // manuelle Flip/Rotate-Korrektur
 };
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
@@ -235,7 +236,7 @@ export default function ScanPage() {
       list.forEach(async (c, idx) => {
         if ((!c.raw?.bbox && !c.raw?.quad) || !sourceBlobRef.current) return;
         try {
-          const f = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw.bbox, quad: c.raw.quad });
+          const f = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw.bbox, quad: c.raw.quad, autoOrient: true });
           const u = URL.createObjectURL(f);
           setCandidates((prev) => prev.map((cc, i) => (i === idx ? { ...cc, cropUrl: u } : cc)));
         } catch { /* Vorschau optional */ }
@@ -285,15 +286,22 @@ export default function ScanPage() {
     return [[0.15, 0.1], [0.85, 0.1], [0.85, 0.9], [0.15, 0.9]];
   };
 
-  // Manuell gesetzte Ecken übernehmen → Foto perspektivisch neu entzerren.
-  const applyCorners = async (idx: number, quad: number[][]) => {
+  // Crop-Optionen je Karte: manuelle Ecken (mit Flip/Rotate) bevorzugt, sonst
+  // die Auto-Erkennung (Gemini) mit Eck-Sortierung nach Bildposition.
+  const cropOptsFor = (c: EditableCandidate) =>
+    c.editedQuad
+      ? { quad: c.editedQuad, ...(c.editedOrient ?? {}) }
+      : { bbox: c.raw?.bbox, quad: c.raw?.quad, autoOrient: true };
+
+  // Manuell gesetzte Ecken/Ausrichtung übernehmen → Foto neu entzerren.
+  const applyCorners = async (idx: number, quad: number[][], transform: CropTransform) => {
     setEditorIdx(null);
     if (!sourceBlobRef.current) return;
     try {
-      const f = await cropToCardPhoto(sourceBlobRef.current, { quad });
+      const f = await cropToCardPhoto(sourceBlobRef.current, { quad, ...transform });
       const u = URL.createObjectURL(f);
       setCandidates((prev) => prev.map((cc, i) =>
-        i === idx ? { ...cc, editedQuad: quad, cropUrl: u, usePhoto: true } : cc));
+        i === idx ? { ...cc, editedQuad: quad, editedOrient: transform, cropUrl: u, usePhoto: true } : cc));
     } catch { /* Entzerrung optional */ }
   };
 
@@ -367,7 +375,7 @@ export default function ScanPage() {
       await Promise.all(chosen.map(async (c, k) => {
         if (!c.usePhoto || !sourceBlobRef.current || ids[k] == null) return;
         try {
-          const file = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw?.bbox, quad: c.editedQuad ?? c.raw?.quad });
+          const file = await cropToCardPhoto(sourceBlobRef.current, cropOptsFor(c));
           await cardApi.uploadImage(ids[k], file);
         } catch { /* Foto-Upload optional */ }
       }));
@@ -704,7 +712,7 @@ export default function ScanPage() {
           imageUrl={sourceUrl}
           initialQuad={initialQuadFor(candidates[editorIdx])}
           onCancel={() => setEditorIdx(null)}
-          onApply={(quad) => void applyCorners(editorIdx, quad)}
+          onApply={(quad, transform) => void applyCorners(editorIdx, quad, transform)}
         />
       )}
 
