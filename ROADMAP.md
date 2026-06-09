@@ -1,13 +1,14 @@
 # PokéCollect – Roadmap
 
-Stand: **v0.9.7** · Foto-Entzerrung + Bild-Fallback + EXIF
+Stand: **v0.9.8** · Eck-Editor (Lupe/Zoom) + Detailseiten-Zuschnitt + Dex-Nr.-Fix
 
 ---
 
 ## ⚠️ Known Issues (bekannt, Fix in Arbeit)
-- ✅ **Foto-Aufnahme** (v0.9.7): echte Homographie-Entzerrung + manuelle
-  Eck-Korrektur im Scan-Review + Auto-Hochformat. Restpunkt: Auto-Zuschnitt
-  vor dem manuellen Schritt weiter verbessern.
+- ✅ **Foto-Aufnahme** (v0.9.7/0.9.8): echte Homographie-Entzerrung + manuelle
+  Eck-Korrektur (mit Lupe, Zoom & Pan) im Scan-Review UND auf der Detailseite +
+  Auto-Hochformat. Restpunkt: automatischer Erst-Zuschnitt (Gemini-Ecken) bei
+  mehreren/schrägen Karten weiter verbessern.
 - ✅ **Kartenbild ohne Nummer** (v0.9.7): Namens-basierter Fallback liefert ein
   wahrscheinliches Bild der gleichen Spezies (bevorzugt aus dem bekannten Set).
 - ✅ **Ausrichtung in Raster/Binder** (v0.9.7): Uploads werden per EXIF aufrecht

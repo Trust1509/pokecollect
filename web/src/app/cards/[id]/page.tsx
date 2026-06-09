@@ -10,6 +10,8 @@ import RarityBadge from "@/components/RarityBadge";
 import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
+import CornerEditor from "@/components/CornerEditor";
+import { cropToCardPhoto } from "@/lib/cardCrop";
 import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -107,6 +109,10 @@ export default function CardDetailPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
+  // Foto-Zuschnitt/Entzerrung vor dem Upload (CornerEditor)
+  const [editorUrl, setEditorUrl] = useState<string | null>(null);
+  const editorBlobRef = useRef<Blob | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [editingPriority, setEditingPriority] = useState(false);
@@ -235,15 +241,41 @@ export default function CardDetailPage() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Foto gewählt/aufgenommen → erst im Eck-Editor zuschneiden/entzerren,
+  // dann hochladen. So lässt sich das Foto vor dem Speichern bearbeiten.
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+    editorBlobRef.current = file;
+    setEditorUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const closePhotoEditor = () => {
+    setEditorUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    editorBlobRef.current = null;
+  };
+
+  const handleApplyPhoto = async (quad: number[][]) => {
+    const blob = editorBlobRef.current;
+    if (!blob) { closePhotoEditor(); return; }
+    setUploadingPhoto(true);
     try {
+      const file = await cropToCardPhoto(blob, { quad });
       const r = await cardApi.uploadImage(Number(id), file);
       setCard(r.data);
       toast.success(t.detail_photo_saved);
+      closePhotoEditor();
     } catch {
       toast.error(t.detail_upload_error);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -744,6 +776,15 @@ export default function CardDetailPage() {
           onConfirm={() => doSetPokedex(true)}
           onCancel={() => { setShowPokedexModal(false); setConflictCard(null); }}
           t={t}
+        />
+      )}
+
+      {editorUrl && (
+        <CornerEditor
+          imageUrl={editorUrl}
+          initialQuad={[[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]}
+          onCancel={closePhotoEditor}
+          onApply={(quad) => { if (!uploadingPhoto) void handleApplyPhoto(quad); }}
         />
       )}
     </div>

@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.9.8] – 2026-06-09 (Eck-Editor mit Lupe/Zoom, Detailseiten-Zuschnitt, Dex-Nr.-Fix)
+
+### Fixes (Feedback zu v0.9.7)
+- **Eck-Editor verbessert:** Beim Ziehen erscheint jetzt eine **Lupe** (der
+  Finger verdeckt den Eckpunkt nicht mehr – man sieht genau, wo man platziert).
+  Zusätzlich **Zoom (+/−, Mausrad) und Verschieben (Pan)**, damit bei mehreren
+  Karten auf einem Foto präzise gearbeitet werden kann.
+- **Zuschnitt auf der Detailseite:** Nach „Foto aufnehmen/hochladen" öffnet sich
+  derselbe Eck-Editor – das Foto kann vor dem Speichern zugeschnitten/entzerrt
+  werden (vorher wurde es direkt unbearbeitet hochgeladen).
+- **Pokédex-Nr. bei Karten ohne eigene dexId:** Manche (neue) Sets – z.B. die
+  Mega-Evolution-Reihe (ASC „Erhabene Helden", `me02.5`) – führen an der Karte
+  selbst **keine** National-Dex-Nr. (TCGdex liefert `dexId: null`). Der Scan zieht
+  die Spezies-Dex-Nr. jetzt aus einer Schwesterkarte gleichen Namens → die Karte
+  bekommt wieder eine Pokédex-Nr. (im Beispiel Traunfugil → #0200).
+
+### Intern
+- Crop-/Entzerrungs-Logik nach `web/src/lib/cardCrop.ts` ausgelagert; `CornerEditor`
+  ist jetzt eine eigene, wiederverwendbare Komponente (Scan + Detailseite).
+
+### Noch offen
+- Automatischer Erst-Zuschnitt (Gemini-Ecken) ist bei mehreren/schrägen Karten
+  noch nicht immer ideal – die manuelle Eck-Korrektur gleicht das aus.
+
 ## [v0.9.7] – 2026-06-09 (Foto-Entzerrung, Bild-Fallback per Name, EXIF-Orientierung)
 
 ### Fixes (Known Issues)

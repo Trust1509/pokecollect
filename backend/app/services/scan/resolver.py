@@ -107,6 +107,22 @@ async def _english_card(tc, lang: str):
     return await tcgdex.get_card(tc.id, "en")
 
 
+async def _dex_from_results(results: list[dict]) -> tuple[Optional[int], Optional[str]]:
+    """
+    National-Dex-Nr. + EN-Name aus der ersten Schwesterkarte gleichen Namens, die
+    eine dexId trägt. Nötig, weil manche (neue) Sets – z.B. die Mega-Evolution-
+    Reihe – an der Karte selbst keine dexId führen (TCGdex liefert dort null).
+    """
+    for r in results[:6]:
+        cid = r.get("id")
+        if not cid:
+            continue
+        sib = await tcgdex.get_card(cid, "en")
+        if sib and sib.dex_id is not None:
+            return sib.dex_id, sib.name
+    return None, None
+
+
 async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") -> ScanCandidate:
     app_lang = (read.language or default_lang or "DE").upper()
     tcg_lang = tcgdex.normalize_lang(app_lang)
@@ -149,12 +165,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     fallback_dex: Optional[int] = None
     fallback_en: Optional[str] = None
     if tc is None and results:
-        first_id = results[0].get("id")
-        if first_id:
-            species = await tcgdex.get_card(first_id, "en")
-            if species:
-                fallback_dex = species.dex_id
-                fallback_en = species.name
+        fallback_dex, fallback_en = await _dex_from_results(results)
 
     uncertain: list[str] = []
     if not read.name:
@@ -181,6 +192,16 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         knr = _karten_nr(tc.localId, official, read.number)
         foil_options = _foil_options(tc)
 
+        # Dex-Nr.: bevorzugt von der Karte; fehlt sie (z.B. Mega-Reihe), über
+        # Schwesterkarten gleichen Namens nachschlagen (Spezies-Ebene).
+        dex_id = tc.dex_id
+        if dex_id is None:
+            sib_results = results or await tcgdex.search_cards(
+                {"name": read.name or tc.name or ""}, tcg_lang)
+            dex_id, sib_en = await _dex_from_results(sib_results)
+            if not eng:
+                eng = sib_en
+
         match = ScanMatch(
             tcgdex_card_id=tc.id,
             name=tc.name,
@@ -190,7 +211,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             set_name=(tc.set.name if tc.set else None),
             local_id=tc.localId,
             rarity=tc.rarity,
-            dex_id=tc.dex_id,
+            dex_id=dex_id,
             image_url=tcgdex.image_url(tc.image),
             variants_normal=tc.variants.normal if tc.variants else None,
             variants_reverse=tc.variants.reverse if tc.variants else None,
@@ -200,7 +221,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         suggested = {
             "kartenname": tc.name or read.name,
             "englischer_name": eng,
-            "pokedex_nr": tc.dex_id,
+            "pokedex_nr": dex_id,
             "set_edition": set_edition,
             "karten_nr": knr,
             "seltenheit": seltenheit,
@@ -209,7 +230,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             "besessen": True,
             "tcgdex_card_id": tc.id,
             "set_id": set_id,
-            "dex_id": tc.dex_id,
+            "dex_id": dex_id,
         }
     else:
         # Kein Treffer – Rohgelesenes + (falls ermittelbar) Pokédex-Nr./EN-Name
