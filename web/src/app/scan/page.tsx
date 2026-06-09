@@ -234,9 +234,10 @@ export default function ScanPage() {
       setStep("review");
       // Foto-Zuschnitte je Karte (aus der bbox) für Vorschau erzeugen
       list.forEach(async (c, idx) => {
-        if ((!c.raw?.bbox && !c.raw?.quad) || !sourceBlobRef.current) return;
+        const blob = sourceBlobRef.current;
+        if ((!c.raw?.bbox && !c.raw?.quad) || !blob) return;
         try {
-          const f = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw.bbox, quad: c.raw.quad, autoOrient: true });
+          const f = await cropToCardPhoto(blob, { bbox: c.raw.bbox, quad: c.raw.quad, autoOrient: true });
           const u = URL.createObjectURL(f);
           setCandidates((prev) => prev.map((cc, i) => (i === idx ? { ...cc, cropUrl: u } : cc)));
         } catch { /* Vorschau optional */ }
@@ -296,9 +297,10 @@ export default function ScanPage() {
   // Manuell gesetzte Ecken/Ausrichtung übernehmen → Foto neu entzerren.
   const applyCorners = async (idx: number, quad: number[][], transform: CropTransform) => {
     setEditorIdx(null);
-    if (!sourceBlobRef.current) return;
+    const blob = sourceBlobRef.current;
+    if (!blob) return;
     try {
-      const f = await cropToCardPhoto(sourceBlobRef.current, { quad, ...transform });
+      const f = await cropToCardPhoto(blob, { quad, ...transform });
       const u = URL.createObjectURL(f);
       setCandidates((prev) => prev.map((cc, i) =>
         i === idx ? { ...cc, editedQuad: quad, editedOrient: transform, cropUrl: u, usePhoto: true } : cc));
@@ -373,9 +375,10 @@ export default function ScanPage() {
       // als Kartenfoto hochladen – hat in der App Anzeige-Vorrang.
       const ids = res.data.card_ids;
       await Promise.all(chosen.map(async (c, k) => {
-        if (!c.usePhoto || !sourceBlobRef.current || ids[k] == null) return;
+        const blob = sourceBlobRef.current;
+        if (!c.usePhoto || !blob || ids[k] == null) return;
         try {
-          const file = await cropToCardPhoto(sourceBlobRef.current, cropOptsFor(c));
+          const file = await cropToCardPhoto(blob, cropOptsFor(c));
           await cardApi.uploadImage(ids[k], file);
         } catch { /* Foto-Upload optional */ }
       }));

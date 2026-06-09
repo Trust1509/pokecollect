@@ -262,6 +262,7 @@ export default function CardDetailPage() {
   const handleEditExisting = async () => {
     if (!card?.bild_karte_pfad) return;
     const src = imageUrl(card.bild_karte_pfad, API_BASE);
+    if (!src) return;
     try {
       const resp = await fetch(src);
       const blob = await resp.blob();
