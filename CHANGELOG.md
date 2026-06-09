@@ -1,5 +1,32 @@
 # Changelog
 
+## [v0.9.10] – 2026-06-09 (Originalfotos, EXIF-Konsistenz, Live-Flip/Rotate, Cache-Busting, Promo)
+
+### Fixes (Feedback-Runde)
+- **Bild im Editor richtig, in der Übersicht gespiegelt/gedreht (Kern-Bug):** Foto
+  wird beim Aufnehmen/Hochladen jetzt **EXIF-normalisiert** (Orientierung fest in
+  die Pixel gebacken). Dadurch zeigen Editor-Anzeige und gespeicherter Zuschnitt
+  IMMER dieselbe Ausrichtung – kein „im Bearbeiten korrekt, in der Übersicht
+  geflippt" mehr.
+- **Änderung erst nach Seiten-Neuladen sichtbar:** Bild-URLs haben jetzt
+  **Cache-Busting** (`?v=aktualisiert_am`) – nach Zuschnitt/Drehen/Spiegeln wird
+  das neue Bild sofort angezeigt (Raster, Binder, Detail).
+- **Flip/Drehen ohne Live-Reaktion:** Drehen (90°) und horizontal/vertikal
+  spiegeln wirken jetzt **live im Editor** (Bild + Eckpunkte drehen/spiegeln
+  sichtbar mit); das Ergebnis entspricht der Vorschau.
+- **Originalfotos werden gespeichert:** Zusätzlich zum Zuschnitt wird das
+  ungeschnittene Originalfoto aufbewahrt. „Foto bearbeiten" auf der Detailseite
+  öffnet das **Original** → man kann großzügiger neu zuschneiden statt nur den
+  vorhandenen Ausschnitt.
+- **Promo-Karten:** Seltenheit wird für Promo-Sets (z.B. „SVP Black Star Promos")
+  als **Promo** gesetzt und die Nummer ohne Nenner (z.B. `061` statt `061/225`).
+
+### Hinweise
+- Eck-Editor: Pinch/Zoom + Verschieben am Handy, Mausrad + Linksklick-halten am
+  Desktop, ganzes Foto sichtbar (Feedback war positiv – bleibt so).
+- Multi-Scan mit mehreren/gemischt ausgerichteten Karten kann die Erkennung
+  (Gemini) noch falsch zuschneiden – Einzelscan oder manuelle Eck-Korrektur hilft.
+
 ## [v0.9.9] – 2026-06-09 (Eck-Editor: Gesten/Flip/Rotate, Auto-Ausrichtung, Detail-Bearbeiten)
 
 ### Fixes (Feedback zu v0.9.8)

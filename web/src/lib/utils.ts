@@ -81,9 +81,16 @@ export function formatEur(value: string | null | undefined): string {
   );
 }
 
-export function imageUrl(path: string | null | undefined, apiBase: string): string | null {
+export function imageUrl(
+  path: string | null | undefined,
+  apiBase: string,
+  version?: string | number | null,
+): string | null {
   if (!path) return null;
-  return `${apiBase}/images/${path.replace(/^(?:.*\/)?images\//, "")}`;
+  const base = `${apiBase}/images/${path.replace(/^(?:.*\/)?images\//, "")}`;
+  // Cache-Busting: nach Re-Upload (gleicher Dateiname) lädt der Browser sonst
+  // das alte Bild aus dem Cache.
+  return version ? `${base}?v=${encodeURIComponent(String(version))}` : base;
 }
 
 export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined): string | null {
@@ -104,6 +111,7 @@ type CardImageFields = {
   bild_pokedex_url?: string | null;
   bild_karte_url?: string | null;
   pokedex_nr?: number | null;
+  aktualisiert_am?: string | null;   // für Cache-Busting eigener Fotos
 };
 
 /** Liefert Bildquelle + ob es nur ein Pokédex-Platzhalter ist. */
@@ -112,11 +120,16 @@ export function cardImageSrc(
   apiBase: string,
   placeholderEnabled = true
 ): { src: string | null; isPlaceholder: boolean } {
-  const src = card.bild_thumbnail_pfad
-    ? `${apiBase}/images/${card.bild_thumbnail_pfad.replace(/^(?:.*\/)?images\//, "")}`
-    : card.bild_pokedex_url
-    ?? card.bild_karte_url
-    ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
+  let src: string | null;
+  if (card.bild_thumbnail_pfad) {
+    const path = card.bild_thumbnail_pfad.replace(/^(?:.*\/)?images\//, "");
+    const v = card.aktualisiert_am ? `?v=${encodeURIComponent(card.aktualisiert_am)}` : "";
+    src = `${apiBase}/images/${path}${v}`;
+  } else {
+    src = card.bild_pokedex_url
+      ?? card.bild_karte_url
+      ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
+  }
   const isPlaceholder =
     !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!src;
   return { src, isPlaceholder };

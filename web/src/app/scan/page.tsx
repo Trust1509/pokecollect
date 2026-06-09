@@ -9,7 +9,7 @@ import {
 import SetPicker from "@/components/SetPicker";
 import RaritySelect from "@/components/RaritySelect";
 import CornerEditor from "@/components/CornerEditor";
-import { cropToCardPhoto, loadImg, CropTransform } from "@/lib/cardCrop";
+import { cropToCardPhoto, loadImg, normalizeOrientation, CropTransform } from "@/lib/cardCrop";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "setup" | "review" | "done";
@@ -204,9 +204,10 @@ export default function ScanPage() {
   const runScan = useCallback(async (rawBlob: Blob) => {
     setBusy(true);
     try {
-      // Vor dem Senden verkleinern → schnellere Analyse. bbox bezieht sich auf
-      // genau dieses Bild, daher merken wir es als Quelle für die Foto-Zuschnitte.
-      const blob = await downscaleImage(rawBlob);
+      // EXIF-Orientierung fest einbacken (Anzeige == Zuschnitt) und vor dem
+      // Senden verkleinern → schnellere Analyse. bbox/quad beziehen sich auf
+      // genau dieses Bild, daher merken wir es als Quelle für die Zuschnitte.
+      const blob = await downscaleImage(await normalizeOrientation(rawBlob));
       sourceBlobRef.current = blob;
       setSourceUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
@@ -379,7 +380,9 @@ export default function ScanPage() {
         if (!c.usePhoto || !blob || ids[k] == null) return;
         try {
           const file = await cropToCardPhoto(blob, cropOptsFor(c));
-          await cardApi.uploadImage(ids[k], file);
+          // Originalfoto (ganze Aufnahme) mitspeichern → spätere Nachbearbeitung
+          const original = new File([blob], "orig.jpg", { type: "image/jpeg" });
+          await cardApi.uploadImage(ids[k], file, original);
         } catch { /* Foto-Upload optional */ }
       }));
       setSavedCount(res.data.created);

@@ -28,6 +28,7 @@ export default function CornerEditor({
   const [flipH, setFlipH] = useState(false);
   const [flipV, setFlipV] = useState(false);
   const [rotate, setRotate] = useState(0);
+  const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
 
   const vpRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -36,11 +37,31 @@ export default function CornerEditor({
   const activeRef = useRef<number | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ dist: number; mid: { x: number; y: number } } | null>(null);
+  // Refs für die Zeiger-Zuordnung im globalen Listener (keine veralteten Closures)
+  const rotateRef = useRef(0);
+  const flipHRef = useRef(false);
+  const flipVRef = useRef(false);
+  const imgSizeRef = useRef({ w: 0, h: 0 });
 
   const setView = (z: number, p: { x: number; y: number }) => {
     zoomRef.current = z; panRef.current = p;
     setZoom(z); setPan(p);
   };
+  const doRotate = () => { const r = (rotateRef.current + 90) % 360; rotateRef.current = r; setRotate(r); };
+  const doFlipH = () => { flipHRef.current = !flipHRef.current; setFlipH(flipHRef.current); };
+  const doFlipV = () => { flipVRef.current = !flipVRef.current; setFlipV(flipVRef.current); };
+  const resetOrient = () => {
+    rotateRef.current = 0; flipHRef.current = false; flipVRef.current = false;
+    setRotate(0); setFlipH(false); setFlipV(false);
+  };
+
+  // CSS-Transform der Bild-/Overlay-Ebene: Pan/Zoom + Drehen/Spiegeln um die
+  // Bildmitte (transform-origin 0 0). Identisch zur Matrix in der Zeiger-Zuordnung.
+  const layerTransform = (() => {
+    const cx = imgSize.w / 2, cy = imgSize.h / 2;
+    const fx = flipH ? -1 : 1, fy = flipV ? -1 : 1;
+    return `translate(${pan.x}px, ${pan.y}px) scale(${zoom}) translate(${cx}px, ${cy}px) rotate(${rotate}deg) scale(${fx}, ${fy}) translate(${-cx}px, ${-cy}px)`;
+  })();
 
   // Bild mittig in den Viewport setzen (Ausgangszustand).
   const centerView = () => {
@@ -71,14 +92,26 @@ export default function CornerEditor({
       Math.hypot(a.x - b.x, a.y - b.y);
 
     const move = (e: PointerEvent) => {
-      // 1) Eckpunkt ziehen
+      // 1) Eckpunkt ziehen → Viewport-Punkt über die inverse Transform-Matrix
+      //    in Bild-Pixel zurückrechnen (funktioniert auch bei Drehung/Spiegelung).
       if (activeRef.current != null) {
-        const el = imgRef.current;
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
-        const nx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-        const ny = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+        const { w, h } = imgSizeRef.current;
+        if (w === 0 || h === 0) return;
+        const off = vpRef.current?.getBoundingClientRect();
+        const px = e.clientX - (off?.left ?? 0);
+        const py = e.clientY - (off?.top ?? 0);
+        const cx = w / 2, cy = h / 2;
+        const fx = flipHRef.current ? -1 : 1, fy = flipVRef.current ? -1 : 1;
+        const M = new DOMMatrix()
+          .translate(panRef.current.x, panRef.current.y)
+          .scale(zoomRef.current)
+          .translate(cx, cy)
+          .rotate(rotateRef.current)
+          .scale(fx, fy)
+          .translate(-cx, -cy);
+        const local = M.inverse().transformPoint(new DOMPoint(px, py));
+        const nx = clamp(local.x / w, 0, 1);
+        const ny = clamp(local.y / h, 0, 1);
         const i = activeRef.current;
         setQuad((prev) => prev.map((p, k) => (k === i ? [nx, ny] : p)));
         return;
@@ -173,7 +206,7 @@ export default function CornerEditor({
         >
           <div
             className="absolute top-0 left-0"
-            style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}
+            style={{ transform: layerTransform, transformOrigin: "0 0" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -186,6 +219,9 @@ export default function CornerEditor({
               onLoad={(e) => {
                 const im = e.currentTarget;
                 if (im.naturalWidth > 0) setAspect(im.naturalHeight / im.naturalWidth);
+                const size = { w: im.offsetWidth, h: im.offsetHeight };
+                imgSizeRef.current = size;
+                setImgSize(size);
                 centerView();
               }}
             />
@@ -207,7 +243,12 @@ export default function CornerEditor({
                 className={`absolute w-7 h-7 rounded-full border-2 text-[10px] font-bold flex items-center justify-center touch-none ${
                   active === i ? "bg-pokemon-blue text-white border-white" : "bg-pokemon-yellow/90 text-black border-black"
                 }`}
-                style={{ left: `${x * 100}%`, top: `${y * 100}%`, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
+                style={{
+                  left: `${x * 100}%`, top: `${y * 100}%`,
+                  // Gegen Zoom/Drehen/Spiegeln gegensteuern → Marker bleibt rund,
+                  // konstant groß und die Ziffer aufrecht/lesbar.
+                  transform: `translate(-50%, -50%) scale(${1 / zoom}) scale(${flipH ? -1 : 1}, ${flipV ? -1 : 1}) rotate(${-rotate}deg)`,
+                }}
               >
                 {i + 1}
               </button>
@@ -241,11 +282,11 @@ export default function CornerEditor({
           <button onClick={() => vpCenterZoom(1.25)} disabled={zoom >= 8}
             className="w-9 h-9 rounded bg-gray-700 text-white hover:bg-gray-600 disabled:opacity-40">+</button>
           <span className="w-2" />
-          <button onClick={() => setRotate((r) => (r + 90) % 360)} title={t.scan_corners_rotate}
+          <button onClick={doRotate} title={t.scan_corners_rotate}
             className="px-2 h-9 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">⟳ 90°</button>
-          <button onClick={() => setFlipH((v) => !v)} title={t.scan_corners_fliph}
+          <button onClick={doFlipH} title={t.scan_corners_fliph}
             className={`w-9 h-9 rounded text-white ${flipH ? "bg-pokemon-blue" : "bg-gray-700 hover:bg-gray-600"}`}>⇋</button>
-          <button onClick={() => setFlipV((v) => !v)} title={t.scan_corners_flipv}
+          <button onClick={doFlipV} title={t.scan_corners_flipv}
             className={`w-9 h-9 rounded text-white ${flipV ? "bg-pokemon-blue" : "bg-gray-700 hover:bg-gray-600"}`}>⇅</button>
           <button onClick={centerView} disabled={zoom === 1 && pan.x >= 0}
             className="px-2 h-9 rounded bg-gray-700 text-white text-xs hover:bg-gray-600 disabled:opacity-40">
@@ -254,7 +295,7 @@ export default function CornerEditor({
         </div>
 
         <div className="flex gap-2 justify-end mt-3 flex-wrap">
-          <button onClick={() => { setQuad(initialQuad); setFlipH(false); setFlipV(false); setRotate(0); centerView(); }}
+          <button onClick={() => { setQuad(initialQuad); resetOrient(); centerView(); }}
             className="text-gray-400 hover:text-white text-sm px-3 py-1.5">
             {t.scan_corners_reset}
           </button>

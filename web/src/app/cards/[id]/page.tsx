@@ -11,7 +11,7 @@ import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import CornerEditor from "@/components/CornerEditor";
-import { cropToCardPhoto, CropTransform } from "@/lib/cardCrop";
+import { cropToCardPhoto, normalizeOrientation, CropTransform } from "@/lib/cardCrop";
 import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -114,6 +114,7 @@ export default function CardDetailPage() {
   const [editorInitQuad, setEditorInitQuad] = useState<number[][]>(
     [[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]);
   const editorBlobRef = useRef<Blob | null>(null);
+  const editorOriginalRef = useRef<Blob | null>(null);  // Original mit-hochladen (nur bei neuem Foto)
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [cardCollections, setCardCollections] = useState<Collection[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
@@ -213,7 +214,7 @@ export default function CardDetailPage() {
   if (!card) return <div className="text-gray-500 p-8">{t.detail_loading}</div>;
 
   const imgSrc =
-    imageUrl(card.bild_karte_pfad, API_BASE)
+    imageUrl(card.bild_karte_pfad, API_BASE, card.aktualisiert_am)
     ?? card.bild_pokedex_url
     ?? card.bild_karte_url
     ?? pokemonPlaceholderUrl(card.pokedex_nr);
@@ -245,30 +246,38 @@ export default function CardDetailPage() {
 
   // Foto gewählt/aufgenommen → erst im Eck-Editor zuschneiden/entzerren,
   // dann hochladen. So lässt sich das Foto vor dem Speichern bearbeiten.
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    editorBlobRef.current = file;
+    // EXIF einbacken → Editor-Anzeige == gespeicherter Zuschnitt
+    const norm = await normalizeOrientation(file);
+    editorBlobRef.current = norm;
+    editorOriginalRef.current = norm;   // neues Foto → Original mitspeichern
     setEditorInitQuad([[0.06, 0.05], [0.94, 0.05], [0.94, 0.95], [0.06, 0.95]]);
     setEditorUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
+      return URL.createObjectURL(norm);
     });
   };
 
   // Bereits hochgeladenes eigenes Foto nachträglich bearbeiten (Zuschnitt /
-  // Flip / Drehen). Das gespeicherte Bild wird geladen und erneut bearbeitet.
+  // Flip / Drehen). Bevorzugt das ungeschnittene Original (falls vorhanden),
+  // damit man großzügiger neu zuschneiden kann.
   const handleEditExisting = async () => {
     if (!card?.bild_karte_pfad) return;
-    const src = imageUrl(card.bild_karte_pfad, API_BASE);
+    const fromOriginal = !!card.bild_original_pfad;
+    const src = imageUrl(card.bild_original_pfad ?? card.bild_karte_pfad, API_BASE, card.aktualisiert_am);
     if (!src) return;
     try {
       const resp = await fetch(src);
       const blob = await resp.blob();
       editorBlobRef.current = blob;
-      // Vollbild als Start (Foto ist bereits zugeschnitten → v.a. Flip/Drehen).
-      setEditorInitQuad([[0.01, 0.01], [0.99, 0.01], [0.99, 0.99], [0.01, 0.99]]);
+      editorOriginalRef.current = null;   // Bearbeitung → Original NICHT überschreiben
+      // Original: Karte freistellen (Ecken setzen). Bereits-Zuschnitt: nur Flip/Drehen.
+      setEditorInitQuad(fromOriginal
+        ? [[0.1, 0.08], [0.9, 0.08], [0.9, 0.92], [0.1, 0.92]]
+        : [[0.01, 0.01], [0.99, 0.01], [0.99, 0.99], [0.01, 0.99]]);
       setEditorUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return URL.createObjectURL(blob);
@@ -284,6 +293,7 @@ export default function CardDetailPage() {
       return null;
     });
     editorBlobRef.current = null;
+    editorOriginalRef.current = null;
   };
 
   const handleApplyPhoto = async (quad: number[][], transform: CropTransform) => {
@@ -292,7 +302,10 @@ export default function CardDetailPage() {
     setUploadingPhoto(true);
     try {
       const file = await cropToCardPhoto(blob, { quad, ...transform });
-      const r = await cardApi.uploadImage(Number(id), file);
+      const original = editorOriginalRef.current
+        ? new File([editorOriginalRef.current], "orig.jpg", { type: "image/jpeg" })
+        : undefined;
+      const r = await cardApi.uploadImage(Number(id), file, original);
       setCard(r.data);
       toast.success(t.detail_photo_saved);
       closePhotoEditor();

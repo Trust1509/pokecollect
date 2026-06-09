@@ -100,6 +100,11 @@ def _map_rarity(rarity_en: Optional[str]) -> Optional[str]:
     return _RARITY_MAP.get(rarity_en.strip().lower(), rarity_en)
 
 
+def _is_promo_set(name: Optional[str]) -> bool:
+    """Erkennt Promo-Sets am Namen (z.B. 'SVP Black Star Promos')."""
+    return bool(name) and "promo" in name.lower()
+
+
 async def _english_card(tc, lang: str):
     """Liefert die englische Variante (für englischen Namen + Seltenheit)."""
     if lang == "en":
@@ -191,6 +196,14 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         set_edition = _set_edition(db, set_id, read.set_code)
         knr = _karten_nr(tc.localId, official, read.number)
         foil_options = _foil_options(tc)
+
+        # Promo-Karten (z.B. SVP Black Star Promos): Seltenheit = Promo und die
+        # aufgedruckte Nummer ohne Nenner (Promos haben kein "x/y").
+        set_name = tc.set.name if tc.set else None
+        if _is_promo_set(set_name) or _is_promo_set(set_edition):
+            seltenheit = "Promo"
+            if tc.localId:
+                knr = tc.localId
 
         # Dex-Nr.: bevorzugt von der Karte; fehlt sie (z.B. Mega-Reihe), über
         # Schwesterkarten gleichen Namens nachschlagen (Spezies-Ebene).

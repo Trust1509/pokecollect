@@ -1,6 +1,6 @@
 # PokéCollect – Roadmap
 
-Stand: **v0.9.8** · Eck-Editor (Lupe/Zoom) + Detailseiten-Zuschnitt + Dex-Nr.-Fix
+Stand: **v0.9.10** · Originalfotos + EXIF-Konsistenz + Live-Flip/Rotate + Cache-Busting + Promo
 
 ---
 

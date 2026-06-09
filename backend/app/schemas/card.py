@@ -82,6 +82,7 @@ class CardResponse(CardBase):
     bild_karte_url: Optional[str] = None
     bild_karte_pfad: Optional[str] = None
     bild_thumbnail_pfad: Optional[str] = None
+    bild_original_pfad: Optional[str] = None
     # TCGdex-Anreicherung
     tcgdex_card_id: Optional[str] = None
     set_id: Optional[str] = None

@@ -150,6 +150,8 @@ def _run_light_migrations():
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_holo BOOLEAN",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS variants_firstedition BOOLEAN",
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id ON pokemon_cards (tcgdex_card_id)",
+        # Originalfoto (ungeschnitten) zusätzlich zum Zuschnitt aufbewahren (v0.9.10)
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_original_pfad TEXT",
         # Einmalmigration: erste besessene Karte je Pokédex-Nr. automatisch als Pokédex-Vertreter setzen
         """
         UPDATE pokemon_cards

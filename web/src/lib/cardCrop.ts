@@ -18,6 +18,31 @@ export function loadImg(url: string): Promise<HTMLImageElement> {
   });
 }
 
+/**
+ * Backt die EXIF-Orientierung fest in die Pixel ein und entfernt die Marke.
+ * Wichtig, damit Anzeige (<img>) und Canvas-Zuschnitt IMMER dieselbe Ausrichtung
+ * verwenden – sonst zeigt der Editor die Karte aufrecht, der gespeicherte
+ * Zuschnitt aber gedreht/gespiegelt (uneinheitliches EXIF-Handling der Browser).
+ * Gibt bei Fehlern den Original-Blob zurück.
+ */
+export async function normalizeOrientation(blob: Blob): Promise<Blob> {
+  try {
+    if (typeof createImageBitmap !== "function") return blob;
+    const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    const canvas = document.createElement("canvas");
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { bmp.close?.(); return blob; }
+    ctx.drawImage(bmp, 0, 0);
+    bmp.close?.();
+    const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.92));
+    return out ?? blob;
+  } catch {
+    return blob;
+  }
+}
+
 /** Löst X_i = A*u_i + C*v_i + E (3 Punkte) → [A, C, E]. */
 function solveAffine(u: number[], v: number[], X: number[]): [number, number, number] | null {
   const det = u[0] * (v[1] - v[2]) - v[0] * (u[1] - u[2]) + (u[1] * v[2] - u[2] * v[1]);

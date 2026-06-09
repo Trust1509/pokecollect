@@ -349,10 +349,33 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 # ── Bilder ──────────────────────────────────────────────────────────────────
 
+def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None) -> None:
+    """
+    Speichert ein hochgeladenes Bild aufrecht (EXIF-Orientierung angewandt) und
+    optional ein Thumbnail. Handy-/Galerie-Uploads tragen oft nur eine
+    Orientierungs-Marke statt gedrehter Pixel → sonst läge das Foto quer.
+    """
+    suffix = dst.suffix.lower()
+    is_jpeg = suffix in (".jpg", ".jpeg")
+    with dst.open("wb") as f:
+        shutil.copyfileobj(upload.file, f)
+    with Image.open(dst) as img:
+        upright = ImageOps.exif_transpose(img)
+        if is_jpeg and upright.mode not in ("RGB", "L"):
+            upright = upright.convert("RGB")
+        kw = {"quality": 90} if is_jpeg else {}
+        upright.save(dst, **kw)   # aufrecht zurückschreiben (Marke entfernt)
+        if thumb is not None:
+            t = upright.copy()
+            t.thumbnail(THUMB_SIZE)
+            t.save(thumb, **kw)
+
+
 @router.post("/{card_id}/image", response_model=CardResponse)
 async def upload_image(
     card_id: int,
     file: UploadFile = File(...),
+    original: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
     card = _card_or_404(card_id, db)
@@ -362,26 +385,18 @@ async def upload_image(
     suffix = Path(file.filename).suffix.lower() or ".jpg"
     img_path = images_dir / f"card_{card_id}{suffix}"
     thumb_path = images_dir / f"card_{card_id}_thumb{suffix}"
-
-    with img_path.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    # EXIF-Orientierung anwenden, damit das gespeicherte Bild IMMER aufrecht ist
-    # (Handy-/Galerie-Uploads tragen oft nur eine Orientierungs-Marke statt
-    # gedrehter Pixel → sonst liegt das Foto im Raster/Binder quer). Issue 3.
-    is_jpeg = suffix in (".jpg", ".jpeg")
-    with Image.open(img_path) as img:
-        upright = ImageOps.exif_transpose(img)
-        if is_jpeg and upright.mode not in ("RGB", "L"):
-            upright = upright.convert("RGB")
-        save_kwargs = {"quality": 90} if is_jpeg else {}
-        upright.save(img_path, **save_kwargs)   # aufrecht zurückschreiben (Marke entfernt)
-        thumb = upright.copy()
-        thumb.thumbnail(THUMB_SIZE)
-        thumb.save(thumb_path, **save_kwargs)
-
+    _save_upright(file, img_path, thumb=thumb_path)
     card.bild_karte_pfad = str(img_path.relative_to(images_dir.parent))
     card.bild_thumbnail_pfad = str(thumb_path.relative_to(images_dir.parent))
+
+    # Optional: ungeschnittenes Originalfoto aufbewahren → spätere Bearbeitung
+    # kann großzügiger neu zuschneiden (statt nur den vorhandenen Zuschnitt).
+    if original is not None and original.filename:
+        osuffix = Path(original.filename).suffix.lower() or ".jpg"
+        orig_path = images_dir / f"card_{card_id}_orig{osuffix}"
+        _save_upright(original, orig_path)
+        card.bild_original_pfad = str(orig_path.relative_to(images_dir.parent))
+
     db.commit()
     db.refresh(card)
     return card
@@ -390,7 +405,7 @@ async def upload_image(
 @router.delete("/{card_id}/image", response_model=CardResponse)
 def delete_image(card_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
-    for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad"):
+    for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad"):
         p = getattr(card, path_field)
         if p:
             full = Path(settings.images_dir).parent / p

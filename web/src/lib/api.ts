@@ -39,6 +39,7 @@ export type Card = {
   bild_karte_url: string | null;       // auto: TCGdex high.webp
   bild_karte_pfad: string | null;
   bild_thumbnail_pfad: string | null;
+  bild_original_pfad: string | null;
   // TCGdex-Anreicherung (v0.7.0)
   tcgdex_card_id: string | null;
   set_id: string | null;
@@ -109,9 +110,10 @@ export const cardApi = {
 
   delete: (id: number) => api.delete(`/cards/${id}`),
 
-  uploadImage: (id: number, file: File) => {
+  uploadImage: (id: number, file: File, original?: File | null) => {
     const form = new FormData();
     form.append("file", file);
+    if (original) form.append("original", original);
     return api.post<Card>(`/cards/${id}/image`, form);
   },
 
