@@ -17,6 +17,7 @@ type EditableCandidate = ScanCandidate & {
   usePhoto: boolean;        // eigenes Foto (true) vs. API-Bild (false)
   cropUrl: string | null;   // Vorschau des zugeschnittenen eigenen Fotos
   imPokedex: boolean;       // je Karte: in den Pokédex
+  editedQuad?: number[][] | null;  // manuell korrigierte Ecken (normiert 0..1, TL,TR,BR,BL)
 };
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
@@ -75,6 +76,90 @@ function drawTriangle(
   ctx.restore();
 }
 
+/** Schiebt die drei Ecken um `px` Pixel vom Schwerpunkt weg (gegen Hairline-Nähte). */
+function inflateTri(tri: number[][], px: number): number[][] {
+  const cx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3;
+  const cy = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
+  return tri.map(([x, y]) => {
+    const dx = x - cx, dy = y - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    return [x + (dx / len) * px, y + (dy / len) * px];
+  });
+}
+
+/**
+ * Löst die projektive Abbildung src→dst (3×3-Homographie, 8 Koeffizienten).
+ * Liefert [a,b,c,d,e,f,g,h] mit
+ *   X = (a·x + b·y + c) / (g·x + h·y + 1)
+ *   Y = (d·x + e·y + f) / (g·x + h·y + 1)
+ * via Gauß-Elimination eines 8×8-Systems. null bei degenerierten Punkten.
+ */
+function solveHomography(src: number[][], dst: number[][]): number[] | null {
+  const M: number[][] = [];
+  const r: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i];
+    const [X, Y] = dst[i];
+    M.push([x, y, 1, 0, 0, 0, -X * x, -X * y]); r.push(X);
+    M.push([0, 0, 0, x, y, 1, -Y * x, -Y * y]); r.push(Y);
+  }
+  // Gauß mit Teilpivotisierung
+  for (let col = 0; col < 8; col++) {
+    let piv = col;
+    for (let row = col + 1; row < 8; row++) {
+      if (Math.abs(M[row][col]) > Math.abs(M[piv][col])) piv = row;
+    }
+    if (Math.abs(M[piv][col]) < 1e-9) return null;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    [r[col], r[piv]] = [r[piv], r[col]];
+    const d = M[col][col];
+    for (let k = col; k < 8; k++) M[col][k] /= d;
+    r[col] /= d;
+    for (let row = 0; row < 8; row++) {
+      if (row === col) continue;
+      const factor = M[row][col];
+      if (!factor) continue;
+      for (let k = col; k < 8; k++) M[row][k] -= factor * M[col][k];
+      r[row] -= factor * r[col];
+    }
+  }
+  return r;
+}
+
+/**
+ * Echte perspektivische Entzerrung: bildet das Quell-Viereck `srcQuad`
+ * (Pixel, Reihenfolge TL,TR,BR,BL) auf das Rechteck 0,0–W,H ab. Statt eines
+ * groben 2-Dreieck-Affins wird das Zielrechteck in ein feines Gitter zerlegt
+ * und jede Zelle einzeln affin gezeichnet → konvergiert gegen die echte
+ * Homographie (keine Diagonal-Verzerrung, auch bei stark schrägen Karten).
+ */
+function warpPerspective(
+  ctx: CanvasRenderingContext2D, img: HTMLImageElement,
+  srcQuad: number[][], W: number, H: number, divisions = 16,
+): boolean {
+  const dstQuad = [[0, 0], [W, 0], [W, H], [0, H]];
+  const Hinv = solveHomography(dstQuad, srcQuad); // Ziel → Quelle (zum Abtasten)
+  if (!Hinv) return false;
+  const map = (X: number, Y: number): number[] => {
+    const den = Hinv[6] * X + Hinv[7] * Y + 1;
+    return [(Hinv[0] * X + Hinv[1] * Y + Hinv[2]) / den, (Hinv[3] * X + Hinv[4] * Y + Hinv[5]) / den];
+  };
+  const N = divisions;
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const x0 = (c / N) * W, x1 = ((c + 1) / N) * W;
+      const y0 = (r / N) * H, y1 = ((r + 1) / N) * H;
+      const d = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      const s = d.map(([X, Y]) => map(X, Y));
+      // Ziel-Dreiecke leicht aufblähen → benachbarte Zellen überlappen,
+      // damit keine 1px-Nähte durchscheinen.
+      drawTriangle(ctx, img, [s[0], s[1], s[2]], inflateTri([d[0], d[1], d[2]], 0.6));
+      drawTriangle(ctx, img, [s[0], s[2], s[3]], inflateTri([d[0], d[2], d[3]], 0.6));
+    }
+  }
+  return true;
+}
+
 /**
  * Schneidet/entzerrt das Kartenfoto zu Karten-Format (63:88):
  *  - quad (4 Ecken) → perspektivische Entzerrung (auch schräge Karten)
@@ -99,13 +184,16 @@ async function cropToCardPhoto(
       if (dist(src[0], src[1]) > dist(src[0], src[3])) {
         src = [src[1], src[2], src[3], src[0]];
       }
-      const dst = [[0, 0], [W, 0], [W, H], [0, H]];
       const canvas = document.createElement("canvas");
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d")!;
-      // Zwei Dreiecke entlang der Diagonale TL–BR
-      drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
-      drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+      // Echte perspektivische Entzerrung (Homographie via feinem Gitter).
+      // Fällt bei degeneriertem Viereck auf den 2-Dreieck-Affin zurück.
+      if (!warpPerspective(ctx, img, src, W, H)) {
+        const dst = [[0, 0], [W, 0], [W, H], [0, H]];
+        drawTriangle(ctx, img, [src[0], src[1], src[2]], [dst[0], dst[1], dst[2]]);
+        drawTriangle(ctx, img, [src[0], src[2], src[3]], [dst[0], dst[2], dst[3]]);
+      }
       const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
       return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
     }
@@ -129,11 +217,20 @@ async function cropToCardPhoto(
     }
     const maxW = 600;
     const scale = sw > maxW ? maxW / sw : 1;
+    const dw = Math.round(sw * scale);
+    const dh = Math.round(sh * scale);
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(sw * scale);
-    canvas.height = Math.round(sh * scale);
     const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    // Liegt der Zuschnitt quer (Karte gekippt), 90° drehen → immer Hochformat.
+    if (dw > dh) {
+      canvas.width = dh; canvas.height = dw;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+    } else {
+      canvas.width = dw; canvas.height = dh;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+    }
     const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/jpeg", 0.9));
     return new File([out ?? blob], "card.jpg", { type: "image/jpeg" });
   } finally {
@@ -182,6 +279,7 @@ export default function ScanPage() {
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [savedCount, setSavedCount] = useState(0);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [editorIdx, setEditorIdx] = useState<number | null>(null);
   const sourceBlobRef = useRef<Blob | null>(null);
   const [camMsg, setCamMsg] = useState<string | null>(null);
   const [autoCapture, setAutoCapture] = useState(true);
@@ -375,6 +473,31 @@ export default function ScanPage() {
   const toggleInclude = (idx: number) =>
     setCandidates((prev) => prev.map((c, i) => (i === idx ? { ...c, include: !c.include } : c)));
 
+  // Start-Viereck für den Eck-Editor: korrigierte Ecken › erkannte Ecken ›
+  // Bounding-Box › grober Default.
+  const initialQuadFor = (c: EditableCandidate): number[][] => {
+    if (c.editedQuad && c.editedQuad.length === 4) return c.editedQuad;
+    if (c.raw?.quad && c.raw.quad.length === 4) return c.raw.quad;
+    const b = c.raw?.bbox;
+    if (b && b.length === 4) {
+      const [x, y, w, h] = b;
+      return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    }
+    return [[0.15, 0.1], [0.85, 0.1], [0.85, 0.9], [0.15, 0.9]];
+  };
+
+  // Manuell gesetzte Ecken übernehmen → Foto perspektivisch neu entzerren.
+  const applyCorners = async (idx: number, quad: number[][]) => {
+    setEditorIdx(null);
+    if (!sourceBlobRef.current) return;
+    try {
+      const f = await cropToCardPhoto(sourceBlobRef.current, { quad });
+      const u = URL.createObjectURL(f);
+      setCandidates((prev) => prev.map((cc, i) =>
+        i === idx ? { ...cc, editedQuad: quad, cropUrl: u, usePhoto: true } : cc));
+    } catch { /* Entzerrung optional */ }
+  };
+
   // Karte anhand der (geänderten) Set/Nummer neu auflösen → Live-Bild + Treffer.
   // Behält die Nutzer-Auswahl für Set/Nummer/Sprache bei.
   const refreshCandidate = async (idx: number, overrides: Record<string, unknown> = {}) => {
@@ -445,7 +568,7 @@ export default function ScanPage() {
       await Promise.all(chosen.map(async (c, k) => {
         if (!c.usePhoto || !sourceBlobRef.current || ids[k] == null) return;
         try {
-          const file = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw?.bbox, quad: c.raw?.quad });
+          const file = await cropToCardPhoto(sourceBlobRef.current, { bbox: c.raw?.bbox, quad: c.editedQuad ?? c.raw?.quad });
           await cardApi.uploadImage(ids[k], file);
         } catch { /* Foto-Upload optional */ }
       }));
@@ -676,6 +799,15 @@ export default function ScanPage() {
                         {t.scan_use_photo}
                       </label>
                     )}
+                    {sourceUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditorIdx(idx)}
+                        className="mt-1 w-full text-[10px] text-pokemon-blue hover:underline"
+                      >
+                        ✥ {t.scan_edit_corners}
+                      </button>
+                    )}
                   </div>
 
                   {/* Felder */}
@@ -768,6 +900,16 @@ export default function ScanPage() {
         </div>
       )}
 
+      {editorIdx != null && sourceUrl && candidates[editorIdx] && (
+        <CornerEditor
+          imageUrl={sourceUrl}
+          initialQuad={initialQuadFor(candidates[editorIdx])}
+          onCancel={() => setEditorIdx(null)}
+          onApply={(quad) => void applyCorners(editorIdx, quad)}
+          t={t}
+        />
+      )}
+
       {step === "done" && (
         <div className="text-center py-16 space-y-4">
           <div className="text-4xl">✅</div>
@@ -782,6 +924,93 @@ export default function ScanPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Manuelle Eck-Korrektur: zeigt das Quellfoto mit 4 ziehbaren Punkten
+ * (TL,TR,BR,BL, normiert 0..1). Bei „Übernehmen" wird perspektivisch entzerrt.
+ */
+function CornerEditor({
+  imageUrl, initialQuad, onCancel, onApply, t,
+}: {
+  imageUrl: string;
+  initialQuad: number[][];
+  onCancel: () => void;
+  onApply: (quad: number[][]) => void;
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const [quad, setQuad] = useState<number[][]>(initialQuad);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const dragRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const el = imgRef.current;
+      if (!el || dragRef.current == null) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const nx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const ny = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+      const i = dragRef.current;
+      setQuad((prev) => prev.map((p, k) => (k === i ? [nx, ny] : p)));
+    };
+    const up = () => { dragRef.current = null; };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, []);
+
+  const labels = ["1", "2", "3", "4"];
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onCancel}>
+      <div
+        className="bg-pokemon-card border border-gray-700 rounded-lg p-4 max-w-lg w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-white text-sm font-medium mb-1">{t.scan_corners_title}</h3>
+        <p className="text-gray-400 text-xs mb-3">{t.scan_corners_hint}</p>
+        <div className="relative mx-auto select-none touch-none" style={{ maxWidth: 420 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img ref={imgRef} src={imageUrl} alt="" draggable={false} className="w-full rounded block" />
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox="0 0 1 1" preserveAspectRatio="none"
+          >
+            <polygon
+              points={quad.map(([x, y]) => `${x},${y}`).join(" ")}
+              fill="rgba(250,204,21,0.15)" stroke="#facc15" strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          {quad.map(([x, y], i) => (
+            <button
+              key={i}
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); dragRef.current = i; }}
+              className="absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full bg-pokemon-yellow/90 border-2 border-black text-black text-[10px] font-bold touch-none flex items-center justify-center"
+              style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
+            >
+              {labels[i]}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={() => setQuad(initialQuad)} className="text-gray-400 hover:text-white text-sm px-3 py-1.5">
+            {t.scan_corners_reset}
+          </button>
+          <button onClick={onCancel} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded hover:bg-gray-600">
+            {t.scan_corners_cancel}
+          </button>
+          <button onClick={() => onApply(quad)} className="bg-green-600 text-white text-sm px-4 py-1.5 rounded hover:bg-green-700">
+            {t.scan_corners_apply}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

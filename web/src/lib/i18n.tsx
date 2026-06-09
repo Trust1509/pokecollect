@@ -183,6 +183,12 @@ const DE = {
   scan_scan_again: "Weiter scannen",
   scan_back: "← Zurück",
   scan_error: "Scan fehlgeschlagen",
+  scan_edit_corners: "Ecken anpassen",
+  scan_corners_title: "Ecken ziehen, um die Karte zu entzerren",
+  scan_corners_hint: "Verschiebe die 4 Punkte exakt auf die Kartenecken (oben-links, oben-rechts, unten-rechts, unten-links).",
+  scan_corners_apply: "Übernehmen",
+  scan_corners_reset: "Zurücksetzen",
+  scan_corners_cancel: "Abbrechen",
 
   // FilterSidebar
   filter_title: "Filter",
@@ -470,6 +476,12 @@ const EN: typeof DE = {
   scan_scan_again: "Scan more",
   scan_back: "← Back",
   scan_error: "Scan failed",
+  scan_edit_corners: "Adjust corners",
+  scan_corners_title: "Drag corners to de-skew the card",
+  scan_corners_hint: "Move the 4 points exactly onto the card corners (top-left, top-right, bottom-right, bottom-left).",
+  scan_corners_apply: "Apply",
+  scan_corners_reset: "Reset",
+  scan_corners_cancel: "Cancel",
 
   filter_title: "Filters",
   filter_search: "Search",

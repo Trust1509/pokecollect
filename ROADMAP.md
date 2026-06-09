@@ -1,15 +1,17 @@
 # PokéCollect – Roadmap
 
-Stand: **v0.9.6** · erster öffentlicher Release
+Stand: **v0.9.7** · Foto-Entzerrung + Bild-Fallback + EXIF
 
 ---
 
 ## ⚠️ Known Issues (bekannt, Fix in Arbeit)
-- **Foto-Aufnahme**: Zuschnitt/Skalierung nicht immer korrekt, keine echte
-  perspektivische Entzerrung; im Raster/Binder stimmt die Ausrichtung nicht immer.
-  → geplant: manuelle Eck-Korrektur (🅳) + echte Homographie.
-- **Kartenbild** wird erst geladen, wenn eine **Kartennummer** eingetragen ist
-  (Set + Nr. nötig zur eindeutigen Auflösung). → geplant: Namens-basierter Fallback.
+- ✅ **Foto-Aufnahme** (v0.9.7): echte Homographie-Entzerrung + manuelle
+  Eck-Korrektur im Scan-Review + Auto-Hochformat. Restpunkt: Auto-Zuschnitt
+  vor dem manuellen Schritt weiter verbessern.
+- ✅ **Kartenbild ohne Nummer** (v0.9.7): Namens-basierter Fallback liefert ein
+  wahrscheinliches Bild der gleichen Spezies (bevorzugt aus dem bekannten Set).
+- ✅ **Ausrichtung in Raster/Binder** (v0.9.7): Uploads werden per EXIF aufrecht
+  gespeichert.
 - Vereinzelt uneinheitliche Filter-Felder je Kontext (kontextbedingt).
 
 ---
@@ -74,8 +76,9 @@ Stand: **v0.9.6** · erster öffentlicher Release
 - [ ] Illustrator als Filter (für Künstler-Sammler)
 
 ### 🅳 Foto-Zuschnitt: manuelle Eck-Korrektur
-- [ ] Grober Auto-Zuschnitt + Ecken per Hand verschieben → perspektivische Entzerrung
-- [ ] Löst schlechte Multi-Karten-Zuschnitte ohne teure Gemini-Rechnung
+- [x] Grober Auto-Zuschnitt + Ecken per Hand verschieben → perspektivische Entzerrung (v0.9.7)
+- [x] Echte Homographie statt 2-Dreieck-Affin (v0.9.7)
+- [ ] Auto-Zuschnitt vor dem manuellen Schritt weiter verbessern (Multi-Karten)
 
 ### 🅴 HTTPS via Caddy
 > Schaltet PWA-Installation, Offline **und** Live-Webcam (Desktop + Handy, ohne Chrome-Flag) frei.

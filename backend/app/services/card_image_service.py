@@ -88,6 +88,60 @@ async def fetch_tcgdex_card(
     return None
 
 
+def _result_set_id(result: dict) -> Optional[str]:
+    """Set-ID aus einem Such-Treffer ableiten ('swsh3-136' → 'swsh3')."""
+    cid = result.get("id")
+    if isinstance(cid, str) and "-" in cid:
+        return cid.rsplit("-", 1)[0]
+    return None
+
+
+async def fetch_tcgdex_card_by_name(
+    name: Optional[str],
+    sprache: Optional[str],
+    set_id: Optional[str] = None,
+) -> Optional[TcgdexCard]:
+    """
+    Issue 2: Fallback ohne Kartennummer – sucht die Karte über den Namen und
+    liefert einen *wahrscheinlichen* Treffer (gleiche Spezies). Bevorzugt einen
+    Treffer im bereits bekannten Set; sonst den ersten Namens-Treffer.
+    Erzwingt keine exakte Karte, dient v.a. einem plausiblen Bild.
+    """
+    if not name:
+        return None
+    primary = tcgdex.normalize_lang(sprache)
+    langs: list[str] = [primary] + [l for l in tcgdex.FALLBACK_LANGS if l != primary]
+    for lang in langs:
+        results = await tcgdex.search_cards({"name": name}, lang)
+        if not results:
+            continue
+        chosen: Optional[dict] = None
+        if set_id:
+            chosen = next((r for r in results if _result_set_id(r) == set_id), None)
+        if chosen is None:
+            chosen = results[0]
+        cid = chosen.get("id")
+        if cid:
+            card = await tcgdex.get_card(cid, lang)
+            if card:
+                return card
+    return None
+
+
+def apply_species_image(card: PokemonCard, tc: TcgdexCard, *, overwrite_image: bool = True) -> None:
+    """
+    Behutsame Variante für den Namens-Fallback: setzt nur Bild + Pokédex-Nr.
+    (Spezies-Ebene, zuverlässig). Lässt set_id/tcgdex_card_id/Varianten in Ruhe,
+    um keine womöglich falsche konkrete Karte zu erzwingen.
+    """
+    if overwrite_image:
+        url = tcgdex.image_url(tc.image)
+        if url:
+            card.bild_karte_url = url
+    if tc.dex_id is not None and card.dex_id is None:
+        card.dex_id = tc.dex_id
+
+
 def apply_card_to_model(card: PokemonCard, tc: TcgdexCard, *, overwrite_image: bool = True) -> None:
     """
     Überträgt TCGdex-Felder additiv auf die DB-Karte.

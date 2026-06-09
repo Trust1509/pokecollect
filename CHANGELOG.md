@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.9.7] – 2026-06-09 (Foto-Entzerrung, Bild-Fallback per Name, EXIF-Orientierung)
+
+### Fixes (Known Issues)
+- **Foto-Zuschnitt/Perspektive (Issue 1):** Eigene Scan-Fotos werden jetzt mit
+  einer echten **Homographie** entzerrt (feines Gitter statt grobem
+  2-Dreieck-Affin) – auch stark schräge Karten werden sauber rechteckig.
+  Querformat-Zuschnitte (gekippte Karte) werden automatisch ins Hochformat
+  gedreht.
+- **Manuelle Eck-Korrektur (Issue 1):** Im Scan-Review gibt es pro Karte
+  „✥ Ecken anpassen" – die 4 Kartenecken lassen sich per Drag exakt setzen,
+  danach wird das Foto perspektivisch neu entzerrt (auch bei mehreren/schrägen
+  Karten auf einem Bild).
+- **Bild ohne Kartennummer (Issue 2):** Fehlt die aufgedruckte Nummer (oder
+  scheitert die exakte Auflösung), wird das Kartenbild jetzt über die
+  **Namenssuche** gezogen (wahrscheinliches Bild der gleichen Spezies,
+  bevorzugt aus dem bekannten Set). Ohne Set werden nur Bild + Pokédex-Nr.
+  gesetzt, um keine falsche konkrete Karte zu erzwingen.
+- **Ausrichtung in Raster/Binder (Issue 3):** Hochgeladene Fotos werden
+  serverseitig anhand ihrer **EXIF-Orientierung** aufrecht gespeichert (inkl.
+  Thumbnail) – Handy-/Galerie-Uploads liegen nicht mehr quer/verdreht.
+
 ## [v0.9.6] – 2026-06-07 (Erster öffentlicher Release)
 
 ### Fixes

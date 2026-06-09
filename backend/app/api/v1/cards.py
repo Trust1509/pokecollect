@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 
 log = logging.getLogger(__name__)
-from PIL import Image
+from PIL import Image, ImageOps
 from sqlalchemy import func, select, update, or_, and_, cast, String
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,9 @@ from app.config import settings
 from app.database import get_db, SessionLocal
 from app.services.card_image_service import (
     apply_card_to_model,
+    apply_species_image,
     fetch_tcgdex_card,
+    fetch_tcgdex_card_by_name,
     resolve_set_id,
 )
 from app.models.card import PokemonCard, PreisHistorie
@@ -216,13 +218,23 @@ async def _trigger_image_fetch(card_id: int):
         if not card or not card.besessen:
             return
         set_id = card.set_id or resolve_set_id(db, card.set_edition)
-        if not set_id:
-            return
-        tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache)
-        if not tc:
+        # Exakte Auflösung über Set + aufgedruckte Nummer (sofern Nummer da).
+        tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache) if set_id else None
+        matched_exact = tc is not None
+        # Issue 2: keine Nummer/kein Treffer → Fallback über Namenssuche
+        # (wahrscheinliches Bild der gleichen Spezies).
+        if tc is None:
+            tc = await fetch_tcgdex_card_by_name(card.kartenname, card.sprache, set_id=set_id)
+        if tc is None:
             return
         overwrite = not (card.bild_karte_pfad or card.bild_pokedex_url)
-        apply_card_to_model(card, tc, overwrite_image=overwrite)
+        # Treffer im bekannten Set gilt als exakt → volle Metadaten; sonst nur
+        # Bild + Pokédex-Nr., um keine falsche konkrete Karte zu erzwingen.
+        exact = matched_exact or bool(set_id and tc.set and tc.set.id == set_id)
+        if exact:
+            apply_card_to_model(card, tc, overwrite_image=overwrite)
+        else:
+            apply_species_image(card, tc, overwrite_image=overwrite)
         db.commit()
     finally:
         db.close()
@@ -354,10 +366,19 @@ async def upload_image(
     with img_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # Thumbnail erzeugen
+    # EXIF-Orientierung anwenden, damit das gespeicherte Bild IMMER aufrecht ist
+    # (Handy-/Galerie-Uploads tragen oft nur eine Orientierungs-Marke statt
+    # gedrehter Pixel → sonst liegt das Foto im Raster/Binder quer). Issue 3.
+    is_jpeg = suffix in (".jpg", ".jpeg")
     with Image.open(img_path) as img:
-        img.thumbnail(THUMB_SIZE)
-        img.save(thumb_path)
+        upright = ImageOps.exif_transpose(img)
+        if is_jpeg and upright.mode not in ("RGB", "L"):
+            upright = upright.convert("RGB")
+        save_kwargs = {"quality": 90} if is_jpeg else {}
+        upright.save(img_path, **save_kwargs)   # aufrecht zurückschreiben (Marke entfernt)
+        thumb = upright.copy()
+        thumb.thumbnail(THUMB_SIZE)
+        thumb.save(thumb_path, **save_kwargs)
 
     card.bild_karte_pfad = str(img_path.relative_to(images_dir.parent))
     card.bild_thumbnail_pfad = str(thumb_path.relative_to(images_dir.parent))
