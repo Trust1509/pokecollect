@@ -21,6 +21,12 @@
   serverseitig anhand ihrer **EXIF-Orientierung** aufrecht gespeichert (inkl.
   Thumbnail) – Handy-/Galerie-Uploads liegen nicht mehr quer/verdreht.
 
+### Intern
+- **Backend-Version zentralisiert:** `settings.app_version` (config.py, per Env
+  `APP_VERSION` überschreibbar) statt hart `1.0.0` in main.py; an FastAPI
+  durchgereicht und in `/health` ausgegeben. Eine Projektversion pro Dev-Stand –
+  beim Release nur `web/src/lib/version.ts` + `backend/app/config.py` hochzählen.
+
 ## [v0.9.6] – 2026-06-07 (Erster öffentlicher Release)
 
 ### Fixes

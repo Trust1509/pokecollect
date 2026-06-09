@@ -2,6 +2,11 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Eine Projektversion pro Dev-Stand (nicht getrennt nach Front-/Backend).
+    # Spiegelt web/src/lib/version.ts › APP_VERSION; bei jedem Release beide
+    # hochzählen. Per Env-Var APP_VERSION überschreibbar.
+    app_version: str = "0.9.7"
+
     database_url: str
     redis_url: str = "redis://redis:6379"
     jwt_secret: str

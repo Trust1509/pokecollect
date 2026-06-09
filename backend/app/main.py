@@ -186,7 +186,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PokéCollect API",
-    version="1.0.0",
+    version=settings.app_version,
     lifespan=lifespan,
 )
 
@@ -206,4 +206,4 @@ app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": settings.app_version}
