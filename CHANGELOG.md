@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.9.6] – 2026-06-07 (Erster öffentlicher Release)
+
+### Fixes
+- **Detailseite**: Illustrator wird jetzt angezeigt.
+- **Datenverlust behoben**: „Im Pokédex" anklicken überschreibt nicht mehr die
+  nicht gespeicherten Formular-Eingaben (nur das Flag wird synchronisiert).
+
+### Doku
+- ROADMAP: Known-Issues-Abschnitt (Foto-Zuschnitt/Entzerrung, Bild erst mit
+  Kartennummer) + neuer Backlog-Punkt „Sealed-Produkte sammeln".
+
+> Erster öffentlicher Release. Es bestehen bekannte Einschränkungen (siehe
+> ROADMAP → Known Issues), die zeitnah behoben werden.
+
 ## [v0.9.5] – 2026-06-07 (Set-Sortierung, Binder-Dimmen, Sticky-Header, Mobile-Lupe)
 
 - **Sortierung „Set + Nr."** in cards-API + Filter (Pokédex/Owned) – sortiert nach

@@ -1,6 +1,16 @@
 # PokéCollect – Roadmap
 
-Stand: **v0.8.1**
+Stand: **v0.9.6** · erster öffentlicher Release
+
+---
+
+## ⚠️ Known Issues (bekannt, Fix in Arbeit)
+- **Foto-Aufnahme**: Zuschnitt/Skalierung nicht immer korrekt, keine echte
+  perspektivische Entzerrung; im Raster/Binder stimmt die Ausrichtung nicht immer.
+  → geplant: manuelle Eck-Korrektur (🅳) + echte Homographie.
+- **Kartenbild** wird erst geladen, wenn eine **Kartennummer** eingetragen ist
+  (Set + Nr. nötig zur eindeutigen Auflösung). → geplant: Namens-basierter Fallback.
+- Vereinzelt uneinheitliche Filter-Felder je Kontext (kontextbedingt).
 
 ---
 
@@ -85,6 +95,14 @@ Stand: **v0.8.1**
 - [ ] „Gesammelt"-Gesamtnenner: Wunschliste/Platzhalter optional ausblenden
 - [ ] Deskew: echte Homographie statt 2-Dreieck-Affin (falls bei starkem Winkel nötig)
 
+### 🅸 Sealed-Produkte sammeln
+> Auch versiegelte Produkte (Booster, Displays, ETBs, Tins, Kollektionen) tracken,
+> damit die gesamte Sammlung in einem Tool ist.
+- [ ] Eigener Produkttyp „Sealed" (Name, Set/Serie, Typ, Menge, Zustand)
+- [ ] Foto + Wert (manuell und/oder via Preisquelle) + Wertverlauf
+- [ ] Eigene Ansicht/Filter; fließt in Gesamtwert-Statistik ein, getrennt von Karten
+
 ### 🔲 v1.0 — Production
+- [x] Erster öffentlicher Release (v0.9.6) mit dokumentierten Known Issues
 - [ ] Docker-Images auf ghcr.io, `image:` statt `build:` in docker-compose
 - [ ] Authelia/externer Zugriff finalisieren, öffentliche Doku

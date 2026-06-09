@@ -150,7 +150,9 @@ export default function CardDetailPage() {
     if (!card) return;
     try {
       const r = await cardApi.update(Number(id), { im_pokedex: value });
-      setCard(r.data); setForm(r.data);
+      // Nur das Flag übernehmen – nicht gespeicherte Formular-Eingaben NICHT überschreiben
+      setCard(r.data);
+      setForm((f) => ({ ...f, im_pokedex: r.data.im_pokedex }));
       setShowPokedexModal(false); setConflictCard(null);
       toast.success(value ? t.detail_pokedex_flag_added : t.detail_pokedex_flag_removed);
     } catch {
@@ -598,6 +600,12 @@ export default function CardDetailPage() {
             {field("sprache", t.field_language, "select", enums?.sprache)}
             {field("zustand", t.field_condition, "select", enums?.zustand)}
             {field("besessen", t.field_owned, "boolean")}
+            {card.illustrator && (
+              <div key="illustrator">
+                <dt className="text-gray-500 text-xs">{t.field_illustrator}</dt>
+                <dd className="text-white">{card.illustrator}</dd>
+              </div>
+            )}
             {field("notizen", t.field_notes, "textarea")}
           </dl>
 
