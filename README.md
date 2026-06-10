@@ -1,8 +1,8 @@
 # PokéCollect
 
-A free, self-hosted Pokémon TCG collection tracker. Track your physical cards with a Pokédex-style grid, scan new cards with your Android phone, and keep your data on your own hardware — no subscription, no cloud, no account required.
+A free, self-hosted Pokémon TCG collection tracker. Track your physical cards in a Pokédex-style grid or page-flip binder, scan new cards with your phone camera (Gemini Vision or local OCR), browse the full TCGdex catalog, and keep all data on your own hardware — no subscription, no cloud, no third-party account required.
 
-> **Current version: v0.4.1** — Actively developed. [See full roadmap →](ROADMAP.md)
+> **Current version: v0.9.11** — Actively developed. [Roadmap →](ROADMAP.md) · [Changelog →](CHANGELOG.md)
 
 ---
 
@@ -24,23 +24,48 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards w
 
 ## Features
 
-### Web App
-- **Pokédex-style grid** — all 1025 Pokémon as placeholders, owned cards shown with real card images
-- **Pokédex integrity** — adding a card automatically fills the placeholder; deleting restores it
-- **70+ sets** with structured data — SV, SWSH, SM, XY, MEG generation. Searchable set picker with card number format hints
-- **Official rarity symbols** — ●◆★☆✦ and PROMO star for EN/DE cards; text codes (C/U/R/RR/SR/AR...) for JP/CN
-- **Automatic card images** — fetched from pokemon.com for SV-era sets
-- **Photo upload** — upload your own card scans
-- **Price tracking** — Cardmarket value per card
-- **Statistics dashboard** — rarity/language breakdown, top 10 by value, recently added
-- **DE/EN interface** — language toggle in navbar, preference saved in localStorage
-- **Filters** — generation, set, rarity, language, image status, sort
+### Collection
+- **Pokédex view** — all 1025 Pokémon as a grid or binder; owned cards fill their slot, missing ones show the official artwork placeholder. One representative card per species ("Im Pokédex" flag).
+- **Binder view** — configurable page layout (1×1 … 4×4), drag & drop between slots, page management, swipe to flip pages on mobile. Filters dim non-matching cards instead of removing them, so every card keeps its place.
+- **Free collections** — any number of custom binders/collections (n:m), each with its own layout and slot order.
+- **Wishlist** with priorities (Chase/Hoch/Mittel/Niedrig).
+- **Catalog** — local mirror of the full TCGdex card database (~23,000 cards), searchable by name/number/illustrator, filterable by set/generation; one click adds a card to the wishlist or a collection.
 
-### Android App *(in development)*
-- Browse and edit your collection on your phone
-- **Card scanner** with on-device OCR (ML Kit, CameraX) — currently tested with German cards
-- Connects to the same PostgreSQL database as the web app
-- Offline cache via Room
+### Card scanning (web + Android share one API)
+- **Hybrid engine:** Google Gemini Vision (if an API key is set — manageable from the settings page) with local Tesseract OCR as fallback.
+- **Three modes:** single card, multiple loose cards, full binder page (grid).
+- **Server-side resolver** matches every read against TCGdex (set + printed number, name fallback) and pre-fills the review dialog with confidence scores and uncertain-field highlighting.
+- **Photo pipeline:** EXIF normalization, perspective de-skew via homography, manual 4-corner editor with magnifier/zoom/pan, rotate/flip, original photo kept for later re-cropping.
+- **Gemini usage tracking** (requests/tokens per day) with free-tier limit display.
+
+### Data & prices
+- **TCGdex as the single data source** — card data, images (`high.webp`) and Cardmarket EUR prices, free and without an API key. Cardmarket OAuth remains an optional fallback.
+- **Daily cron jobs** — price refresh (hour configurable in settings) and catalog sync/enrichment.
+- **Price history** per card with chart.
+- **Image proxy/cache** with strict host allow-list (`assets.tcgdex.net`, HTTPS only).
+
+### UI
+- **Mobile-first + PWA** — bottom navigation, installable, offline read access via service worker (HTTPS required for install/camera).
+- **DE/EN interface** — language toggle in the navbar; card names switch with the language.
+- **Official rarity symbols** (●◆★ …, PROMO star) for western cards, text codes (C/U/R/RR/SR/AR …) for JP/CN.
+- **Consistent filters** across Pokédex, owned cards and catalog: search, status, generation, set (grouped by series, with logos), rarity, language, illustrator, image status, sort.
+- **Statistics dashboard** — rarity/language breakdown, top 10 by value, recently added.
+
+---
+
+## Architecture
+
+```
+web (Next.js 14, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  PostgreSQL 16
+        │                              │
+        │  <img>/proxy                 ├──►  TCGdex API (cards, images, prices)
+        └──────────────────────────────┴──►  Gemini API (optional, card scan)
+```
+
+- **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
+- **Frontend** `web/` — Next.js 14 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
+- **Android** `android/` — Kotlin/Compose companion app (browse/edit, ML-Kit scan); shares the same REST API. In maintenance mode — the mobile web app covers most use cases.
+- **Auth note:** the API currently runs without enforced auth and is intended for trusted LAN use; external access is protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)). Full in-app auth is planned for v1.0.
 
 ---
 
@@ -56,6 +81,7 @@ docker compose up --build
 
 - **Web frontend:** `http://localhost:3011`
 - **API + Swagger UI:** `http://localhost:3010/docs`
+- **Health/version:** `http://localhost:3010/health`
 
 ---
 
@@ -65,18 +91,27 @@ docker compose up --build
 |----------|----------|-------------|
 | `POSTGRES_PASSWORD` | ✅ | Database password |
 | `JWT_SECRET` | ✅ | Random string for JWT signing (min. 32 chars) |
-| `NEXT_PUBLIC_API_URL` | ✅ | URL the browser uses to reach the API (e.g. `http://192.168.x.x:3010`) |
-| `CARDMARKET_APP_TOKEN` | ➖ | Cardmarket OAuth 1.0a — register at api.cardmarket.com |
-| `CARDMARKET_APP_SECRET` | ➖ | Cardmarket OAuth 1.0a |
-| `CARDMARKET_ACCESS_TOKEN` | ➖ | Cardmarket OAuth 1.0a |
-| `CARDMARKET_ACCESS_SECRET` | ➖ | Cardmarket OAuth 1.0a |
-| `POKEMONTCG_API_KEY` | ➖ | Free key from pokemontcg.io |
+| `NEXT_PUBLIC_API_URL` | ✅ | URL the **browser** uses to reach the API (e.g. `http://192.168.x.x:3010`). Build-time variable — rebuild the web image after changing it. |
+| `APP_USERNAME` / `APP_PASSWORD_HASH` | ➖ | Single-user login credentials (bcrypt hash) |
+| `GEMINI_API_KEY` | ➖ | Enables the strong Gemini scan engine; also manageable in the settings UI |
+| `CARDMARKET_*` | ➖ | Cardmarket OAuth 1.0a — optional price fallback only |
+| `POKEMONTCG_API_KEY` | ➖ | Legacy, no longer needed |
+
+TCGdex needs **no key**. Redis is no longer part of the stack (removed in v0.9.11).
 
 ---
 
 ## Server Deployment (TrueNAS / Portainer)
 
-See [deploy/README.md](deploy/README.md) for step-by-step instructions including ZFS POSIX-ACL dataset setup, Portainer stack deployment, and Caddy reverse proxy config.
+See [deploy/README.md](deploy/README.md) for step-by-step instructions: ZFS POSIX-ACL datasets, Portainer stack, Caddy reverse proxy and external access via Authelia.
+
+Updates: `bash deploy.sh` (git pull → rebuild api+web → restart).
+
+| Service | Host port |
+|---------|-----------|
+| API | 3010 |
+| Web | 3011 |
+| Authelia (optional) | 9091 |
 
 ---
 
@@ -84,21 +119,12 @@ See [deploy/README.md](deploy/README.md) for step-by-step instructions including
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.12, FastAPI, SQLAlchemy, PostgreSQL 16 |
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
-| Android | Kotlin, Jetpack Compose, ML Kit OCR, CameraX, Room, Hilt |
-| Deployment | Docker Compose, Portainer, Caddy |
-
----
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for the full roadmap. Coming up:
-- Binder view (page-by-page like a physical binder)
-- Cardmarket price integration
-- Wishlist
-- PokémonTCG.io for SWSH/XY card images
-- External access via Authelia
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, PostgreSQL 16, APScheduler |
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS, PWA |
+| Scan | Google Gemini (REST) / Tesseract OCR, Pillow, Canvas-Homographie |
+| Data | TCGdex API (cards, images, Cardmarket prices) |
+| Android | Kotlin, Jetpack Compose, ML Kit, CameraX, Room, Hilt |
+| Deployment | Docker Compose, Portainer, Caddy, Authelia |
 
 ---
 

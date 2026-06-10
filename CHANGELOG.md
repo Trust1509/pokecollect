@@ -1,5 +1,60 @@
 # Changelog
 
+## [v0.9.11] – 2026-06-10 (Aufräum-Release: Repo-Hygiene, DB-Robustheit, Settings wirksam)
+
+### Repo-/Code-Hygiene (keine Funktionsänderung)
+- **Toter Code entfernt:** `web/src/lib/auth.ts` + `authApi` (kein Login-Flow im
+  UI vorhanden), 15 ungenutzte i18n-Keys (DE+EN), ungenutzte
+  `refresh_prices_for_cards` in `cardmarket.py`, ungenutzte `ResolvedCard`-Klasse.
+- **Duplikate konsolidiert:** `SERIES_LABEL`/`seriesLabel` und `extractSetCode`
+  existieren nur noch einmal in `lib/utils.ts`.
+- **Veraltete Texte korrigiert:** „pokemon.com" → TCGdex (Settings-Sektion,
+  Detailseiten-Badge, Backfill-Beschreibung); die falsche Behauptung
+  „Keys werden verschlüsselt gespeichert" entfernt (sie liegen im Klartext in
+  der DB – siehe Security-Hinweis unten).
+- **IP-Scrub:** echte LAN-IP aus dem Webcam-HTTPS-Hinweis entfernt
+  (generischer Platzhalter). Hinweis: in der Git-History ist sie weiterhin
+  vorhanden (kein History-Rewrite durchgeführt).
+- **Obsolete Dateien:** `migrations/002` + `003` (einmalige Skripte der
+  pokemon.com-Ära) entfernt; `bild_karte_url` wird jetzt von den
+  Light-Migrations abgedeckt.
+
+### Robustheit / kleine Verhaltensänderungen
+- **DB-Schema selbstheilend:** Light-Migrations ergänzen `bild_karte_url`
+  (frische Installs über `001_initial.sql` waren sonst unvollständig) und
+  entfernen die veralteten CHECK-Constraints aus 001 – diese kannten neuere
+  Seltenheiten (z.B. **ACE SPEC Rare**, **Shiny Rare**, **Mega Hyper Rare**)
+  nicht und hätten das Speichern solcher Karten mit einem DB-Fehler blockiert.
+- **Einstellungen wirken jetzt wirklich:**
+  - *Standard-Sprache/-Zustand* befüllen das „Neue Karte"-Formular vor;
+  - der *Scan* nutzt die Standard-Sprache (vorher hart „DE");
+  - *Uhrzeit der Preisaktualisierung* steuert den Cron (nach API-Neustart,
+    wie im UI-Hinweis beschrieben – vorher fix 03:00).
+  - Sprach-/Zustandslisten der Settings-Seite an die Backend-Enums angeglichen.
+- **CORS korrigiert:** `allow_credentials=False` – die Kombination
+  Wildcard-Origin + Credentials ist ungültig; Auth läuft (wenn genutzt) über
+  den Authorization-Header.
+- **Redis entfernt** (Compose-Service, Env, pip-Paket): wurde nirgends im Code
+  verwendet – ein Container weniger, kleineres Image. Ebenso die ungenutzten
+  Pakete `alembic` und `notion-client` entfernt. Das ZFS-Dataset `cache` wird
+  nicht mehr gebraucht.
+- `POST /prices/refresh` lädt nur noch Karten-IDs statt kompletter Objekte.
+
+### Doku
+- **README komplett neu** (war auf v0.4.1-Stand): Features, Architektur,
+  Konfiguration, Ports, Deploy-Verweis.
+- ROADMAP aufgeräumt: erledigte Punkte (Illustrator, Homographie,
+  „Zu Sammlung hinzufügen" im Katalog) abgehakt, Backlog neu nummeriert.
+- `.env.example` auf Ist-Stand (NEXT_PUBLIC_API_URL, APP_USERNAME/HASH,
+  GEMINI_API_KEY; Redis-/Notion-Reste raus).
+
+### Security-Hinweis (offen, bewusst nicht „mal eben" geändert)
+- Die API erzwingt aktuell **keine Authentifizierung** (`require_auth`
+  existiert, ist aber nicht verdrahtet; es gibt keine Login-Seite). Im LAN ist
+  damit u.a. `GET /settings` inkl. Gemini-/Cardmarket-Keys für jeden erreichbar.
+  Extern schützt Authelia. Auth-Durchsetzung ist als v1.0-Punkt in der ROADMAP
+  dokumentiert (Login-UI + Router-Dependencies, Bild-Routen ausgenommen).
+
 ## [v0.9.10] – 2026-06-09 (Originalfotos, EXIF-Konsistenz, Live-Flip/Rotate, Cache-Busting, Promo)
 
 ### Fixes (Feedback-Runde)
