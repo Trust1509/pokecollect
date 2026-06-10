@@ -15,7 +15,6 @@ services:
       - "3010:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - CARDMARKET_APP_TOKEN=${CARDMARKET_APP_TOKEN}
       - CARDMARKET_APP_SECRET=${CARDMARKET_APP_SECRET}
@@ -30,8 +29,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     networks:
       - pokecollect
     restart: unless-stopped
@@ -68,15 +65,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - pokecollect
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.2-alpine
-    user: "3010:3010"
-    volumes:
-      - /mnt/HDDs/Applications/pokecollect/cache:/data
     networks:
       - pokecollect
     restart: unless-stopped

@@ -20,11 +20,14 @@
 ```bash
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/db
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/images
-zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/cache
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/config
 
 chown -R 3010:3010 /mnt/HDDs/Applications/pokecollect/
 ```
+
+> Das frühere `cache`-Dataset (Redis) wird seit v0.9.11 nicht mehr benötigt –
+> Redis war ungenutzt und wurde aus dem Stack entfernt. Ein vorhandenes Dataset
+> kann bleiben oder gelöscht werden.
 
 ---
 
@@ -55,11 +58,11 @@ POSTGRES_USER=pokecollect
 POSTGRES_PASSWORD=<sicheres_passwort>
 POSTGRES_DB=pokecollect
 DATABASE_URL=postgresql://pokecollect:<passwort>@db:5432/pokecollect
-REDIS_URL=redis://redis:6379
 JWT_SECRET=<langer_zufälliger_string>
 APP_USERNAME=admin
 APP_PASSWORD_HASH=<bcrypt_hash>
 NEXT_PUBLIC_API_URL=http://<server-ip>:3010
+GEMINI_API_KEY=
 CARDMARKET_APP_TOKEN=
 CARDMARKET_APP_SECRET=
 CARDMARKET_ACCESS_TOKEN=

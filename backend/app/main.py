@@ -122,6 +122,18 @@ def _run_light_migrations():
     Idempotent dank ADD COLUMN IF NOT EXISTS (PostgreSQL).
     """
     stmts = [
+        # bild_karte_url kam historisch per migrations/002 – hier abgesichert,
+        # damit auch ein frischer Install über 001_initial.sql vollständig ist.
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_karte_url TEXT",
+        # CHECK-Constraints aus 001_initial.sql entfernen: Die gültigen Werte
+        # pflegt die API (schemas/card.py). Die alten Constraints kennen neuere
+        # Werte nicht (z.B. "ACE SPEC Rare", "Shiny Rare", "Mega Hyper Rare")
+        # und würden Inserts/Updates ablehnen.
+        "ALTER TABLE pokemon_cards DROP CONSTRAINT IF EXISTS seltenheit_check",
+        "ALTER TABLE pokemon_cards DROP CONSTRAINT IF EXISTS kartenversion_check",
+        "ALTER TABLE pokemon_cards DROP CONSTRAINT IF EXISTS folierung_check",
+        "ALTER TABLE pokemon_cards DROP CONSTRAINT IF EXISTS sprache_check",
+        "ALTER TABLE pokemon_cards DROP CONSTRAINT IF EXISTS zustand_check",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS wunschliste BOOLEAN DEFAULT FALSE",
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS prioritaet TEXT",
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_wunschliste ON pokemon_cards (wunschliste)",
@@ -192,10 +204,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# allow_credentials=False: Auth läuft (wenn genutzt) über den Authorization-
+# Header, nicht über Cookies. Wildcard-Origin + Credentials wäre zudem eine
+# ungültige CORS-Kombination, die Browser ablehnen.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

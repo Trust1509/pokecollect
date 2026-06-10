@@ -149,9 +149,10 @@ export default function SettingsPage() {
 
       {/* Sammlung */}
       <Section title="📦 Sammlung">
+        {/* Listen entsprechen den Backend-Enums (schemas/card.py) */}
         <Field label="Standard-Sprache für neue Karten">
           <select value={s.default_language} onChange={(e) => set("default_language", e.target.value)} className={INPUT} style={{ width: "auto" }}>
-            {["DE", "EN", "JP", "CN", "KR", "FR", "IT", "ES", "PT"].map((l) => (
+            {["DE", "EN", "CN", "JP", "FR", "ES", "IT"].map((l) => (
               <option key={l} value={l}>{l}</option>
             ))}
           </select>
@@ -159,7 +160,7 @@ export default function SettingsPage() {
         <Field label="Standard-Zustand für neue Karten">
           <select value={s.default_condition} onChange={(e) => set("default_condition", e.target.value)} className={INPUT} style={{ width: "auto" }}>
             <option value="">– keiner –</option>
-            {["Mint", "Near Mint", "Excellent", "Good", "Light Played", "Played", "Poor"].map((c) => (
+            {["Mint", "Near Mint", "Excellent", "Good", "Played"].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>

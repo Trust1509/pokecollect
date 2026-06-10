@@ -4,7 +4,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   Collection, Enums, PokemonSet, ScanCandidate, ScanCommitItem, ScanMode, ScanStatus,
-  cardApi, collectionApi, scanApi, setsApi,
+  cardApi, collectionApi, scanApi, setsApi, settingsApi,
 } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import RaritySelect from "@/components/RaritySelect";
@@ -75,6 +75,7 @@ export default function ScanPage() {
   const [priority, setPriority] = useState("");  // für Wunschkarten-Scan
 
   const [step, setStep] = useState<Step>("setup");
+  const [defaultLang, setDefaultLang] = useState("DE");
   const [busy, setBusy] = useState(false);
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [savedCount, setSavedCount] = useState(0);
@@ -97,6 +98,7 @@ export default function ScanPage() {
     cardApi.enums().then((r) => setEnums(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
     setsApi.list().then((r) => setSets(r.data)).catch(() => {});
+    settingsApi.get().then((r) => setDefaultLang(r.data.default_language || "DE")).catch(() => {});
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -218,7 +220,7 @@ export default function ScanPage() {
         mode,
         rows: mode === "binder" ? rows : 0,
         cols: mode === "binder" ? cols : 0,
-        default_language: "DE",
+        default_language: defaultLang,
       });
       const list: EditableCandidate[] = res.data.candidates.map((c) => ({
         ...c,
@@ -248,7 +250,7 @@ export default function ScanPage() {
     } finally {
       setBusy(false);
     }
-  }, [layout, mode, t, setPokedexRep]);
+  }, [layout, mode, t, setPokedexRep, defaultLang]);
 
   const handleCapture = async () => {
     const blob = await blobFromVideo();

@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { cardApi, collectionApi, Enums, PokemonSet, setsApi } from "@/lib/api";
+import { cardApi, collectionApi, Enums, PokemonSet, setsApi, settingsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames } from "@/lib/pokedex";
@@ -31,6 +31,15 @@ function NewCardForm() {
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
     setsApi.list().then((r) => setSets(r.data));
+    // Standard-Sprache/-Zustand aus den Einstellungen vorbelegen
+    // (nur solange der Nutzer die Felder noch nicht angefasst hat).
+    settingsApi.get().then((r) => {
+      setForm((f) => ({
+        ...f,
+        sprache: f.sprache === "DE" ? (r.data.default_language || "DE") : f.sprache,
+        zustand: f.zustand ?? (r.data.default_condition || null),
+      }));
+    }).catch(() => {});
   }, []);
 
   const set = (key: string, value: unknown) => {

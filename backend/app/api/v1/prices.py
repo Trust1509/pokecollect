@@ -15,11 +15,11 @@ async def trigger_price_refresh(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    cards = db.scalars(
-        select(PokemonCard).where(PokemonCard.besessen == True)
-    ).all()
-    background_tasks.add_task(refresh_prices_for_cards, [c.id for c in cards])
-    return {"message": f"Preisupdate für {len(cards)} Karten gestartet"}
+    ids = list(db.scalars(
+        select(PokemonCard.id).where(PokemonCard.besessen == True)
+    ).all())
+    background_tasks.add_task(refresh_prices_for_cards, ids)
+    return {"message": f"Preisupdate für {len(ids)} Karten gestartet"}
 
 
 @router.get("/history/{card_id}", response_model=list[PreisHistorieResponse])

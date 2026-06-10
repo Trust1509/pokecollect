@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     app_version: str = "0.9.10"
 
     database_url: str
-    redis_url: str = "redis://redis:6379"
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days

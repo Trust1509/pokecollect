@@ -1,5 +1,8 @@
 """
-Täglicher Cron-Job um 03:00 Uhr: Preise aller besessenen Karten aktualisieren.
+Tägliche Cron-Jobs:
+  - Preisupdate aller besessenen Karten (Stunde aus Setting price_update_hour,
+    Default 03:00; Änderung wird nach API-Neustart aktiv)
+  - Katalog-Sync + Enrichment (04:00)
 """
 
 import logging
@@ -9,6 +12,7 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models.card import PokemonCard
+from app.models.setting import AppSetting
 from app.services.pricing import refresh_prices_for_cards
 
 log = logging.getLogger(__name__)
@@ -18,7 +22,7 @@ scheduler = AsyncIOScheduler()
 async def _daily_price_update():
     db = SessionLocal()
     try:
-        enabled_row = db.get(__import__("app.models.setting", fromlist=["AppSetting"]).AppSetting, "price_update_enabled")
+        enabled_row = db.get(AppSetting, "price_update_enabled")
         if enabled_row and enabled_row.value == "false":
             log.info("Preisupdate deaktiviert – übersprungen.")
             return
@@ -47,8 +51,24 @@ async def _daily_catalog_sync():
         log.error("Katalog-Sync fehlgeschlagen: %s", exc)
 
 
+def _price_update_hour() -> int:
+    """Stunde aus dem Setting price_update_hour (0–23), Default 3."""
+    try:
+        db = SessionLocal()
+        try:
+            row = db.get(AppSetting, "price_update_hour")
+        finally:
+            db.close()
+        if row and row.value and row.value.strip().isdigit():
+            return min(23, max(0, int(row.value.strip())))
+    except Exception as exc:  # DB evtl. noch nicht bereit → Default nutzen
+        log.warning("price_update_hour nicht lesbar (%s) – nutze 03:00.", exc)
+    return 3
+
+
 def start_scheduler():
-    scheduler.add_job(_daily_price_update, "cron", hour=3, minute=0)
+    hour = _price_update_hour()
+    scheduler.add_job(_daily_price_update, "cron", hour=hour, minute=0)
     scheduler.add_job(_daily_catalog_sync, "cron", hour=4, minute=0)
     scheduler.start()
-    log.info("Cron-Scheduler gestartet (Preise 03:00, Katalog 04:00)")
+    log.info("Cron-Scheduler gestartet (Preise %02d:00, Katalog 04:00)", hour)
