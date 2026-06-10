@@ -136,11 +136,6 @@ export const pricesApi = {
   history: (id: number) => api.get(`/prices/history/${id}`),
 };
 
-export const authApi = {
-  login: (username: string, password: string) =>
-    api.post<{ access_token: string }>("/auth/login", { username, password }),
-};
-
 export type PokemonSet = {
   code: string;
   name: string;

@@ -9,18 +9,10 @@ import {
 } from "@/lib/api";
 import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
 import CatalogCardModal from "@/components/CatalogCardModal";
+import { seriesLabel, SERIES_LABEL } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-// Serie-ID → Anzeigename (für die Cluster-Überschriften im Set-Dropdown)
-const SERIES_LABEL: Record<string, string> = {
-  sv: "Karmesin & Purpur", me: "Mega-Entwicklung", swsh: "Schwert & Schild",
-  sm: "Sonne & Mond", xy: "XY", bw: "Schwarz & Weiß", hgss: "HeartGold & SoulSilver",
-  dp: "Diamant & Perl", pl: "Platin", ex: "EX", base: "Base", neo: "Neo",
-  gym: "Gym", ecard: "e-Card", col: "Call of Legends", pop: "POP", tk: "Trainer Kits",
-};
-const seriesLabel = (id?: string | null) => (id ? (SERIES_LABEL[id] ?? id.toUpperCase()) : "—");
 
 export default function CatalogPage() {
   const { t, lang } = useI18n();

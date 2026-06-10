@@ -530,7 +530,8 @@ def backfill_images(
     force: bool = False,
 ):
     """
-    Startet einen Hintergrund-Job der pokemon.com Bilder für alle Karten abruft.
+    Startet einen Hintergrund-Job, der TCGdex-Bilder + Metadaten für alle
+    besessenen Karten abruft.
     force=True: auch Karten mit vorhandener bild_karte_url neu abrufen.
     """
     background_tasks.add_task(_backfill_images_task, force)

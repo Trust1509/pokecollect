@@ -173,7 +173,7 @@ export default function SettingsPage() {
 
       {/* API-Keys */}
       <Section title="🔑 API-Keys">
-        <p className="text-gray-500 text-xs">Keys werden verschlüsselt in der Datenbank gespeichert, nicht im Code oder der .env-Datei.</p>
+        <p className="text-gray-500 text-xs">Keys werden in der Datenbank gespeichert (nicht im Code oder der .env-Datei). Alle Keys sind optional – die App läuft vollständig über die kostenlose TCGdex-API.</p>
         <div className="space-y-3">
           <p className="text-gray-400 text-xs font-medium pt-1">Cardmarket (OAuth 1.0a)</p>
           <Field label="App Token">
@@ -270,10 +270,10 @@ export default function SettingsPage() {
       </Section>
 
       {/* Bilder */}
-      <Section title="🖼️ Kartenbilder (pokemon.com)">
+      <Section title="🖼️ Kartenbilder (TCGdex)">
         <p className="text-gray-400 text-xs">
-          Lädt automatisch das exakte Kartenbild von pokemon.com für alle Karten ohne eigenes Foto oder manuelle URL.
-          Priorität: Eigenes Foto → Manuelle URL → pokemon.com → Pokédex-Artwork.
+          Lädt automatisch das exakte Kartenbild von TCGdex für alle Karten ohne eigenes Foto oder manuelle URL.
+          Priorität: Eigenes Foto → Manuelle URL → TCGdex → Pokédex-Artwork.
         </p>
         <div className="flex gap-3 pt-1 flex-wrap">
           <button
@@ -287,7 +287,7 @@ export default function SettingsPage() {
           </button>
           <button
             onClick={async () => {
-              if (!confirm("Alle vorhandenen pokemon.com URLs neu abrufen?")) return;
+              if (!confirm("Alle vorhandenen Kartenbild-URLs neu von TCGdex abrufen?")) return;
               try { await cardApi.backfillImages(true); toast.success("Vollständiger Backfill gestartet"); }
               catch { toast.error("Fehler beim Starten"); }
             }}

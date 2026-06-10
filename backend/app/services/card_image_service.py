@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -57,12 +56,6 @@ def resolve_set_id(db: Session, set_edition: Optional[str]) -> Optional[str]:
         return row.set_id
     from app.services.set_sync import PTCGO_TO_SETID
     return PTCGO_TO_SETID.get(code.strip().upper())
-
-
-@dataclass
-class ResolvedCard:
-    card: TcgdexCard
-    image_url: Optional[str]
 
 
 async def fetch_tcgdex_card(

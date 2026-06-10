@@ -502,7 +502,7 @@ export default function CardDetailPage() {
                 />
                 {isAutoCard && (
                   <div className="absolute bottom-0 inset-x-0 bg-black/60 text-center text-blue-400 text-xs py-1">
-                    pokemon.com
+                    TCGdex
                   </div>
                 )}
                 {isPlaceholder && (

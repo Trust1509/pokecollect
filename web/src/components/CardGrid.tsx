@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
-import { cardImageSrc, formatEur } from "@/lib/utils";
+import { cardImageSrc, extractSetCode, formatEur } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -32,20 +32,13 @@ const RARITY_BORDER: Record<string, string> = {
   "Promo":                     "border-teal-400",
 };
 
-/** Extrahiert Set-Kürzel aus "Paldeas Schicksale (PAF)" → "PAF" */
-function extractSetCode(setEdition: string | null): string {
-  if (!setEdition) return "–";
-  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)$/);
-  return m ? m[1] : setEdition.slice(0, 4);
-}
-
 export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: Props) {
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
 
   if (!cards.length) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        Keine Karten gefunden
+        {t.collection_no_results}
       </div>
     );
   }
@@ -61,7 +54,7 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
           ? card.englischer_name
           : card.kartenname;
 
-        const setCode = extractSetCode(card.set_edition);
+        const setCode = extractSetCode(card.set_edition) || "–";
 
         return (
           <Link key={card.id} href={`/cards/${card.id}`}>
@@ -81,12 +74,12 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                       src={imgSrc}
                       alt={card.kartenname}
                       fill
-                      className={`object-contain${isPlaceholder ? " p-2 opacity-70" : " object-cover"}`}
+                      className={isPlaceholder ? "object-contain p-2 opacity-70" : "object-cover"}
                       sizes="(max-width: 640px) 45vw, (max-width: 1024px) 20vw, 15vw"
                     />
                     {isPlaceholder && (
                       <div className="absolute bottom-0 inset-x-0 bg-black/50 text-center text-gray-400 text-[10px] py-0.5">
-                        Platzhalter
+                        {t.detail_placeholder}
                       </div>
                     )}
                   </>
