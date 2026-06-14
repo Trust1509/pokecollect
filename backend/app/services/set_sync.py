@@ -158,6 +158,12 @@ async def sync_sets() -> dict:
         if isinstance(ab, dict) and ab.get("official"):
             abbr_to_id[ab["official"].upper()] = sid
 
+    # Pokémon TCG Pocket (serie 'tcgp') ausschließen – rein digitale Karten.
+    excluded_set_ids = {
+        sid for sid, d in details.items()
+        if isinstance(d.get("serie"), dict) and d["serie"].get("id") in tcgdex.EXCLUDED_SERIES
+    }
+
     def _enrich(row, src, d, de_src):
         row.name_en = d.get("name") or (src.name if src else None) or row.name_en
         cc = d.get("cardCount") or {}
@@ -184,6 +190,10 @@ async def sync_sets() -> dict:
     updated = 0
     created = 0
     try:
+        # Früher evtl. synchronisierte Pocket-Sets entfernen (Self-Healing).
+        db.query(PokemonSet).filter(
+            PokemonSet.series_id.in_(tcgdex.EXCLUDED_SERIES)
+        ).delete(synchronize_session=False)
         rows = db.scalars(select(PokemonSet)).all()
         by_code = {r.code: r for r in rows}
         by_setid: dict[str, PokemonSet] = {}
@@ -201,6 +211,8 @@ async def sync_sets() -> dict:
         # ALLE TCGdex-Sets übernehmen, die noch keine Zeile haben
         for s in en:
             sid = s.id
+            if sid in excluded_set_ids:
+                continue  # Pocket-Set nicht anlegen
             if sid in by_setid:
                 continue
             d = details.get(sid, {})

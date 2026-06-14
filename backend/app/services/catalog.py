@@ -76,11 +76,25 @@ async def sync_catalog() -> dict:
 
     await asyncio.gather(*(one(sid) for sid in set_ids))
 
+    # Pokémon TCG Pocket (serie 'tcgp') nicht indizieren – rein digitale Karten.
+    excluded = {
+        sid for sid in set_ids
+        if isinstance(results.get(sid, {}).get("en", {}).get("serie"), dict)
+        and results[sid]["en"]["serie"].get("id") in tcgdex.EXCLUDED_SERIES
+    }
+
     db = SessionLocal()
     created = updated = 0
     try:
+        if excluded:
+            # Früher evtl. indizierte Pocket-Karten entfernen (Self-Healing).
+            db.query(TcgdexCatalog).filter(
+                TcgdexCatalog.set_id.in_(excluded)
+            ).delete(synchronize_session=False)
         existing = {r.card_id: r for r in db.scalars(select(TcgdexCatalog)).all()}
         for sid in set_ids:
+            if sid in excluded:
+                continue  # Pocket-Set überspringen
             res = results.get(sid, {})
             en_d, de_d = res.get("en", {}), res.get("de", {})
             de_cards = {c.get("id"): c for c in (de_d.get("cards") or [])}

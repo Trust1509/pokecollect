@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.9.12] – 2026-06-13 (Pokémon TCG Pocket ausschließen)
+
+### Fix
+- **Rein digitale Pocket-Sets fliegen raus:** TCGdex liefert die Serie „Pokémon
+  TCG Pocket" (`tcgp`, ~15 Sets wie A1/A2/B1 …, tausende Karten) mit. Diese
+  Karten existieren **nicht physisch** und haben in einem Sammlungs-Tracker für
+  echte Karten nichts verloren – sie blähten den Katalog auf, verlängerten den
+  Sync und erzeugten eine sinnlose „TCGP"-Gruppe in den Set-Filtern.
+  - Set- und Katalog-Sync übernehmen die Serie `tcgp` jetzt **gar nicht mehr**
+    (zentral über `services/tcgdex.EXCLUDED_SERIES`).
+  - **Self-Healing:** vorhandene Pocket-Daten werden bereinigt – sofort beim
+    Deploy (Light-Migration löscht `tcgdex_catalog`/`pokemon_sets` der Serie
+    `tcgp`) und zusätzlich bei jedem Sync.
+- Hintergrund: Idee aus dem Funktionsvergleich (dortiges Issue/PR zu Pocket-Sets);
+  hier bewusst **ohne** Settings-Schalter umgesetzt (hart ausgeschlossen), da
+  PokéCollect ein reiner Tracker für physische Karten ist.
+
+### Hygiene
+- Git-History von einer versehentlich committeten privaten LAN-IP bereinigt
+  (`history rewrite` + force-push; betraf nur Doku-Strings in `i18n.tsx`).
+
 ## [v0.9.11] – 2026-06-10 (Aufräum-Release: Repo-Hygiene, DB-Robustheit, Settings wirksam)
 
 ### Repo-/Code-Hygiene (keine Funktionsänderung)

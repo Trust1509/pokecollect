@@ -164,6 +164,12 @@ def _run_light_migrations():
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id ON pokemon_cards (tcgdex_card_id)",
         # Originalfoto (ungeschnitten) zusätzlich zum Zuschnitt aufbewahren (v0.9.10)
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_original_pfad TEXT",
+        # Pokémon TCG Pocket (serie 'tcgp') ist rein digital → aus Katalog & Sets
+        # entfernen, falls früher synchronisiert. Reihenfolge: erst Katalog (die
+        # Subquery braucht die Set-Zeilen), dann die Sets selbst. Der Sync legt
+        # sie danach nicht mehr an (services/tcgdex.EXCLUDED_SERIES).
+        "DELETE FROM tcgdex_catalog WHERE set_id IN (SELECT set_id FROM pokemon_sets WHERE series_id = 'tcgp')",
+        "DELETE FROM pokemon_sets WHERE series_id = 'tcgp'",
         # Einmalmigration: erste besessene Karte je Pokédex-Nr. automatisch als Pokédex-Vertreter setzen
         """
         UPDATE pokemon_cards

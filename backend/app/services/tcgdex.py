@@ -31,6 +31,12 @@ API_BASE = "https://api.tcgdex.net/v2"
 # eingeschleust wird. Immer https.
 ALLOWED_IMAGE_HOSTS = {"assets.tcgdex.net"}
 
+# Serien, die NICHT übernommen werden. 'tcgp' = „Pokémon TCG Pocket": ein reines
+# Handy-Spiel, dessen Karten nicht physisch existieren. PokéCollect verfolgt echte
+# Karten – Pocket-Sets (~15 Sets, tausende Karten) würden sonst Katalog und
+# Set-Filter zumüllen und die DB aufblähen.
+EXCLUDED_SERIES = {"tcgp"}
+
 # App-Sprachkürzel (DB-Feld `sprache`) → TCGdex-Sprachpfad.
 # CN = Chinesisch (traditionell) → zh-tw, JP → ja.
 LANG_MAP: dict[str, str] = {
