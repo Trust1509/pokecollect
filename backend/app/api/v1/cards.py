@@ -1,40 +1,31 @@
 import math
-import os
-import shutil
-from pathlib import Path
 from typing import Optional
 
-import logging
-
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
-
-log = logging.getLogger(__name__)
-from PIL import Image, ImageOps
 from sqlalchemy import func, select, update, or_, and_, cast, String
 from sqlalchemy.orm import Session
 
-from app.config import settings
-from app.database import get_db, SessionLocal
+from app.database import get_db
 from app.domain.pokedex import GEN_RANGES
 from app.services.card_creation import _trigger_image_fetch, create_owned_card
-from app.services.card_image_service import (
-    apply_card_to_model,
-    fetch_tcgdex_card,
-    resolve_set_id,
+from app.services.card_images import (
+    ImageValidationError,
+    backfill_images_task,
+    remove_card_images,
+    store_card_image,
 )
-from app.models.card import PokemonCard, PreisHistorie
+from app.services.stats import collect_stats
+from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
-    EnumsResponse, PreisHistorieResponse, StatsResponse,
+    EnumsResponse, StatsResponse,
     SELTENHEIT_VALUES, KARTENVERSION_VALUES, FOLIERUNG_VALUES,
     SPRACHE_VALUES, ZUSTAND_VALUES, PRIORITAET_VALUES,
 )
 from app.schemas.collection import CollectionResponse
 
 router = APIRouter(prefix="/cards", tags=["cards"])
-
-THUMB_SIZE = (200, 280)
 
 
 def _card_or_404(card_id: int, db: Session) -> PokemonCard:
@@ -260,65 +251,8 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 
 # ── Bilder ──────────────────────────────────────────────────────────────────
-
-# Upload-Härtung (Issue #2): nur echte Bildformate, die StaticFiles gefahrlos
-# ausliefern kann — kein .svg/.html im /images-Verzeichnis (aktive Inhalte).
-_ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
-_MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB, analog Scan-Endpoint
-
-
-def _validated_suffix(upload: UploadFile) -> str:
-    """
-    Prüft Suffix (Allowlist), Content-Type (image/*) und Größe (12 MB) eines
-    Upload-Bilds. Liefert das normalisierte Suffix oder wirft 400/413.
-    """
-    suffix = Path(upload.filename or "").suffix.lower() or ".jpg"
-    if suffix not in _ALLOWED_IMAGE_SUFFIXES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Dateityp {suffix} nicht erlaubt (nur .jpg, .jpeg, .png, .webp)",
-        )
-    if not (upload.content_type or "").lower().startswith("image/"):
-        raise HTTPException(status_code=400, detail="Content-Type muss image/* sein")
-    upload.file.seek(0, os.SEEK_END)
-    size = upload.file.tell()
-    upload.file.seek(0)
-    if size > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Bild zu groß (max. 12 MB)")
-    return suffix
-
-
-def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None) -> None:
-    """
-    Speichert ein hochgeladenes Bild aufrecht (EXIF-Orientierung angewandt) und
-    optional ein Thumbnail. Handy-/Galerie-Uploads tragen oft nur eine
-    Orientierungs-Marke statt gedrehter Pixel → sonst läge das Foto quer.
-    Bei Verarbeitungsfehlern wird die bereits geschriebene Rohdatei entfernt.
-    """
-    suffix = dst.suffix.lower()
-    is_jpeg = suffix in (".jpg", ".jpeg")
-    with dst.open("wb") as f:
-        shutil.copyfileobj(upload.file, f)
-    try:
-        with Image.open(dst) as img:
-            upright = ImageOps.exif_transpose(img)
-            if is_jpeg and upright.mode not in ("RGB", "L"):
-                upright = upright.convert("RGB")
-            kw = {"quality": 90} if is_jpeg else {}
-            upright.save(dst, **kw)   # aufrecht zurückschreiben (Marke entfernt)
-            if thumb is not None:
-                t = upright.copy()
-                t.thumbnail(THUMB_SIZE)
-                t.save(thumb, **kw)
-    except Exception as exc:
-        # Rohdatei nicht liegen lassen (Issue #2) — sie wäre sonst öffentlich
-        # unter /images erreichbar, obwohl sie kein gültiges Bild ist.
-        dst.unlink(missing_ok=True)
-        if thumb is not None:
-            thumb.unlink(missing_ok=True)
-        log.warning("Upload-Bild nicht verarbeitbar: %s", exc)
-        raise HTTPException(status_code=400, detail="Bilddatei konnte nicht verarbeitet werden")
-
+# Verarbeitung (Validierung, EXIF-Aufrichtung, Ablage) lebt in
+# services/card_images.py — der Router mappt nur Fehler auf HTTP (Issue #14).
 
 @router.post("/{card_id}/image", response_model=CardResponse)
 async def upload_image(
@@ -328,42 +262,16 @@ async def upload_image(
     db: Session = Depends(get_db),
 ):
     card = _card_or_404(card_id, db)
-    suffix = _validated_suffix(file)
-    if original is not None and original.filename:
-        osuffix = _validated_suffix(original)
-    images_dir = Path(settings.images_dir)
-    images_dir.mkdir(parents=True, exist_ok=True)
-
-    img_path = images_dir / f"card_{card_id}{suffix}"
-    thumb_path = images_dir / f"card_{card_id}_thumb{suffix}"
-    _save_upright(file, img_path, thumb=thumb_path)
-    card.bild_karte_pfad = str(img_path.relative_to(images_dir.parent))
-    card.bild_thumbnail_pfad = str(thumb_path.relative_to(images_dir.parent))
-
-    # Optional: ungeschnittenes Originalfoto aufbewahren → spätere Bearbeitung
-    # kann großzügiger neu zuschneiden (statt nur den vorhandenen Zuschnitt).
-    if original is not None and original.filename:
-        orig_path = images_dir / f"card_{card_id}_orig{osuffix}"
-        _save_upright(original, orig_path)
-        card.bild_original_pfad = str(orig_path.relative_to(images_dir.parent))
-
-    db.commit()
-    db.refresh(card)
-    return card
+    try:
+        return store_card_image(db, card, file, original)
+    except ImageValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
 
 @router.delete("/{card_id}/image", response_model=CardResponse)
 def delete_image(card_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     card = _card_or_404(card_id, db)
-    for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad"):
-        p = getattr(card, path_field)
-        if p:
-            full = Path(settings.images_dir).parent / p
-            if full.exists():
-                full.unlink()
-        setattr(card, path_field, None)
-    db.commit()
-    db.refresh(card)
+    card = remove_card_images(db, card)
     # Kein eigenes Foto / keine manuelle URL mehr → TCGdex-Bild (neu) abrufen,
     # damit nicht der Platzhalter stehen bleibt.
     if card.besessen and not card.bild_karte_url and not card.bild_pokedex_url:
@@ -375,47 +283,7 @@ def delete_image(card_id: int, background_tasks: BackgroundTasks, db: Session = 
 
 @router.get("/meta/stats", response_model=StatsResponse)
 def get_stats(db: Session = Depends(get_db)):
-    total = db.scalar(select(func.count(PokemonCard.id)))
-    besessen_count = db.scalar(
-        select(func.count(PokemonCard.id)).where(PokemonCard.besessen == True)
-    )
-    gesamtwert = db.scalar(
-        select(func.sum(PokemonCard.wert_eur)).where(PokemonCard.besessen == True)
-    )
-
-    def _count_group(col):
-        rows = db.execute(
-            select(col, func.count(PokemonCard.id))
-            .where(col.isnot(None))
-            .group_by(col)
-            .order_by(func.count(PokemonCard.id).desc())
-        ).all()
-        return {r[0]: r[1] for r in rows}
-
-    top10 = db.scalars(
-        select(PokemonCard)
-        .where(PokemonCard.wert_eur.isnot(None))
-        .order_by(PokemonCard.wert_eur.desc())
-        .limit(10)
-    ).all()
-
-    recent = db.scalars(
-        select(PokemonCard)
-        .order_by(PokemonCard.hinzugefuegt_am.desc())
-        .limit(10)
-    ).all()
-
-    return StatsResponse(
-        gesamt=total,
-        besessen=besessen_count,
-        nicht_besessen=total - besessen_count,
-        gesamtwert_eur=gesamtwert,
-        sets=_count_group(PokemonCard.set_edition),
-        seltenheiten=_count_group(PokemonCard.seltenheit),
-        sprachen=_count_group(PokemonCard.sprache),
-        top10_teuerste=top10,
-        zuletzt_hinzugefuegt=recent,
-    )
+    return collect_stats(db)
 
 
 @router.get("/meta/enums", response_model=EnumsResponse)
@@ -432,37 +300,6 @@ def get_enums():
 
 # ── Bilder Backfill ───────────────────────────────────────────────────────────
 
-async def _backfill_images_task(force: bool = False):
-    """
-    Holt TCGdex-Daten (Bild high.webp + Metadaten) für alle besessenen Karten.
-    force=True überschreibt auch bereits vorhandene bild_karte_url.
-    """
-    db = SessionLocal()
-    try:
-        q = select(PokemonCard).where(PokemonCard.besessen == True)
-        if not force:
-            q = q.where(PokemonCard.bild_karte_url.is_(None))
-            q = q.where(PokemonCard.bild_karte_pfad.is_(None))
-            q = q.where(PokemonCard.bild_pokedex_url.is_(None))
-        cards = db.scalars(q).all()
-        log.info(f"Backfill gestartet: {len(cards)} Karten")
-        ok = 0
-        for card in cards:
-            set_id = card.set_id or resolve_set_id(db, card.set_edition)
-            if not set_id:
-                continue
-            tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache)
-            if not tc:
-                continue
-            overwrite = force or not (card.bild_karte_pfad or card.bild_pokedex_url)
-            apply_card_to_model(card, tc, overwrite_image=overwrite)
-            ok += 1
-        db.commit()
-        log.info(f"Backfill abgeschlossen: {ok}/{len(cards)} Karten angereichert")
-    finally:
-        db.close()
-
-
 @router.post("/meta/backfill-images")
 def backfill_images(
     background_tasks: BackgroundTasks,
@@ -470,8 +307,8 @@ def backfill_images(
 ):
     """
     Startet einen Hintergrund-Job, der TCGdex-Bilder + Metadaten für alle
-    besessenen Karten abruft.
+    besessenen Karten abruft (services/card_images.py).
     force=True: auch Karten mit vorhandener bild_karte_url neu abrufen.
     """
-    background_tasks.add_task(_backfill_images_task, force)
+    background_tasks.add_task(backfill_images_task, force)
     return {"detail": "Backfill gestartet – läuft im Hintergrund."}
