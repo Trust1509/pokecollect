@@ -31,9 +31,15 @@ case "$CMD" in
     echo "✓ Teststand samt Daten entfernt"
     ;;
   seed)
-    # Ein paar besessene Karten + eine Wunschlisten-Karte für den UX-Durchklick
+    # Ein paar besessene Karten + eine Wunschlisten-Karte für den UX-Durchklick.
+    # Seit dem Auth-Zwang (Issue #1) braucht die API ein Token — Teststand-Login
+    # ist admin/teststand (Hash in docker-compose.test.yml).
+    TOKEN=$(curl -sf -X POST "$API/api/v1/auth/login" -H "Content-Type: application/json" \
+      -d '{"username":"admin","password":"teststand"}' | sed 's/.*"access_token":"\([^"]*\)".*/\1/')
+    [ -n "$TOKEN" ] || { echo "FEHLER: Login am Teststand fehlgeschlagen"; exit 1; }
     seed_card() {
-      curl -sf -X POST "$API/api/v1/cards" -H "Content-Type: application/json" -d "$1" >/dev/null \
+      curl -sf -X POST "$API/api/v1/cards" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $TOKEN" -d "$1" >/dev/null \
         && echo "  + $2" || echo "  ! Seed fehlgeschlagen: $2"
     }
     seed_card '{"kartenname":"Pikachu","englischer_name":"Pikachu","pokedex_nr":25,"set_edition":"SVI","karten_nr":"063","seltenheit":"Common","sprache":"DE","besessen":true,"zustand":"Near Mint"}' "Pikachu (SVI 063)"

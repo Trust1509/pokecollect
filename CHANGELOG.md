@@ -1,5 +1,27 @@
 # Changelog
 
+## [v1.0.0] – 2026-07-14 (Auth: Login-Pflicht, maskierte Secrets) — ⚠️ Deploy nur mit vorbereiteter .env!
+
+### ⚠️ Breaking / Deploy-Checkliste
+- **`APP_PASSWORD_HASH` ist jetzt Pflicht** — ohne gesetzten Hash (Env oder
+  In-App-Passwort) verweigert die API den Start. Das eingebaute
+  Default-Passwort (`secret`) ist entfernt. Hash erzeugen: siehe
+  `.env.example` / `deploy/README.md`.
+- **`CORS_ORIGINS` neu** (kommagetrennt) — Wildcard `*` ist abgeschafft.
+  Prod-.env: `CORS_ORIGINS=http://<server-ip>:3011`.
+- `GET /images/proxy` entfernt (war unbenutzt).
+
+### Sicherheit (Issue #1, ADR-0003)
+- **Alle Fach-Router verlangen ein JWT** (`require_auth`); frei bleiben nur
+  `/auth/login`, `/health` und der `/images`-Mount (eigene Fotos für `<img>`).
+- **Login-Seite im Web** (DE/EN), Auth-Guard, 401-Redirect, Abmelden in den
+  Einstellungen; Token in localStorage, Laufzeit 30 Tage.
+- **API-Keys verlassen das Backend nie mehr im Klartext**: `GET /settings`
+  liefert je Secret nur noch „gesetzt" + Maske (`•••• XXXX`); Ändern durch
+  Neueingabe.
+- Global gemounteter Toast-Container (Fehlermeldungen erscheinen jetzt
+  überall zuverlässig).
+
 ## [v0.9.15] – 2026-07-14 (Bauwelle 2a: Settings wirken, Admin-Buttons, Architektur-Schnitt)
 
 ### Einstellungen, die jetzt wirklich wirken (#12)

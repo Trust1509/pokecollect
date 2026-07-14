@@ -150,7 +150,7 @@ Stand: **v0.9.11** · Aufräum-/Konsistenz-Release (Repo-Hygiene, DB-Robustheit,
 
 ### 🔲 v1.0 — Production
 - [x] Erster öffentlicher Release (v0.9.6) mit dokumentierten Known Issues
-- [ ] **Auth durchsetzen:** Login-Seite im Web + `require_auth` auf den API-Routern
+- [x] **Auth durchsetzen:** Login-Seite im Web + `require_auth` auf den API-Routern
       (Bild-Routen ausgenommen). Aktuell ist die API bewusst LAN-offen, extern
       schützt Authelia – `/settings` liefert API-Keys daher jedem im LAN.
 - [ ] Docker-Images auf ghcr.io, `image:` statt `build:` in docker-compose
