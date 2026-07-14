@@ -143,7 +143,7 @@ export function CardNrField({ value, onChange, validate, selectedSet, error, den
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => validate(e.target.value)}
-        placeholder={selectedSet?.max_card_nr ? `001/${String(selectedSet.max_card_nr).padStart(3, "0")}` : "z.B. 001/091"}
+        placeholder={selectedSet?.max_card_nr ? `001/${String(selectedSet.max_card_nr).padStart(3, "0")}` : t.form_card_nr_placeholder}
         className={inputCls(dense, !!error)}
       />
       {selectedSet?.max_card_nr && !error && (

@@ -210,6 +210,8 @@ const DE = {
   // CardForm (new + edit)
   form_new_card: "Neue Karte",
   form_card_name: "Kartenname",
+  form_card_name_placeholder: "z.B. Glumanda",
+  form_card_nr_placeholder: "z.B. 001/091",
   form_card_name_required: "Kartenname ist Pflichtfeld",
   form_pokedex_nr: "Pokédex-Nr.",
   form_english_name: "Englischer Name",
@@ -567,6 +569,8 @@ const EN: typeof DE = {
 
   form_new_card: "New Card",
   form_card_name: "Card name",
+  form_card_name_placeholder: "e.g. Charmander",
+  form_card_nr_placeholder: "e.g. 001/091",
   form_card_name_required: "Card name is required",
   form_pokedex_nr: "Pokédex no.",
   form_english_name: "English name",

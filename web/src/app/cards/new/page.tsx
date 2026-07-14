@@ -92,7 +92,7 @@ function NewCardForm() {
             type="text"
             value={String(form.kartenname ?? "")}
             onChange={(e) => set("kartenname", e.target.value)}
-            placeholder="z.B. Glumanda"
+            placeholder={t.form_card_name_placeholder}
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white"
           />
         </div>
