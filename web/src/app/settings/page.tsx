@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, AppSettings, ScanUsage } from "@/lib/api";
+import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
 
@@ -66,6 +67,8 @@ export default function SettingsPage() {
     try {
       const r = await settingsApi.update(patch);
       setS(r.data);
+      // Geteilten Einstellungs-Cache invalidieren (useSettings, Issue #14)
+      refreshSettings().catch(() => {});
       toast.success(t.settings_saved);
     } catch {
       toast.error(t.form_save_error);

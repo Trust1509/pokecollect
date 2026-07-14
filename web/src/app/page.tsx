@@ -1,23 +1,24 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { cardApi, setsApi, CardListResponse, Enums, PokemonSet, settingsApi, AppSettings } from "@/lib/api";
+import { API_BASE, cardApi, CardListResponse } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
 import ListPageHeader from "@/components/ListPageHeader";
 import { formatEur, cardMatchesFilters, hasActiveFilters } from "@/lib/utils";
+import { useEnums } from "@/lib/useEnums";
+import { useSets } from "@/lib/useSets";
+import { useSettings } from "@/lib/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useIsDesktop } from "@/lib/useIsDesktop";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
 export default function HomePage() {
   const { t } = useI18n();
   const [data, setData] = useState<CardListResponse | null>(null);
-  const [enums, setEnums] = useState<Enums | null>(null);
-  const [sets, setSets] = useState<PokemonSet[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const { enums } = useEnums();
+  const { sets } = useSets();
+  const { settings: appSettings } = useSettings();
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState<number>(1);
   const [view, setView] = useState<ViewMode>("grid");
@@ -75,13 +76,13 @@ export default function HomePage() {
     return () => { cancel = true; };
   }, [view, appSettings]);
 
+  // Standard-Sortierung aus den (geteilten) Einstellungen vorbelegen
   useEffect(() => {
-    cardApi.enums().then((r) => setEnums(r.data));
-    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
-    settingsApi.get().then((r) => {
-      setAppSettings(r.data);
-      setFilters((f) => ({ ...f, sort: f.sort ?? r.data.default_sort }));
-    }).catch(() => {});
+    if (!appSettings) return;
+    setFilters((f) => ({ ...f, sort: f.sort ?? appSettings.default_sort }));
+  }, [appSettings]);
+
+  useEffect(() => {
     cardApi.stats().then((r) => setStatsTotal({ wert: r.data.gesamtwert_eur }));
     cardApi.list({ im_pokedex: true, limit: 1 }).then((r) => setPokedexCollected(r.data.total));
   }, []);

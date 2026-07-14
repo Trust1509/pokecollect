@@ -1,19 +1,18 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Card, Enums, cardApi } from "@/lib/api";
+import { API_BASE, Card, cardApi } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
+import { useEnums } from "@/lib/useEnums";
 import { useI18n } from "@/lib/i18n";
 
 const LAYOUT_KEY = "wishlist_binder_layout";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
-
 export default function WishlistPage() {
   const { t } = useI18n();
   const [cards, setCards] = useState<Card[]>([]);
-  const [enums, setEnums] = useState<Enums | null>(null);
+  const { enums } = useEnums();
   const [priority, setPriority] = useState<string>("");
   const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
@@ -44,7 +43,6 @@ export default function WishlistPage() {
   }, [priority]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { cardApi.enums().then((r) => setEnums(r.data)); }, []);
 
   return (
     <div className="max-w-6xl mx-auto">

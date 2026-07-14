@@ -4,8 +4,8 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { Star } from "lucide-react";
 import {
-  CatalogItem, CatalogListResponse, Collection, PokemonSet,
-  catalogApi, collectionApi, setsApi,
+  CatalogItem, CatalogListResponse, Collection,
+  catalogApi, collectionApi,
 } from "@/lib/api";
 import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
 import CatalogCardModal from "@/components/CatalogCardModal";
@@ -13,13 +13,14 @@ import ListPageHeader, { Pager } from "@/components/ListPageHeader";
 import { useI18n } from "@/lib/i18n";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import { useSetOptions } from "@/lib/useSetOptions";
+import { useSets } from "@/lib/useSets";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 export default function CatalogPage() {
   const { t, lang } = useI18n();
   const [data, setData] = useState<CatalogListResponse | null>(null);
-  const [sets, setSets] = useState<PokemonSet[]>([]);
+  const { sets } = useSets();
   const [illustrators, setIllustrators] = useState<string[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [meta, setMeta] = useState<{ total: number; enriched: number } | null>(null);
@@ -36,7 +37,6 @@ export default function CatalogPage() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
-    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
     catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});

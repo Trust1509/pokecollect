@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
+import { API_BASE, Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
 import SortableCardGrid from "@/components/SortableCardGrid";
 import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
 import BinderEditor from "@/components/BinderEditor";
@@ -12,8 +12,6 @@ import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { cardImageSrc, extractSetCode } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
 export default function CollectionDetailPage() {
   const params = useParams();

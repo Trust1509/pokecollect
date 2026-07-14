@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
-  Collection, Enums, PokemonSet, ScanCandidate, ScanCommitItem, ScanMode, ScanStatus,
-  cardApi, collectionApi, scanApi, setsApi, settingsApi,
+  Collection, ScanCandidate, ScanCommitItem, ScanMode, ScanStatus,
+  cardApi, collectionApi, scanApi,
 } from "@/lib/api";
+import { useEnums } from "@/lib/useEnums";
+import { useSets } from "@/lib/useSets";
+import { useSettings } from "@/lib/useSettings";
 import SetPicker from "@/components/SetPicker";
 import RaritySelect from "@/components/RaritySelect";
 import CornerEditor from "@/components/CornerEditor";
@@ -57,9 +60,10 @@ async function downscaleImage(blob: Blob, maxDim = 1600): Promise<Blob> {
 export default function ScanPage() {
   const { t } = useI18n();
   const [status, setStatus] = useState<ScanStatus | null>(null);
-  const [enums, setEnums] = useState<Enums | null>(null);
+  const { enums } = useEnums();
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [sets, setSets] = useState<PokemonSet[]>([]);
+  const { sets, refresh: refreshSets } = useSets();
+  const { settings: appSettings } = useSettings();
 
   const [mode, setMode] = useState<ScanMode>("single");
   const [target, setTarget] = useState<"pokedex" | "collection" | "wishlist">("pokedex");
@@ -69,7 +73,8 @@ export default function ScanPage() {
   const [priority, setPriority] = useState("");  // für Wunschkarten-Scan
 
   const [step, setStep] = useState<Step>("setup");
-  const [defaultLang, setDefaultLang] = useState("DE");
+  // Standard-Sprache aus den (geteilten) Einstellungen — Issue #14
+  const defaultLang = appSettings?.default_language || "DE";
   const [busy, setBusy] = useState(false);
   const [candidates, setCandidates] = useState<EditableCandidate[]>([]);
   const [savedCount, setSavedCount] = useState(0);
@@ -89,10 +94,7 @@ export default function ScanPage() {
 
   useEffect(() => {
     scanApi.status().then((r) => setStatus(r.data)).catch(() => {});
-    cardApi.enums().then((r) => setEnums(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
-    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
-    settingsApi.get().then((r) => setDefaultLang(r.data.default_language || "DE")).catch(() => {});
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -640,7 +642,7 @@ export default function ScanPage() {
                         updateField(idx, "set_edition", setEdition || null);
                         void refreshCandidate(idx, { set_edition: setEdition || null });
                       }}
-                      onSetAdded={(ns) => setSets((prev) => [...prev, ns].sort((a, b) => a.code.localeCompare(b.code)))}
+                      onSetAdded={() => { void refreshSets(); }}
                     />
                     <div className="grid grid-cols-2 gap-1.5">
                       <input

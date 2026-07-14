@@ -1,22 +1,23 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { cardApi, setsApi, CardListResponse, Enums, PokemonSet, settingsApi, AppSettings } from "@/lib/api";
+import { API_BASE, cardApi, CardListResponse } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
 import ListPageHeader from "@/components/ListPageHeader";
 import { formatEur } from "@/lib/utils";
+import { useEnums } from "@/lib/useEnums";
+import { useSets } from "@/lib/useSets";
+import { useSettings } from "@/lib/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { useIsDesktop } from "@/lib/useIsDesktop";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
 export default function AllOwnedPage() {
   const { t } = useI18n();
   const [data, setData] = useState<CardListResponse | null>(null);
-  const [enums, setEnums] = useState<Enums | null>(null);
-  const [sets, setSets] = useState<PokemonSet[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const { enums } = useEnums();
+  const { sets } = useSets();
+  const { settings: appSettings } = useSettings();
   const [value, setValue] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({ besessen: true });
   const [page, setPage] = useState(1);
@@ -36,14 +37,14 @@ export default function AllOwnedPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    cardApi.enums().then((r) => setEnums(r.data));
-    setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     cardApi.stats().then((r) => setValue(r.data.gesamtwert_eur)).catch(() => {});
-    settingsApi.get().then((r) => {
-      setAppSettings(r.data);
-      setFilters((f) => ({ ...f, sort: f.sort ?? r.data.default_sort }));
-    }).catch(() => {});
   }, []);
+
+  // Standard-Sortierung aus den (geteilten) Einstellungen vorbelegen
+  useEffect(() => {
+    if (!appSettings) return;
+    setFilters((f) => ({ ...f, sort: f.sort ?? appSettings.default_sort }));
+  }, [appSettings]);
 
   // Auf Desktop standardmäßig geöffnete Filter
   const isDesktop = useIsDesktop();

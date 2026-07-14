@@ -3,9 +3,12 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { cardApi, collectionApi, Enums, PokemonSet, setsApi, settingsApi } from "@/lib/api";
+import { cardApi, collectionApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
 import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
+import { useEnums } from "@/lib/useEnums";
+import { useSets } from "@/lib/useSets";
+import { useSettings } from "@/lib/useSettings";
 import { useI18n } from "@/lib/i18n";
 import { CardFormValues, useCardForm } from "@/lib/useCardForm";
 
@@ -14,8 +17,9 @@ function NewCardForm() {
   const searchParams = useSearchParams();
   const collectionId = searchParams?.get("collection") ?? null;
   const { t } = useI18n();
-  const [enums, setEnums] = useState<Enums | null>(null);
-  const [sets, setSets] = useState<PokemonSet[]>([]);
+  const { enums } = useEnums();
+  const { sets, refresh: refreshSets } = useSets();
+  const { settings: appSettings } = useSettings();
   const [form, setForm] = useState<CardFormValues>({
     sprache: "DE",
     besessen: false,
@@ -27,19 +31,16 @@ function NewCardForm() {
     noteManualEdit, handlePokedexNr, validateCardNr, handleSetChange,
   } = useCardForm(setForm);
 
+  // Standard-Sprache/-Zustand aus den (geteilten) Einstellungen vorbelegen
+  // (nur solange der Nutzer die Felder noch nicht angefasst hat).
   useEffect(() => {
-    cardApi.enums().then((r) => setEnums(r.data));
-    setsApi.list().then((r) => setSets(r.data));
-    // Standard-Sprache/-Zustand aus den Einstellungen vorbelegen
-    // (nur solange der Nutzer die Felder noch nicht angefasst hat).
-    settingsApi.get().then((r) => {
-      setForm((f) => ({
-        ...f,
-        sprache: f.sprache === "DE" ? (r.data.default_language || "DE") : f.sprache,
-        zustand: f.zustand ?? (r.data.default_condition || null),
-      }));
-    }).catch(() => {});
-  }, []);
+    if (!appSettings) return;
+    setForm((f) => ({
+      ...f,
+      sprache: f.sprache === "DE" ? (appSettings.default_language || "DE") : f.sprache,
+      zustand: f.zustand ?? (appSettings.default_condition || null),
+    }));
+  }, [appSettings]);
 
   const set = (key: string, value: unknown) => {
     // Manuelle Eingabe in Namensfelder → auto-fill-Flag zurücksetzen
@@ -112,7 +113,7 @@ function NewCardForm() {
           value={String(form.set_edition ?? "")}
           onChange={handleSetChange}
           sets={sets}
-          onSetAdded={(s) => setSets((prev) => [...prev, s].sort((a, b) => a.code.localeCompare(b.code)))}
+          onSetAdded={() => { void refreshSets(); }}
         />
 
         {/* Karten-Nr. mit Hinweis */}
