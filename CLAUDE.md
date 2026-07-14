@@ -1,8 +1,9 @@
 # CLAUDE.md — PokéCollect
 
 Self-hosted Pokémon-TCG-Sammlungs-App. FastAPI (Python 3.12) + PostgreSQL 16 +
-Next.js 14 + Kotlin/Compose-Android-App (`android/`). ~1.025 Karten, Scan per
-Handy (Gemini-Ecken + manueller CornerEditor), Preise via TCGdex/Cardmarket.
+Next.js 14 (einzige Client-Plattform, mobile-first/PWA — ADR-0002). ~1.025
+Karten, Scan per Handy-Browser (Gemini-Ecken + manueller CornerEditor),
+Preise via TCGdex/Cardmarket.
 
 Lies vor Architektur-/Feature-Arbeit `CONTEXT.md` (Grundsätze + Glossar) und
 passende ADRs unter `docs/adr/`.
@@ -43,9 +44,8 @@ passende ADRs unter `docs/adr/`.
   `scripts/teststand.sh up` — für Browser-Verifikation vor jedem Release.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) läuft bei jedem Push auf
   main: Backend-pytest + Frontend tsc/build.
-- **Android-Build:** `cd android` und
-  `JAVA_HOME="C:\Program Files\Android\Android Studio\jbr" ./gradlew.bat assembleDebug`.
-  gradlew nie durch `tail`/Pipe schicken — verschluckt den Exit-Code.
+- **Android:** ausgemustert (ADR-0002) — keine native App mehr; `android-dev`
+  bleibt als Archiv-Branch.
 
 ## Deploy (macht immer der Owner)
 
