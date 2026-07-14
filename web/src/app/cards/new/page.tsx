@@ -1,13 +1,13 @@
 "use client";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, collectionApi, Enums, PokemonSet, setsApi, settingsApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
+import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
 import { useI18n } from "@/lib/i18n";
-import { fetchPokemonNames } from "@/lib/pokedex";
-import RaritySelect from "@/components/RaritySelect";
+import { CardFormValues, useCardForm } from "@/lib/useCardForm";
 
 function NewCardForm() {
   const router = useRouter();
@@ -16,17 +16,16 @@ function NewCardForm() {
   const { t } = useI18n();
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<PokemonSet[]>([]);
-  const [selectedSet, setSelectedSet] = useState<PokemonSet | null>(null);
-  const [form, setForm] = useState<Record<string, unknown>>({
+  const [form, setForm] = useState<CardFormValues>({
     sprache: "DE",
     besessen: false,
     folierung: "Normal",
   });
-  const [cardNrError, setCardNrError] = useState<string | null>(null);
-  const [nameLoading, setNameLoading] = useState(false);
-  // Tracking ob Name auto-befüllt wurde — dann darf er bei Nr.-Änderung überschrieben werden
-  const autoFilled = useRef({ kartenname: false, englischer_name: false });
-  const lookupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Gemeinsame Formular-Logik (Lookup, Validierung, Set-Auswahl) — Issue #5
+  const {
+    selectedSet, cardNrError, setCardNrError, nameLoading,
+    noteManualEdit, handlePokedexNr, validateCardNr, handleSetChange,
+  } = useCardForm(setForm);
 
   useEffect(() => {
     cardApi.enums().then((r) => setEnums(r.data));
@@ -44,55 +43,9 @@ function NewCardForm() {
 
   const set = (key: string, value: unknown) => {
     // Manuelle Eingabe in Namensfelder → auto-fill-Flag zurücksetzen
-    if (key === "kartenname") autoFilled.current.kartenname = false;
-    if (key === "englischer_name") autoFilled.current.englischer_name = false;
+    noteManualEdit(key);
     setForm((f) => ({ ...f, [key]: value }));
     if (key === "karten_nr") setCardNrError(null);
-  };
-
-  const handlePokedexNr = (nr: number | null) => {
-    setForm((f) => ({ ...f, pokedex_nr: nr }));
-    if (lookupTimeout.current) clearTimeout(lookupTimeout.current);
-
-    if (!nr || nr < 1 || nr > 1025) {
-      // Wert sichern BEVOR der Ref zurückgesetzt wird, sonst liest setForm schon false
-      const af = { ...autoFilled.current };
-      autoFilled.current = { kartenname: false, englischer_name: false };
-      setForm((f) => ({
-        ...f,
-        kartenname: af.kartenname ? "" : f.kartenname,
-        englischer_name: af.englischer_name ? "" : f.englischer_name,
-      }));
-      return;
-    }
-
-    // Debounce: erst nach 500ms Tippen-Pause den Lookup starten
-    lookupTimeout.current = setTimeout(async () => {
-      setNameLoading(true);
-      try {
-        const names = await fetchPokemonNames(nr);
-        if (names) {
-          setForm((f) => ({
-            ...f,
-            kartenname: (!f.kartenname || autoFilled.current.kartenname) ? names.de : f.kartenname,
-            englischer_name: (!(f.englischer_name as string) || autoFilled.current.englischer_name) ? names.en : f.englischer_name,
-          }));
-          autoFilled.current = { kartenname: true, englischer_name: true };
-        }
-      } finally {
-        setNameLoading(false);
-      }
-    }, 500);
-  };
-
-  const validateCardNr = (nr: string): boolean => {
-    if (!nr || !selectedSet?.max_card_nr) return true;
-    const m = nr.match(/^(\d{1,4})\/(\d{1,4})$/);
-    if (!m) {
-      setCardNrError(t.form_card_nr_invalid(selectedSet.max_card_nr));
-      return false;
-    }
-    return true;
   };
 
   const handleSave = async () => {
@@ -112,50 +65,16 @@ function NewCardForm() {
     }
   };
 
-  const handleSetChange = (setEdition: string, s: PokemonSet | null) => {
-    setForm((f) => ({ ...f, set_edition: setEdition || null }));
-    setSelectedSet(s);
-    setCardNrError(null);
-  };
-
-  const sel = (key: string, label: string, options: string[]) => {
-    if (key === "seltenheit") {
-      return (
-        <RaritySelect
-          key={key}
-          label={label}
-          value={String(form[key] ?? "")}
-          onChange={(v) => set(key, v)}
-          options={options}
-          language={String(form.sprache ?? "DE")}
-        />
-      );
-    }
-    return (
-      <div key={key}>
-        <label className="text-gray-400 text-xs block mb-1">{label}</label>
-        <select
-          value={String(form[key] ?? "")}
-          onChange={(e) => set(key, e.target.value || null)}
-          className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
-        >
-          <option value="">–</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </div>
-    );
-  };
-
-  const txt = (key: string, label: string, type: "text" | "number" = "text") => (
-    <div>
-      <label className="text-gray-400 text-xs block mb-1">{label}</label>
-      <input
-        type={type}
-        value={String(form[key] ?? "")}
-        onChange={(e) => set(key, type === "number" ? Number(e.target.value) || null : e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
-      />
-    </div>
+  const sel = (key: string, label: string, options: string[]) => (
+    <SelectField
+      key={key}
+      fieldKey={key}
+      label={label}
+      value={form[key]}
+      onChange={(v) => set(key, v)}
+      options={options}
+      language={String(form.sprache ?? "DE")}
+    />
   );
 
   return (
@@ -176,19 +95,16 @@ function NewCardForm() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white"
           />
         </div>
-        <div>
-          <label className="text-gray-400 text-xs block mb-1">
-            {t.form_pokedex_nr}
-            {nameLoading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
-          </label>
-          <input
-            type="number"
-            value={String(form.pokedex_nr ?? "")}
-            onChange={(e) => handlePokedexNr(Number(e.target.value) || null)}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
-          />
-        </div>
-        {txt("englischer_name", t.form_english_name)}
+        <PokedexNrField
+          value={form.pokedex_nr}
+          onChange={handlePokedexNr}
+          nameLoading={nameLoading}
+        />
+        <TextField
+          label={t.form_english_name}
+          value={form.englischer_name}
+          onChange={(v) => set("englischer_name", v)}
+        />
 
         {/* Set-Picker */}
         <SetPicker
@@ -199,23 +115,13 @@ function NewCardForm() {
         />
 
         {/* Karten-Nr. mit Hinweis */}
-        <div>
-          <label className="text-gray-400 text-xs block mb-1">{t.form_card_nr}</label>
-          <input
-            type="text"
-            value={String(form.karten_nr ?? "")}
-            onChange={(e) => set("karten_nr", e.target.value)}
-            onBlur={(e) => validateCardNr(e.target.value)}
-            placeholder={selectedSet?.max_card_nr ? `001/${String(selectedSet.max_card_nr).padStart(3, "0")}` : "z.B. 001/091"}
-            className={`w-full bg-gray-800 border rounded px-2 py-1.5 text-white text-sm ${cardNrError ? "border-red-500" : "border-gray-700"}`}
-          />
-          {selectedSet?.max_card_nr && !cardNrError && (
-            <p className="text-gray-500 text-xs mt-1">{t.form_card_nr_hint(selectedSet.max_card_nr)}</p>
-          )}
-          {cardNrError && (
-            <p className="text-red-400 text-xs mt-1">{cardNrError}</p>
-          )}
-        </div>
+        <CardNrField
+          value={form.karten_nr}
+          onChange={(v) => set("karten_nr", v)}
+          validate={validateCardNr}
+          selectedSet={selectedSet}
+          error={cardNrError}
+        />
         <div /> {/* spacer */}
 
         {sel("seltenheit", t.form_rarity, enums?.seltenheit ?? [])}
@@ -242,15 +148,11 @@ function NewCardForm() {
           <label htmlFor="wunschliste" className="text-white text-sm">{t.form_wishlist}</label>
         </div>
         {Boolean(form.wunschliste) && sel("prioritaet", t.form_priority, enums?.prioritaet ?? [])}
-        <div className="col-span-2">
-          <label className="text-gray-400 text-xs block mb-1">{t.form_notes}</label>
-          <textarea
-            value={String(form.notizen ?? "")}
-            onChange={(e) => set("notizen", e.target.value)}
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
-          />
-        </div>
+        <TextareaField
+          label={t.form_notes}
+          value={form.notizen}
+          onChange={(v) => set("notizen", v)}
+        />
       </div>
 
       <div className="flex gap-3 mt-6">

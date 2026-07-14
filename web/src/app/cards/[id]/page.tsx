@@ -5,12 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, pricesApi, Card, Collection, Enums, PokemonSet, setsApi, collectionApi } from "@/lib/api";
-import { fetchPokemonNames } from "@/lib/pokedex";
 import RarityBadge from "@/components/RarityBadge";
-import RaritySelect from "@/components/RaritySelect";
 import PriceChart from "@/components/PriceChart";
 import SetPicker from "@/components/SetPicker";
 import CornerEditor from "@/components/CornerEditor";
+import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
+import { useCardForm } from "@/lib/useCardForm";
 import { cropToCardPhoto, normalizeOrientation, CropTransform } from "@/lib/cardCrop";
 import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -97,14 +97,14 @@ export default function CardDetailPage() {
   const [card, setCard] = useState<Card | null>(null);
   const [enums, setEnums] = useState<Enums | null>(null);
   const [sets, setSets] = useState<PokemonSet[]>([]);
-  const [selectedSet, setSelectedSet] = useState<PokemonSet | null>(null);
   const [history, setHistory] = useState<unknown[]>([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Card>>({});
-  const [cardNrError, setCardNrError] = useState<string | null>(null);
-  const [nameLoading, setNameLoading] = useState(false);
-  const autoFilled = useRef({ kartenname: false, englischer_name: false });
-  const lookupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Gemeinsame Formular-Logik (Lookup, Validierung, Set-Auswahl) — Issue #5
+  const {
+    selectedSet, cardNrError, setCardNrError, nameLoading,
+    noteManualEdit, handlePokedexNr, validateCardNr, handleSetChange,
+  } = useCardForm(setForm);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState("");
@@ -220,16 +220,6 @@ export default function CardDetailPage() {
     ?? pokemonPlaceholderUrl(card.pokedex_nr);
   const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
   const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
-
-  const validateCardNr = (nr: string): boolean => {
-    if (!nr || !selectedSet?.max_card_nr) return true;
-    if (!nr.match(/^(\d{1,4})\/(\d{1,4})$/)) {
-      setCardNrError(t.form_card_nr_invalid(selectedSet.max_card_nr));
-      return false;
-    }
-    setCardNrError(null);
-    return true;
-  };
 
   const handleSave = async () => {
     const nr = (form as Record<string, unknown>).karten_nr as string | undefined;
@@ -365,45 +355,6 @@ export default function CardDetailPage() {
     handleBack();
   };
 
-  const handlePokedexNr = (nr: number | null) => {
-    setForm((f) => ({ ...f, pokedex_nr: nr }));
-    if (lookupTimeout.current) clearTimeout(lookupTimeout.current);
-
-    if (!nr || nr < 1 || nr > 1025) {
-      const af = { ...autoFilled.current };
-      autoFilled.current = { kartenname: false, englischer_name: false };
-      setForm((f) => ({
-        ...f,
-        kartenname: af.kartenname ? "" : f.kartenname,
-        englischer_name: af.englischer_name ? "" : f.englischer_name,
-      }));
-      return;
-    }
-
-    lookupTimeout.current = setTimeout(async () => {
-      setNameLoading(true);
-      try {
-        const names = await fetchPokemonNames(nr);
-        if (names) {
-          setForm((f) => ({
-            ...f,
-            kartenname: (!(f.kartenname as string) || autoFilled.current.kartenname) ? names.de : f.kartenname,
-            englischer_name: (!(f.englischer_name as string) || autoFilled.current.englischer_name) ? names.en : f.englischer_name,
-          }));
-          autoFilled.current = { kartenname: true, englischer_name: true };
-        }
-      } finally {
-        setNameLoading(false);
-      }
-    }, 500);
-  };
-
-  const handleSetChange = (setEdition: string, s: PokemonSet | null) => {
-    setForm((f) => ({ ...f, set_edition: setEdition || null }));
-    setSelectedSet(s);
-    setCardNrError(null);
-  };
-
   const field = (key: keyof Card, label: string, type: "text" | "number" | "select" | "boolean" | "textarea" = "text", options?: string[]) => {
     const value = (form as Record<string, unknown>)[key];
     if (!editing) {
@@ -417,30 +368,17 @@ export default function CardDetailPage() {
       );
     }
     if (type === "select" && options) {
-      if (key === "seltenheit") {
-        return (
-          <RaritySelect
-            key={key}
-            label={label}
-            value={String(value ?? "")}
-            onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
-            options={options}
-            language={(form as Record<string, unknown>).sprache as string | null}
-          />
-        );
-      }
       return (
-        <div key={key}>
-          <label className="text-gray-500 text-xs block">{label}</label>
-          <select
-            value={String(value ?? "")}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value || null }))}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-          >
-            <option value="">–</option>
-            {options.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </div>
+        <SelectField
+          key={key}
+          fieldKey={key}
+          label={label}
+          value={value}
+          onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
+          options={options}
+          language={(form as Record<string, unknown>).sprache as string | null}
+          dense
+        />
       );
     }
     if (type === "boolean") {
@@ -458,27 +396,24 @@ export default function CardDetailPage() {
     }
     if (type === "textarea") {
       return (
-        <div key={key} className="col-span-2">
-          <label className="text-gray-500 text-xs block">{label}</label>
-          <textarea
-            value={String(value ?? "")}
-            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-          />
-        </div>
+        <TextareaField
+          key={key}
+          label={label}
+          value={value}
+          onChange={(v) => setForm((f) => ({ ...f, [key]: v }))}
+          dense
+        />
       );
     }
     return (
-      <div key={key}>
-        <label className="text-gray-500 text-xs block">{label}</label>
-        <input
-          type={type}
-          value={String(value ?? "")}
-          onChange={(e) => setForm((f) => ({ ...f, [key]: type === "number" ? Number(e.target.value) || null : e.target.value }))}
-          className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-        />
-      </div>
+      <TextField
+        key={key}
+        label={label}
+        value={value}
+        type={type as "text" | "number"}
+        onChange={(v) => { noteManualEdit(key); setForm((f) => ({ ...f, [key]: v })); }}
+        dense
+      />
     );
   };
 
@@ -598,18 +533,13 @@ export default function CardDetailPage() {
             {field("kartenname", t.field_card_name)}
             {/* Pokédex-Nr. mit Auto-Namens-Lookup */}
             {editing ? (
-              <div key="pokedex_nr">
-                <label className="text-gray-500 text-xs block">
-                  {t.field_pokedex_nr}
-                  {nameLoading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
-                </label>
-                <input
-                  type="number"
-                  value={String((form as Record<string, unknown>).pokedex_nr ?? "")}
-                  onChange={(e) => handlePokedexNr(Number(e.target.value) || null)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
-                />
-              </div>
+              <PokedexNrField
+                key="pokedex_nr"
+                value={(form as Record<string, unknown>).pokedex_nr}
+                onChange={handlePokedexNr}
+                nameLoading={nameLoading}
+                dense
+              />
             ) : (
               <div key="pokedex_nr">
                 <dt className="text-gray-500 text-xs">{t.field_pokedex_nr}</dt>
@@ -637,21 +567,14 @@ export default function CardDetailPage() {
 
             {/* Karten-Nr. mit Hinweis im Edit-Modus */}
             {editing ? (
-              <div>
-                <label className="text-gray-500 text-xs block">{t.field_card_nr}</label>
-                <input
-                  type="text"
-                  value={String((form as Record<string, unknown>).karten_nr ?? "")}
-                  onChange={(e) => { setForm((f) => ({ ...f, karten_nr: e.target.value })); setCardNrError(null); }}
-                  onBlur={(e) => validateCardNr(e.target.value)}
-                  placeholder={selectedSet?.max_card_nr ? `001/${String(selectedSet.max_card_nr).padStart(3, "0")}` : "z.B. 001/091"}
-                  className={`w-full bg-gray-800 border rounded px-2 py-1 text-white text-sm ${cardNrError ? "border-red-500" : "border-gray-700"}`}
-                />
-                {selectedSet?.max_card_nr && !cardNrError && (
-                  <p className="text-gray-500 text-xs mt-0.5">{t.form_card_nr_hint(selectedSet.max_card_nr)}</p>
-                )}
-                {cardNrError && <p className="text-red-400 text-xs mt-0.5">{cardNrError}</p>}
-              </div>
+              <CardNrField
+                value={(form as Record<string, unknown>).karten_nr}
+                onChange={(v) => { setForm((f) => ({ ...f, karten_nr: v })); setCardNrError(null); }}
+                validate={validateCardNr}
+                selectedSet={selectedSet}
+                error={cardNrError}
+                dense
+              />
             ) : (
               <div>
                 <dt className="text-gray-500 text-xs">{t.field_card_nr}</dt>
