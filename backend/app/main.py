@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -190,10 +191,41 @@ def _run_light_migrations():
             conn.execute(text(stmt))
 
 
+def _ensure_password_configured():
+    """
+    Start-Guard (Issue #1): Ohne Login-Passwort startet die App nicht.
+    Der frühere eingebaute Default-Hash ("secret") ist entfernt — ein Deploy
+    ohne APP_PASSWORD_HASH wäre sonst mit bekanntem Passwort offen.
+    Gültig ist entweder die Env-Var APP_PASSWORD_HASH oder ein per
+    In-App-Passwortwechsel gesetzter Hash in der Datenbank.
+    """
+    if os.getenv("APP_PASSWORD_HASH", "").strip():
+        return
+    from app.models.setting import AppSetting
+    db = SessionLocal()
+    try:
+        row = db.get(AppSetting, "app_password_hash")
+        if row and row.value:
+            return
+    finally:
+        db.close()
+    raise RuntimeError(
+        "APP_PASSWORD_HASH ist nicht gesetzt (und in der Datenbank liegt kein "
+        "Passwort-Hash). Die App startet aus Sicherheitsgründen nicht ohne "
+        "Login-Passwort. Abhilfe: bcrypt-Hash erzeugen mit\n"
+        "  python -c \"import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())\"\n"
+        "oder ohne lokales Python via Docker:\n"
+        "  docker run --rm python:3.12-slim sh -c \"pip -q install bcrypt==4.0.1 && python -c \\\"import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())\\\"\"\n"
+        "und den Hash als APP_PASSWORD_HASH in die .env eintragen "
+        "(siehe .env.example bzw. deploy/README.md)."
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _run_light_migrations()
+    _ensure_password_configured()
     _seed_sets()
     # TCGdex-Brücke offline anwenden (set_id auf bekannten Sets setzen).
     # Der eigentliche Set-Sync (Netzzugriff) läuft täglich im Katalog-Cron

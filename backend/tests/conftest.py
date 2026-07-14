@@ -19,6 +19,14 @@ os.environ.setdefault("JWT_SECRET", "test-secret")
 # StaticFiles verlangt ein existierendes Verzeichnis
 os.environ.setdefault("IMAGES_DIR", tempfile.mkdtemp(prefix="pokecollect-test-images-"))
 
+# Auth-Zwang (Issue #1): Die Suite loggt sich mit diesem Passwort ein.
+# Bewusst FEST gesetzt (kein setdefault) — so passen Hash und TEST_PASSWORD
+# garantiert zusammen, egal was CI/gates.sh zusätzlich in die Env legen.
+from passlib.context import CryptContext  # noqa: E402 — vor app-Import nötig
+
+TEST_PASSWORD = "gates-test-passwort"
+os.environ["APP_PASSWORD_HASH"] = CryptContext(schemes=["bcrypt"]).hash(TEST_PASSWORD)
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -31,11 +39,34 @@ from app.main import app
 def client():
     """
     TestClient als Context-Manager → lifespan läuft: create_all +
-    Light-Migrations + Set-Seed. Damit testen wir genau den Migrationspfad,
-    den auch ein frischer Install durchläuft.
+    Light-Migrations + Passwort-Guard + Set-Seed. Damit testen wir genau den
+    Migrationspfad, den auch ein frischer Install durchläuft.
+    Loggt sich ein und schickt das JWT als Default-Header mit (Issue #1).
     """
     with TestClient(app) as c:
+        r = c.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": TEST_PASSWORD},
+        )
+        assert r.status_code == 200, f"Test-Login fehlgeschlagen: {r.text}"
+        c.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
         yield c
+
+
+@pytest.fixture(scope="session")
+def anon_client(client):
+    """
+    Client OHNE Token — für 401-Tests. Hängt am client-Fixture, damit die
+    App (lifespan/Seed) sicher initialisiert ist; eigener TestClient ohne
+    Context-Manager, damit kein zweiter lifespan-Lauf nötig ist.
+    """
+    return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def test_password():
+    """Klartext-Testpasswort passend zum in conftest gesetzten Hash."""
+    return TEST_PASSWORD
 
 
 @pytest.fixture(autouse=True)

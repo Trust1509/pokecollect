@@ -126,11 +126,12 @@ def test_login_rejects_wrong_password(client):
     assert r.status_code == 401
 
 
-def test_login_accepts_default_credentials(client):
-    """Default-Hash ('secret') gilt, solange kein eigener Hash gesetzt ist."""
+def test_login_accepts_configured_password(client, test_password):
+    """Der eingebaute 'secret'-Default ist entfernt — es gilt nur noch der
+    konfigurierte Hash (Env APP_PASSWORD_HASH bzw. DB, Issue #1)."""
     r = client.post(
         "/api/v1/auth/login",
-        json={"username": "admin", "password": "secret"},
+        json={"username": "admin", "password": test_password},
     )
     assert r.status_code == 200
     body = r.json()

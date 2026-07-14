@@ -84,10 +84,19 @@ ln -s /mnt/HDDs/Applications/pokecollect/config/.env \
 > `CORS_ORIGINS=http://<server-ip>:3011`. Leer/ungesetzt gilt der Entwicklungs-Default
 > `http://localhost:3011,http://localhost:3021`.
 
-Bcrypt-Hash generieren:
+> **`APP_PASSWORD_HASH` ist Pflicht:** Seit Issue #1 gibt es kein eingebautes
+> Default-Passwort mehr — ohne gesetzten Hash verweigert die API den Start
+> (Fehlermeldung im Container-Log nennt die Abhilfe).
+
+Bcrypt-Hash generieren (mit lokalem Python):
+```bash
+python -c "import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())"
+```
+
+Oder ohne lokales Python via Docker:
 ```bash
 docker run --rm python:3.12-slim sh -c \
-  "pip install passlib[bcrypt] -q && python3 -c \"from passlib.hash import bcrypt; print(bcrypt.hash('mein_passwort'))\""
+  "pip -q install bcrypt==4.0.1 && python -c \"import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())\""
 ```
 
 ---

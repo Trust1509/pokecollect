@@ -41,6 +41,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://pokecollect:pokecollect@localhost:5440/pokecollect_test
           JWT_SECRET: ci-secret
+          # bcrypt("teststand") — Start-Guard verlangt ein Passwort (Issue #1);
+          # conftest.py überschreibt den Wert ohnehin deterministisch.
+          APP_PASSWORD_HASH: '$2b$12$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G'
           IMAGES_DIR: /tmp/ci-images
         run: |
           mkdir -p /tmp/ci-images

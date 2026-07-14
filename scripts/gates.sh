@@ -32,10 +32,13 @@ backend_gate() {
   done
 
   status=0
+  # APP_PASSWORD_HASH: bcrypt("teststand") — Start-Guard verlangt ein Passwort
+  # (Issue #1). conftest.py überschreibt den Wert ohnehin deterministisch.
   docker run --rm --network pokecollect-gate \
     -v "$(host_path "$ROOT/backend/tests"):/app/tests" \
     -e DATABASE_URL=postgresql://pokecollect:pokecollect@pokecollect-gate-db:5432/pokecollect_test \
     -e JWT_SECRET=gate-secret \
+    -e APP_PASSWORD_HASH='$2b$12$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G' \
     -e IMAGES_DIR=/tmp/test-images \
     pokecollect-api-gate \
     sh -c "mkdir -p /tmp/test-images && pip install --quiet pytest==8.3.2 && python -m pytest tests -q" \

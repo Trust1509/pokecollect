@@ -60,7 +60,7 @@ Card images load directly from `assets.tcgdex.net` in the browser; own photos ar
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
 - **Frontend** `web/` — Next.js 14 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
-- **Auth note:** the API currently runs without enforced auth and is intended for trusted LAN use; external access is protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)). Full in-app auth is planned for v1.0.
+- **Auth:** every API route (except `/auth/login`, `/health` and the `/images` static mount) requires a JWT obtained via the web login. There is no built-in default password — the API refuses to start without `APP_PASSWORD_HASH` (or a hash set in-app). External access can additionally be protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)).
 
 ---
 
@@ -70,7 +70,7 @@ Card images load directly from `assets.tcgdex.net` in the browser; own photos ar
 git clone https://github.com/Trust1509/pokecollect.git
 cd pokecollect
 cp .env.example .env
-# Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, NEXT_PUBLIC_API_URL
+# Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, APP_PASSWORD_HASH, NEXT_PUBLIC_API_URL
 docker compose up --build
 ```
 
@@ -88,7 +88,8 @@ docker compose up --build
 | `JWT_SECRET` | ✅ | Random string for JWT signing (min. 32 chars) |
 | `NEXT_PUBLIC_API_URL` | ✅ | URL the **browser** uses to reach the API (e.g. `http://192.168.x.x:3010`). Build-time variable — rebuild the web image after changing it. |
 | `CORS_ORIGINS` | ➖ | Comma-separated list of allowed browser origins (e.g. `http://192.168.x.x:3011`). Empty/unset = defaults `http://localhost:3011,http://localhost:3021`. |
-| `APP_USERNAME` / `APP_PASSWORD_HASH` | ➖ | Single-user login credentials (bcrypt hash) |
+| `APP_PASSWORD_HASH` | ✅ | bcrypt hash of the single-user login password — the API refuses to start without it (generation: see `.env.example`) |
+| `APP_USERNAME` | ➖ | Login username (default `admin`) |
 | `GEMINI_API_KEY` | ➖ | Enables the strong Gemini scan engine; also manageable in the settings UI |
 | `CARDMARKET_*` | ➖ | Cardmarket OAuth 1.0a — optional price fallback only |
 | `POKEMONTCG_API_KEY` | ➖ | Legacy, no longer needed |

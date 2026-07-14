@@ -30,6 +30,9 @@ services:
       - JWT_SECRET=teststand-secret
       # Teststand-Web läuft auf 3021 → muss als Origin erlaubt sein.
       - CORS_ORIGINS=http://localhost:3021
+      # Login: admin / teststand (bcrypt-Hash; $ wegen Compose-Interpolation
+      # als $$ escaped). Start-Guard verlangt ein Passwort (Issue #1).
+      - APP_PASSWORD_HASH=$$2b$$12$$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G
     volumes:
       - images-test:/app/images
     depends_on:
