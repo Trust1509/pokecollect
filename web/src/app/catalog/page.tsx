@@ -9,8 +9,10 @@ import {
 } from "@/lib/api";
 import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
 import CatalogCardModal from "@/components/CatalogCardModal";
-import { seriesLabel, SERIES_LABEL } from "@/lib/utils";
+import ListPageHeader, { Pager } from "@/components/ListPageHeader";
 import { useI18n } from "@/lib/i18n";
+import { useIsDesktop } from "@/lib/useIsDesktop";
+import { useSetOptions } from "@/lib/useSetOptions";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -34,28 +36,17 @@ export default function CatalogPage() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth >= 768) setFilterOpen(true);
     setsApi.list().then((r) => setSets(r.data)).catch(() => {});
     catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
     catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
   }, []);
 
-  const setOptions: SelectOption[] = useMemo(() => {
-    const order = Object.keys(SERIES_LABEL);
-    const sorted = [...sets].sort((a, b) => {
-      const ai = order.indexOf(a.series_id ?? ""); const bi = order.indexOf(b.series_id ?? "");
-      const ag = ai === -1 ? 999 : ai; const bg = bi === -1 ? 999 : bi;
-      if (ag !== bg) return ag - bg;
-      return (a.name ?? "").localeCompare(b.name ?? "");
-    });
-    return sorted.map((s) => ({
-      value: s.code,
-      label: `${s.name}${s.code ? ` (${s.code})` : ""}`,
-      group: seriesLabel(s.series_id),
-      image: s.logo_url ?? null,
-    }));
-  }, [sets]);
+  // Auf Desktop standardmäßig geöffnete Filter
+  const isDesktop = useIsDesktop();
+  useEffect(() => { if (isDesktop) setFilterOpen(true); }, [isDesktop]);
+
+  const setOptions = useSetOptions(sets);
 
   const illuOptions: SelectOption[] = useMemo(
     () => illustrators.map((i) => ({ value: i, label: i })), [illustrators]);
@@ -88,17 +79,19 @@ export default function CatalogPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-30 bg-pokemon-dark pt-1 pb-2">
-      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-white">{t.catalog_title}</h1>
-          <p className="text-gray-400 text-sm">
-            {t.catalog_subtitle}{meta ? ` · ${meta.total.toLocaleString("de")} ${t.catalog_cards}` : ""}
-          </p>
-        </div>
-        <Link href="/collections" className="text-gray-500 hover:text-white text-sm">{t.collection_back}</Link>
-      </div>
-
+      <ListPageHeader
+        title={
+          <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-xl font-bold text-white">{t.catalog_title}</h1>
+              <p className="text-gray-400 text-sm">
+                {t.catalog_subtitle}{meta ? ` · ${meta.total.toLocaleString("de")} ${t.catalog_cards}` : ""}
+              </p>
+            </div>
+            <Link href="/collections" className="text-gray-500 hover:text-white text-sm">{t.collection_back}</Link>
+          </div>
+        }
+      >
       {/* Filterleiste (ein-/ausklappbar wie überall) */}
       <button type="button"
         onClick={() => setFilterOpen((o) => !o)}
@@ -143,17 +136,9 @@ export default function CatalogPage() {
           {t.filter_reset}
         </button>
       )}
-      </div>
+      </ListPageHeader>
 
-      {data && data.pages > 1 && (
-        <div className="flex justify-end items-center gap-2 text-sm mb-2">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">‹</button>
-          <span className="text-gray-400">{page} / {data.pages}</span>
-          <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">›</button>
-        </div>
-      )}
+      {data && <Pager page={page} pages={data.pages} onPage={setPage} className="justify-end mb-2" />}
 
       {loading && !data ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
@@ -200,15 +185,7 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {data && data.pages > 1 && (
-        <div className="flex justify-center items-center gap-2 text-sm mt-4 pb-2">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40">‹</button>
-          <span className="text-gray-400">{page} / {data.pages}</span>
-          <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40">›</button>
-        </div>
-      )}
+      {data && <Pager page={page} pages={data.pages} onPage={setPage} size="lg" className="justify-center mt-4 pb-2" />}
 
       {selected && (
         <CatalogCardModal card={selected} collections={collections} onClose={() => setSelected(null)} />

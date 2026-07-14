@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Enums, PokemonSet, catalogApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { rarityOptionLabel } from "@/components/RarityBadge";
-import { seriesLabel, SERIES_LABEL } from "@/lib/utils";
 import SearchableSelect, { SelectOption } from "@/components/SearchableSelect";
+import { useIsDesktop } from "@/lib/useIsDesktop";
+import { useSetOptions } from "@/lib/useSetOptions";
 
 export type Filters = {
   besessen?: boolean;
@@ -39,10 +40,12 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
   const setOpen = (v: boolean) => { if (controlled) onOpenChange?.(v); else setInternalOpen(v); };
   const [illustrators, setIllustrators] = useState<string[]>([]);
   // Auf Desktop standardmäßig geöffnet, auf Mobile eingeklappt (nur ungesteuert).
+  const isDesktop = useIsDesktop();
   useEffect(() => {
-    if (!controlled && typeof window !== "undefined" && window.innerWidth >= 768) setInternalOpen(true);
+    if (!controlled && isDesktop) setInternalOpen(true);
+  }, [controlled, isDesktop]);
+  useEffect(() => {
     catalogApi.illustrators().then((r) => setIllustrators(r.data)).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
@@ -53,21 +56,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
   const illuOptions: SelectOption[] = useMemo(
     () => illustrators.map((i) => ({ value: i, label: i })), [illustrators]);
 
-  const setOptions: SelectOption[] = useMemo(() => {
-    const order = Object.keys(SERIES_LABEL);
-    const sorted = [...sets].sort((a, b) => {
-      const ag = order.indexOf(a.series_id ?? ""); const bg = order.indexOf(b.series_id ?? "");
-      const av = ag === -1 ? 999 : ag; const bv = bg === -1 ? 999 : bg;
-      if (av !== bv) return av - bv;
-      return (a.name ?? "").localeCompare(b.name ?? "");
-    });
-    return sorted.map((s) => ({
-      value: s.code,
-      label: `${s.name}${s.code ? ` (${s.code})` : ""}`,
-      group: seriesLabel(s.series_id),
-      image: s.logo_url ?? null,
-    }));
-  }, [sets]);
+  const setOptions = useSetOptions(sets);
 
   return (
     <aside className="w-full text-sm">

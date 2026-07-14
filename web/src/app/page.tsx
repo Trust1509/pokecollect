@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
 import { cardApi, setsApi, CardListResponse, Enums, PokemonSet, settingsApi, AppSettings } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import FilterSidebar, { Filters } from "@/components/FilterSidebar";
+import ListPageHeader from "@/components/ListPageHeader";
 import { formatEur, cardMatchesFilters, hasActiveFilters } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { useIsDesktop } from "@/lib/useIsDesktop";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
 
@@ -38,8 +39,11 @@ export default function HomePage() {
       const sl = localStorage.getItem("pokedex_binder_layout");
       if (sl) setLayout(sl);
     } catch {}
-    if (typeof window !== "undefined" && window.innerWidth >= 768) setFiltersOpen(true);
   }, []);
+
+  // Auf Desktop standardmäßig geöffnete Filter
+  const isDesktop = useIsDesktop();
+  useEffect(() => { if (isDesktop) setFiltersOpen(true); }, [isDesktop]);
   useEffect(() => { try { sessionStorage.setItem("pokedex_filters", JSON.stringify(filters)); } catch {} }, [filters]);
   useEffect(() => { try { sessionStorage.setItem("pokedex_page", String(page)); } catch {} }, [page]);
   useEffect(() => { try { sessionStorage.setItem("pokedex_view", view); } catch {} }, [view]);
@@ -97,48 +101,37 @@ export default function HomePage() {
   return (
     <div>
       {/* Fixierte Kopfzeile: Statistik + Filter + Steuerung; nur Karten scrollen */}
-      <div className="sticky top-0 z-30 bg-pokemon-dark pt-1 pb-3">
-        {/* Mobile: Pokédex + Lupe + Wert in einer Zeile */}
-        <div className="sm:hidden flex items-center justify-between gap-2 bg-pokemon-card rounded-lg px-3 py-2 mb-3 text-sm">
+      <ListPageHeader
+        mobileLeft={
           <span className="flex items-center gap-1.5 font-semibold text-pokemon-pokedex">
             <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />
             {pokedexCollected ?? 0} <span className="text-gray-500 font-normal">/ 1025</span>
           </span>
-          <button type="button" onClick={() => setFiltersOpen((o) => !o)} className="text-gray-300 hover:text-white p-1" title={t.filter_title}>
-            <Search size={18} />
-          </button>
-          {statsTotal?.wert && <span className="font-semibold text-yellow-400">{formatEur(statsTotal.wert)}</span>}
-        </div>
-
-        {/* Desktop: Karten + Lupe */}
-        <div className="hidden sm:flex items-center gap-4 mb-3 text-sm flex-wrap">
-          {pokedexCollected !== null && (
-            <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />Pokédex
-              </div>
-              <div className="text-2xl font-bold text-pokemon-pokedex">
-                {pokedexCollected} <span className="text-gray-500 text-base">/ 1025</span>
-              </div>
-              <div className="mt-1 h-1.5 bg-gray-700 rounded-full w-48">
-                <div className="h-full bg-pokemon-pokedex rounded-full" style={{ width: `${(pokedexCollected / 1025) * 100}%` }} />
-              </div>
-            </div>
-          )}
-          {statsTotal?.wert && (
-            <div className="bg-pokemon-card rounded-lg px-4 py-3">
-              <div className="text-gray-400">{t.home_total_value}</div>
-              <div className="text-2xl font-bold text-yellow-400">{formatEur(statsTotal.wert)}</div>
-            </div>
-          )}
-          <button type="button"
-            onClick={() => setFiltersOpen((o) => !o)}
-            className="self-start flex items-center gap-2 bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200 hover:text-white"
-          >
-            <Search size={16} /> {t.filter_title}{hasActiveFilters(filters) ? " •" : ""}
-          </button>
-        </div>
-
+        }
+        mobileRight={statsTotal?.wert && <span className="font-semibold text-yellow-400">{formatEur(statsTotal.wert)}</span>}
+        tiles={[
+          ...(pokedexCollected !== null ? [{
+            label: <><span className="w-2 h-2 rounded-full bg-pokemon-pokedex inline-block" />Pokédex</>,
+            value: <>{pokedexCollected} <span className="text-gray-500 text-base">/ 1025</span></>,
+            valueClass: "text-pokemon-pokedex",
+            bar: { pct: (pokedexCollected / 1025) * 100, cls: "bg-pokemon-pokedex" },
+          }] : []),
+          ...(statsTotal?.wert ? [{
+            label: t.home_total_value,
+            value: formatEur(statsTotal.wert),
+            valueClass: "text-yellow-400",
+          }] : []),
+        ]}
+        onToggleFilters={() => setFiltersOpen((o) => !o)}
+        filterActive={hasActiveFilters(filters)}
+        controls={
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-sm">{t.home_cards_count(data?.total ?? 0)}</span>
+            <ViewToggle value={view} onChange={setView} />
+          </div>
+        }
+        pager={view !== "binder" && data ? { page, pages: data.pages, onPage: setPage } : null}
+      >
         <FilterSidebar
           filters={filters}
           onChange={handleFilters}
@@ -147,22 +140,7 @@ export default function HomePage() {
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
         />
-
-        {/* Steuerung: Anzahl + Ansicht + (Raster-)Pager */}
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-3">
-            <span className="text-gray-400 text-sm">{t.home_cards_count(data?.total ?? 0)}</span>
-            <ViewToggle value={view} onChange={setView} />
-          </div>
-          {view !== "binder" && data && data.pages > 1 && (
-            <div className="flex gap-2 text-sm items-center">
-              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">‹</button>
-              <span className="text-gray-400">{page} / {data.pages}</span>
-              <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">›</button>
-            </div>
-          )}
-        </div>
-      </div>
+      </ListPageHeader>
 
       {/* Scrollbereich: Karten / Binder */}
       <div className="mt-3">
