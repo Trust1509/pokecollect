@@ -12,7 +12,7 @@ import CornerEditor from "@/components/CornerEditor";
 import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
 import { useCardForm } from "@/lib/useCardForm";
 import { cropToCardPhoto, normalizeOrientation, CropTransform } from "@/lib/cardCrop";
-import { formatEur, imageUrl, pokemonPlaceholderUrl, cardImageSrc } from "@/lib/utils";
+import { formatEur, imageUrl, cardImageSrc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
@@ -213,12 +213,9 @@ export default function CardDetailPage() {
 
   if (!card) return <div className="text-gray-500 p-8">{t.detail_loading}</div>;
 
-  const imgSrc =
-    imageUrl(card.bild_karte_pfad, API_BASE, card.aktualisiert_am)
-    ?? card.bild_pokedex_url
-    ?? card.bild_karte_url
-    ?? pokemonPlaceholderUrl(card.pokedex_nr);
-  const isPlaceholder = !card.bild_karte_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!imgSrc;
+  // Bild-Prioritätskette zentral in cardImageSrc (Vertrag mit dem Backend,
+  // siehe backend/app/services/card_image_service.py:14-18) — Issue #10
+  const { src: imgSrc, isPlaceholder } = cardImageSrc(card, API_BASE, true, "full");
   const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
 
   const handleSave = async () => {

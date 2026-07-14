@@ -107,30 +107,39 @@ export function extractSetCode(setEdition: string | null | undefined): string {
 }
 
 type CardImageFields = {
-  bild_thumbnail_pfad?: string | null;
+  bild_karte_pfad?: string | null;      // eigenes Foto in voller Auflösung
+  bild_thumbnail_pfad?: string | null;  // eigenes Foto als Thumbnail
   bild_pokedex_url?: string | null;
   bild_karte_url?: string | null;
   pokedex_nr?: number | null;
   aktualisiert_am?: string | null;   // für Cache-Busting eigener Fotos
 };
 
-/** Liefert Bildquelle + ob es nur ein Pokédex-Platzhalter ist. */
+/**
+ * Liefert Bildquelle + ob es nur ein Pokédex-Platzhalter ist.
+ *
+ * Prioritätskette — Vertrag mit dem Backend, muss mit
+ * backend/app/services/card_image_service.py:14-18 übereinstimmen:
+ *   1. Eigenes Foto (Upload) — je nach Variante Thumbnail oder Vollbild
+ *   2. bild_pokedex_url — manuell gesetzte URL
+ *   3. bild_karte_url — auto von TCGdex
+ *   4. Pokédex-Artwork — Platzhalter als letzter Fallback
+ *
+ * variant "thumb" (Raster/Binder) nutzt bild_thumbnail_pfad,
+ * variant "full" (Detailseite) nutzt bild_karte_pfad.
+ */
 export function cardImageSrc(
   card: CardImageFields,
   apiBase: string,
-  placeholderEnabled = true
+  placeholderEnabled = true,
+  variant: "thumb" | "full" = "thumb",
 ): { src: string | null; isPlaceholder: boolean } {
-  let src: string | null;
-  if (card.bild_thumbnail_pfad) {
-    const path = card.bild_thumbnail_pfad.replace(/^(?:.*\/)?images\//, "");
-    const v = card.aktualisiert_am ? `?v=${encodeURIComponent(card.aktualisiert_am)}` : "";
-    src = `${apiBase}/images/${path}${v}`;
-  } else {
-    src = card.bild_pokedex_url
-      ?? card.bild_karte_url
-      ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
-  }
-  const isPlaceholder =
-    !card.bild_thumbnail_pfad && !card.bild_pokedex_url && !card.bild_karte_url && !!src;
+  const ownPath = variant === "full" ? card.bild_karte_pfad : card.bild_thumbnail_pfad;
+  const own = imageUrl(ownPath, apiBase, card.aktualisiert_am);
+  const src = own
+    ?? card.bild_pokedex_url
+    ?? card.bild_karte_url
+    ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
+  const isPlaceholder = !own && !card.bild_pokedex_url && !card.bild_karte_url && !!src;
   return { src, isPlaceholder };
 }

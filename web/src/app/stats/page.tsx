@@ -22,8 +22,8 @@ export default function StatsPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-white">{t.stats_title}</h1>
 
-      {/* Übersicht */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Übersicht — mobil einspaltig (Mobile-First, #10) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-pokemon-card rounded-lg p-4">
           <div className="text-gray-400 text-sm">{t.stats_total}</div>
           <div className="text-3xl font-bold text-white">{stats.gesamt}</div>
@@ -44,8 +44,8 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
+      {/* Charts — mobil einspaltig (Mobile-First, #10) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="bg-pokemon-card rounded-lg p-4">
           <StatsDonut data={stats.seltenheiten} title={t.stats_rarity} />
         </div>
@@ -57,6 +57,7 @@ export default function StatsPage() {
       {/* Top 10 */}
       <div className="bg-pokemon-card rounded-lg p-4">
         <h2 className="text-gray-300 font-medium mb-3">{t.stats_top10}</h2>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-500 text-xs border-b border-gray-800">
@@ -79,6 +80,7 @@ export default function StatsPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Zuletzt hinzugefügt */}
