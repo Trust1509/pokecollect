@@ -162,12 +162,6 @@ def list_cards(
     )
 
 
-@router.get("/pokedex/{nr}", response_model=list[CardResponse])
-def cards_by_pokedex(nr: int, db: Session = Depends(get_db)):
-    cards = db.scalars(select(PokemonCard).where(PokemonCard.pokedex_nr == nr)).all()
-    return cards
-
-
 @router.get("/{card_id}", response_model=CardResponse)
 def get_card(card_id: int, db: Session = Depends(get_db)):
     return _card_or_404(card_id, db)
@@ -422,17 +416,6 @@ def get_stats(db: Session = Depends(get_db)):
         top10_teuerste=top10,
         zuletzt_hinzugefuegt=recent,
     )
-
-
-@router.get("/meta/sets", response_model=list[str])
-def get_sets(db: Session = Depends(get_db)):
-    rows = db.scalars(
-        select(PokemonCard.set_edition)
-        .where(PokemonCard.set_edition.isnot(None))
-        .distinct()
-        .order_by(PokemonCard.set_edition)
-    ).all()
-    return list(rows)
 
 
 @router.get("/meta/enums", response_model=EnumsResponse)

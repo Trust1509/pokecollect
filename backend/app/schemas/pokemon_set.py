@@ -24,8 +24,3 @@ class PokemonSetCreate(BaseModel):
     max_card_nr: Optional[int] = None
     set_id: Optional[str] = None
 
-
-class PokemonSetUpdate(BaseModel):
-    name: Optional[str] = None
-    max_card_nr: Optional[int] = None
-    set_id: Optional[str] = None

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.pokemon_set import PokemonSet
-from app.schemas.pokemon_set import PokemonSetCreate, PokemonSetResponse, PokemonSetUpdate
+from app.schemas.pokemon_set import PokemonSetCreate, PokemonSetResponse
 from app.services.set_sync import sync_sets
 
 router = APIRouter(prefix="/sets", tags=["sets"])
@@ -36,14 +36,3 @@ def create_set(data: PokemonSetCreate, db: Session = Depends(get_db)):
     db.refresh(s)
     return s
 
-
-@router.put("/{code}", response_model=PokemonSetResponse)
-def update_set(code: str, data: PokemonSetUpdate, db: Session = Depends(get_db)):
-    s = db.get(PokemonSet, code)
-    if not s:
-        raise HTTPException(status_code=404, detail="Set nicht gefunden")
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(s, field, value)
-    db.commit()
-    db.refresh(s)
-    return s

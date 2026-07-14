@@ -20,9 +20,9 @@ def _placeholder(client, name: str, nr: int) -> int:
 
 
 def _cards_for_nr(client, nr: int) -> list[dict]:
-    r = client.get(f"/api/v1/cards/pokedex/{nr}")
+    r = client.get("/api/v1/cards", params={"pokedex_nr": nr, "limit": 100})
     assert r.status_code == 200
-    return r.json()
+    return r.json()["items"]
 
 
 def test_scan_commit_adopts_placeholder(client):

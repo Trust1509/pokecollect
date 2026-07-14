@@ -121,11 +121,9 @@ export const cardApi = {
 
   stats: () => api.get<StatsResponse>("/cards/meta/stats"),
 
-  sets: () => api.get<string[]>("/cards/meta/sets"),
 
   enums: () => api.get<Enums>("/cards/meta/enums"),
 
-  byPokedex: (nr: number) => api.get<Card[]>(`/cards/pokedex/${nr}`),
 
   backfillImages: (force = false) =>
     api.post(`/cards/meta/backfill-images?force=${force}`),
@@ -153,7 +151,6 @@ export type PokemonSet = {
 export const setsApi = {
   list: () => api.get<PokemonSet[]>("/sets"),
   create: (data: Partial<PokemonSet>) => api.post<PokemonSet>("/sets", data),
-  update: (code: string, data: Partial<PokemonSet>) => api.put<PokemonSet>(`/sets/${code}`, data),
   sync: () => api.post("/sets/sync"),
 };
 
@@ -170,7 +167,6 @@ export type AppSettings = {
   cardmarket_app_secret: string;
   cardmarket_access_token: string;
   cardmarket_access_secret: string;
-  pokemontcg_api_key: string;
   gemini_api_key: string;
   gemini_model: string;
   gemini_daily_limit: number;
@@ -332,9 +328,6 @@ export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
   meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
   illustrators: () => api.get<string[]>("/catalog/illustrators"),
-  sync: () => api.post("/catalog/sync"),
-  enrich: (limit = 500) => api.post(`/catalog/enrich?limit=${limit}`),
-  enrichAll: () => api.post("/catalog/enrich-all"),
   addWishlist: (cardId: string, prioritaet?: string | null) =>
     api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, { prioritaet: prioritaet ?? null }),
   addCollection: (cardId: string, collectionId: number) =>

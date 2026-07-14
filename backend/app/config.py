@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     cardmarket_access_token: str = ""
     cardmarket_access_secret: str = ""
 
-    pokemontcg_api_key: str = ""
 
     # Optional: aktiviert die stärkere Scan-Variante B (Gemini). Default aus.
     # Ist der Key gesetzt, nutzt der Scan Gemini; sonst lokale OCR als Fallback.

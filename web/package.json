@@ -15,7 +15,6 @@
     "react-dom": "18.3.1",
     "recharts": "2.12.7",
     "axios": "1.7.2",
-    "react-query": "3.39.3",
     "react-hot-toast": "2.4.1",
     "lucide-react": "0.417.0"
   },

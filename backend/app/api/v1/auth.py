@@ -55,7 +55,3 @@ def login(data: LoginRequest):
         expires_in=settings.jwt_expire_minutes * 60,
     )
 
-
-@router.post("/refresh", response_model=TokenResponse)
-def refresh_token(data: LoginRequest):
-    return login(data)

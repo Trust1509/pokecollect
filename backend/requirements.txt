@@ -15,7 +15,5 @@ httpx==0.27.0
 requests-oauthlib==1.3.1
 apscheduler==3.10.4
 Pillow==10.4.0
-# .env-Handling (auch von migrations/csv_import.py genutzt)
-python-dotenv==1.0.1
 # Scan-Variante A (lokale OCR). Gemini (Variante B) läuft per REST über httpx.
 pytesseract==0.3.13

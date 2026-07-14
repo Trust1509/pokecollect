@@ -195,10 +195,6 @@ export default function SettingsPage() {
           <Field label="Access Secret">
             <input type="password" value={s.cardmarket_access_secret} onChange={(e) => set("cardmarket_access_secret", e.target.value)} className={INPUT} autoComplete="off" />
           </Field>
-          <p className="text-gray-400 text-xs font-medium pt-2">PokémonTCG.io</p>
-          <Field label="API Key">
-            <input type="password" value={s.pokemontcg_api_key} onChange={(e) => set("pokemontcg_api_key", e.target.value)} className={INPUT} autoComplete="off" />
-          </Field>
         </div>
         <div className="pt-1">
           <button
@@ -208,7 +204,6 @@ export default function SettingsPage() {
               cardmarket_app_secret: s.cardmarket_app_secret,
               cardmarket_access_token: s.cardmarket_access_token,
               cardmarket_access_secret: s.cardmarket_access_secret,
-              pokemontcg_api_key: s.pokemontcg_api_key,
             })}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
