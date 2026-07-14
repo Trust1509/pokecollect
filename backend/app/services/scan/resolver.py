@@ -1,7 +1,7 @@
 """
 Scan-Resolver: rohe Erkennung (Gemini/OCR) → konkrete TCGdex-Karte.
 
-Eine Quelle für Web UND Android. Nutzt dieselbe Offline-Brücke (code→set_id)
+Eine Quelle für alle Clients. Nutzt dieselbe Offline-Brücke (code→set_id)
 wie der Set-Sync und füllt den Bestätigungs-Dialog vor.
 """
 

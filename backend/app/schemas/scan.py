@@ -1,4 +1,4 @@
-"""Pydantic-Schemas für den Karten-Scan (Web + Android, gemeinsame API)."""
+"""Pydantic-Schemas für den Karten-Scan."""
 
 from __future__ import annotations
 

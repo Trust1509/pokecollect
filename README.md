@@ -16,11 +16,6 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 |---|---|
 | ![Add Card](docs/screenshots/03_new_card.png) | ![Statistics](docs/screenshots/04_statistics.png) |
 
-**Android companion app:**
-
-![Android App](docs/screenshots/05_android.jpeg)
-
----
 
 ## Features
 
@@ -31,7 +26,7 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 - **Wishlist** with priorities (Chase/Hoch/Mittel/Niedrig).
 - **Catalog** — local mirror of the full TCGdex card database (~23,000 cards), searchable by name/number/illustrator, filterable by set/generation; one click adds a card to the wishlist or a collection.
 
-### Card scanning (web + Android share one API)
+### Card scanning
 - **Hybrid engine:** Google Gemini Vision (if an API key is set — manageable from the settings page) with local Tesseract OCR as fallback.
 - **Three modes:** single card, multiple loose cards, full binder page (grid).
 - **Server-side resolver** matches every read against TCGdex (set + printed number, name fallback) and pre-fills the review dialog with confidence scores and uncertain-field highlighting.
@@ -64,7 +59,6 @@ web (Next.js 14, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  Pos
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
 - **Frontend** `web/` — Next.js 14 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
-- **Android** `android/` — Kotlin/Compose companion app (browse/edit, ML-Kit scan); shares the same REST API. In maintenance mode — the mobile web app covers most use cases.
 - **Auth note:** the API currently runs without enforced auth and is intended for trusted LAN use; external access is protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)). Full in-app auth is planned for v1.0.
 
 ---
@@ -123,7 +117,6 @@ Updates: `bash deploy.sh` (git pull → rebuild api+web → restart).
 | Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS, PWA |
 | Scan | Google Gemini (REST) / Tesseract OCR, Pillow, Canvas-Homographie |
 | Data | TCGdex API (cards, images, Cardmarket prices) |
-| Android | Kotlin, Jetpack Compose, ML Kit, CameraX, Room, Hilt |
 | Deployment | Docker Compose, Portainer, Caddy, Authelia |
 
 ---

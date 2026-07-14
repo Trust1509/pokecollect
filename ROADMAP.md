@@ -148,10 +148,6 @@ Stand: **v0.9.11** · Aufräum-/Konsistenz-Release (Repo-Hygiene, DB-Robustheit,
 - [ ] „Gesammelt"-Gesamtnenner: Wunschliste/Platzhalter optional ausblenden
 - [ ] Foto-Upload: Datei-Endung serverseitig auf Bildformate beschränken
 
-### 🅺 Android-App verschlanken
-- [ ] Auf „nativer Kamerazugriff + dünner Wrapper" reduzieren, sobald Web mobil alles kann
-- [ ] Scan-API teilen (kein doppelter Code), Set-Dropdown/Seltenheit aus Backend
-
 ### 🔲 v1.0 — Production
 - [x] Erster öffentlicher Release (v0.9.6) mit dokumentierten Known Issues
 - [ ] **Auth durchsetzen:** Login-Seite im Web + `require_auth` auf den API-Routern

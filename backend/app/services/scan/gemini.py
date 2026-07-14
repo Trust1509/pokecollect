@@ -4,7 +4,7 @@ Scan-Variante B: Bilderkennung über Google Gemini (REST, kein SDK nötig).
 Nur aktiv, wenn GEMINI_API_KEY gesetzt ist. Gemini liest aus einem Foto
 (Einzelkarte ODER ganze Binderseite) die wesentlichen Felder pro Karte aus
 und liefert sie als JSON-Liste. Die Auflösung gegen TCGdex passiert danach
-serverseitig im Resolver (eine Quelle für Web UND Android).
+serverseitig im Resolver (eine Quelle für alle Clients).
 """
 
 from __future__ import annotations

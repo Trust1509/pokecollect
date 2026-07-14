@@ -1,5 +1,5 @@
 """
-Karten-Scan – gemeinsame API für Web (Webcam) UND Android.
+Karten-Scan (Web: Webcam/Foto-Upload).
 
 POST /api/v1/scan          Bild + Modus → Kandidaten (Hybrid: Gemini, sonst OCR)
 POST /api/v1/scan/commit   bestätigte Karten ablegen (Pokédex oder Sammlung)
