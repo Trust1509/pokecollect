@@ -110,18 +110,8 @@ async def trigger_catalog_sync(background_tasks: BackgroundTasks):
     return {"detail": "Katalog-Sync gestartet (Sets + Katalog-Basis) – läuft im Hintergrund."}
 
 
-@router.post("/enrich")
-async def trigger_catalog_enrich(background_tasks: BackgroundTasks, limit: int = Query(500, ge=1, le=5000)):
-    """Volldetails (Illustrator/Rarity/dexId/Varianten) für N Karten nachladen."""
-    background_tasks.add_task(run_with_session, catalog_svc.enrich_catalog, limit)
-    return {"detail": f"Enrichment für bis zu {limit} Karten gestartet."}
-
-
-@router.post("/enrich-all")
-async def trigger_catalog_enrich_all(background_tasks: BackgroundTasks):
-    """Reichert ALLE noch offenen Karten an (läuft selbstständig durch). Einmal aufrufen."""
-    background_tasks.add_task(run_with_session, catalog_svc.enrich_all)
-    return {"detail": "Enrichment aller Karten gestartet – läuft im Hintergrund bis fertig."}
+# Das Enrichment (Volldetails) läuft täglich im Katalog-Cron in Etappen —
+# die manuellen POST /catalog/enrich(-all)-Endpoints wurden entfernt (Issue #12).
 
 
 @router.get("/illustrators")

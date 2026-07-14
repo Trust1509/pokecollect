@@ -94,21 +94,13 @@ chmod +x deploy.sh
 bash deploy.sh
 ```
 
----
-
-## 6. Datenbank initialisieren (einmalig, nach erstem Start)
-
-```bash
-docker exec -i $(docker ps -qf name=pokecollect-db) \
-  psql -U pokecollect -d pokecollect \
-  < /mnt/HDDs/Applications/pokecollect/app/migrations/001_initial.sql
-```
-
-FastAPI legt Tabellen auch automatisch an beim ersten Start via `Base.metadata.create_all()`.
+> Die Datenbank initialisiert sich beim ersten API-Start selbst:
+> `Base.metadata.create_all()` + Light-Migrations legen alle Tabellen und
+> Spalten an — ein manueller SQL-Import ist nicht nötig.
 
 ---
 
-## 7. Caddy-Config aktualisieren (einmalig)
+## 6. Caddy-Config aktualisieren (einmalig)
 
 ```bash
 cat /mnt/HDDs/Applications/pokecollect/app/deploy/Caddyfile.snippet \

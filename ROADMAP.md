@@ -30,7 +30,7 @@ Stand: **v0.9.11** · Aufräum-/Konsistenz-Release (Repo-Hygiene, DB-Robustheit,
 
 ### v0.7.0 — TCGdex als zentrale Datenquelle
 - `services/tcgdex.py` (Karten/Sets/Preise, kein Key), Bild-URLs `high.webp`
-- Set-Sync (`/sets/sync`) inkl. Auto-Auflösung über `abbreviation.official` + ptcgo-Brücke
+- Set-Sync (heute Teil von `POST /catalog/sync`) inkl. Auto-Auflösung über `abbreviation.official` + ptcgo-Brücke
 - Preise aus `pricing.cardmarket` (avg30 + Holo-Logik), Preis-Cron, `preis_historie`
 - Bild-Proxy/-Cache mit Host-Allowlist; additive DB-Felder (tcgdex_card_id, set_id, dex_id, variants)
 
@@ -84,8 +84,8 @@ Stand: **v0.9.11** · Aufräum-/Konsistenz-Release (Repo-Hygiene, DB-Robustheit,
       eigene Tabelle → Wertentwicklungs-Chart über Zeit (Woche/Monat/Jahr)
 - [ ] **Dashboard-Kennzahlen**: Top-Movers (größte Preisänderungen), unrealisierter
       G/V (aktueller Wert − Kaufpreis), Duplikate, teuerste Neuzugänge
-- [ ] Setting `price_source` (30-Tage-Ø vs. Tagespreis) im Preis-Update tatsächlich
-      auswerten (steht in den Einstellungen, wirkt aber noch nicht)
+- [x] Setting `price_source` (30-Tage-Ø vs. Tagespreis) im Preis-Update tatsächlich
+      auswerten — umgesetzt in Issue #12 (`daily` = TCGdex `avg1`, Fallback avg30)
 - [ ] Optional: mehrere Cardmarket-Preisvarianten zur Wahl (Trend/Avg/Avg7/Avg30/Low)
 
 ### 🅱 Set-Vollständigkeit

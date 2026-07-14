@@ -122,10 +122,12 @@ def _run_light_migrations():
     Idempotent dank ADD COLUMN IF NOT EXISTS (PostgreSQL).
     """
     stmts = [
-        # bild_karte_url kam historisch per migrations/002 – hier abgesichert,
-        # damit auch ein frischer Install über 001_initial.sql vollständig ist.
+        # bild_karte_url kam historisch per SQL-Migration – hier abgesichert,
+        # damit auch Alt-Installationen vollständig sind (create_all + diese
+        # Light-Migrations sind die Quelle der Wahrheit, Issue #12).
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_karte_url TEXT",
-        # CHECK-Constraints aus 001_initial.sql entfernen: Die gültigen Werte
+        # CHECK-Constraints der früheren migrations/001_initial.sql (Datei
+        # inzwischen entfernt) auf Alt-Installationen droppen: Die gültigen Werte
         # pflegt die API (schemas/card.py). Die alten Constraints kennen neuere
         # Werte nicht (z.B. "ACE SPEC Rare", "Shiny Rare", "Mega Hyper Rare")
         # und würden Inserts/Updates ablehnen.
@@ -194,7 +196,8 @@ async def lifespan(app: FastAPI):
     _run_light_migrations()
     _seed_sets()
     # TCGdex-Brücke offline anwenden (set_id auf bekannten Sets setzen).
-    # Der eigentliche Set-Sync (Netzzugriff) läuft auf Anfrage via POST /sets/sync.
+    # Der eigentliche Set-Sync (Netzzugriff) läuft täglich im Katalog-Cron
+    # bzw. auf Anfrage via POST /catalog/sync (macht Sets mit).
     try:
         from app.services.set_sync import apply_bridge_to_seed
         apply_bridge_to_seed()

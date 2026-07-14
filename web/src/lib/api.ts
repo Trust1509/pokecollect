@@ -151,7 +151,6 @@ export type PokemonSet = {
 export const setsApi = {
   list: () => api.get<PokemonSet[]>("/sets"),
   create: (data: Partial<PokemonSet>) => api.post<PokemonSet>("/sets", data),
-  sync: () => api.post("/sets/sync"),
 };
 
 export type AppSettings = {
@@ -329,6 +328,7 @@ export type CatalogListResponse = {
 export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
   meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
+  sync: () => api.post<{ detail: string }>("/catalog/sync"),
   illustrators: () => api.get<string[]>("/catalog/illustrators"),
   addWishlist: (cardId: string, prioritaet?: string | null) =>
     api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, { prioritaet: prioritaet ?? null }),

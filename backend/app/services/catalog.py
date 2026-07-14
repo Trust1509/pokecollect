@@ -160,16 +160,6 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
     return {"enriched": n, "remaining": int(remaining)}
 
 
-async def enrich_all(db: Session) -> None:
-    """Reichert in Etappen an, bis nichts mehr übrig ist (Hintergrund-Dauerlauf)."""
-    while True:
-        res = await enrich_catalog(db, limit=500)
-        if not res.get("enriched") or not res.get("remaining"):
-            break
-        await asyncio.sleep(1)
-    log.info("Katalog-Enrichment vollständig.")
-
-
 async def _build_card_from_catalog(db: Session, row: TcgdexCatalog) -> dict:
     """Karten-Felder aus einem Katalog-Eintrag (lädt bei Bedarf Volldetails nach)."""
     if not row.enriched:

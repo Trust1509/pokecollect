@@ -3,15 +3,17 @@ Cardmarket API Integration (OAuth 1.0a).
 Docs: https://api.cardmarket.com/ws/documentation
 
 Seit v0.7.0 nur noch optionaler Preis-Fallback (Primärquelle: TCGdex).
-Genutzt wird ausschließlich _fetch_price() aus services/pricing.py.
+Genutzt wird ausschließlich _fetch_price() aus services/pricing.py; die
+Credentials kommen injiziert (DB-Settings zuerst, ENV als Fallback —
+aufgelöst in pricing.get_cardmarket_credentials, Issue #12).
 """
 
 import logging
 from decimal import Decimal
+from typing import NamedTuple
 
 from requests_oauthlib import OAuth1
 
-from app.config import settings
 from app.models.card import PokemonCard
 
 log = logging.getLogger(__name__)
@@ -19,22 +21,24 @@ log = logging.getLogger(__name__)
 CM_BASE = "https://api.cardmarket.com/ws/v2.0/output.json"
 
 
-def _oauth() -> OAuth1:
+class CardmarketCredentials(NamedTuple):
+    app_token: str
+    app_secret: str
+    access_token: str
+    access_secret: str
+
+
+def _oauth(creds: CardmarketCredentials) -> OAuth1:
     return OAuth1(
-        settings.cardmarket_app_token,
-        settings.cardmarket_app_secret,
-        settings.cardmarket_access_token,
-        settings.cardmarket_access_secret,
+        creds.app_token,
+        creds.app_secret,
+        creds.access_token,
+        creds.access_secret,
     )
 
 
-def _fetch_price(card: PokemonCard) -> Decimal | None:
-    if not all([
-        settings.cardmarket_app_token,
-        settings.cardmarket_app_secret,
-        settings.cardmarket_access_token,
-        settings.cardmarket_access_secret,
-    ]):
+def _fetch_price(card: PokemonCard, creds: CardmarketCredentials) -> Decimal | None:
+    if not all(creds):
         log.warning("Cardmarket-Credentials nicht konfiguriert")
         return None
 
@@ -49,7 +53,7 @@ def _fetch_price(card: PokemonCard) -> Decimal | None:
 
     try:
         import requests
-        resp = requests.get(search_url, params=params, auth=_oauth(), timeout=10)
+        resp = requests.get(search_url, params=params, auth=_oauth(creds), timeout=10)
         resp.raise_for_status()
         data = resp.json()
 
@@ -60,7 +64,7 @@ def _fetch_price(card: PokemonCard) -> Decimal | None:
         # Erstes passendes Produkt nehmen
         product_id = products[0]["idProduct"]
         price_url = f"{CM_BASE}/products/{product_id}"
-        resp2 = requests.get(price_url, auth=_oauth(), timeout=10)
+        resp2 = requests.get(price_url, auth=_oauth(creds), timeout=10)
         resp2.raise_for_status()
         product_data = resp2.json().get("product", {})
         price_info = product_data.get("priceGuide", {})

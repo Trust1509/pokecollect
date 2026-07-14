@@ -10,7 +10,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.pricing import pick_cardmarket_price
+from app.services.pricing import normalize_price_source, pick_cardmarket_price
 from app.services.scan.gemini import _bbox, _quad
 from app.services.scan.resolver import _confidence, _map_rarity
 from app.services.tcgdex import CardMarketPricing, local_id_from_card_nr
@@ -114,6 +114,55 @@ def test_price_normal_fallback_chain():
 
 def test_price_no_values():
     assert pick_cardmarket_price(CardMarketPricing(), "Normal") is None
+
+
+# ── pricing.price_source (Issue #12) ─────────────────────────────────────────
+
+@pytest.mark.parametrize("raw, expected", [
+    (None, "30d_avg"),
+    ("", "30d_avg"),
+    ("30d_avg", "30d_avg"),
+    ("daily", "daily"),
+    ("current", "daily"),     # Alt-Wert des früheren UI-Selects
+    (" daily ", "daily"),
+    ("unbekannt", "30d_avg"),
+])
+def test_normalize_price_source(raw, expected):
+    assert normalize_price_source(raw) == expected
+
+
+def test_price_daily_prefers_avg1():
+    cm = CardMarketPricing(avg1=9.9, avg30=3.0, avg7=2.0)
+    assert pick_cardmarket_price(cm, None, "daily") == Decimal("9.9")
+
+
+def test_price_daily_falls_back_to_avg30_chain():
+    cm = CardMarketPricing(avg30=3.0)
+    assert pick_cardmarket_price(cm, None, "daily") == Decimal("3.0")
+
+
+def test_price_daily_holo_prefers_avg1_holo():
+    cm = CardMarketPricing(**{"avg1-holo": 8.8, "avg1": 7.7, "avg30-holo": 5.5})
+    assert pick_cardmarket_price(cm, "Holo", "daily") == Decimal("8.8")
+
+
+def test_price_daily_holo_falls_back_to_avg1_then_30d():
+    assert pick_cardmarket_price(
+        CardMarketPricing(avg1=7.7, avg30=3.0), "Holo", "daily") == Decimal("7.7")
+    assert pick_cardmarket_price(
+        CardMarketPricing(**{"avg30-holo": 5.5}), "Holo", "daily") == Decimal("5.5")
+
+
+def test_price_30d_avg_ignores_avg1():
+    cm = CardMarketPricing(avg1=9.9, avg30=3.0)
+    assert pick_cardmarket_price(cm, None, "30d_avg") == Decimal("3.0")
+    # Default-Parameter = bisherige Logik
+    assert pick_cardmarket_price(cm, None) == Decimal("3.0")
+
+
+def test_price_legacy_current_counts_as_daily():
+    cm = CardMarketPricing(avg1=9.9, avg30=3.0)
+    assert pick_cardmarket_price(cm, None, "current") == Decimal("9.9")
 
 
 # ── gemini._bbox / _quad ─────────────────────────────────────────────────────

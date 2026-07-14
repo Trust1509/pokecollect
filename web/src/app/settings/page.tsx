@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, cardApi, scanApi, AppSettings, ScanUsage } from "@/lib/api";
+import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, AppSettings, ScanUsage } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
 
@@ -51,6 +51,8 @@ export default function SettingsPage() {
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
   const [usage, setUsage] = useState<ScanUsage | null>(null);
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
 
   useEffect(() => {
     settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error(t.settings_load_error));
@@ -75,6 +77,30 @@ export default function SettingsPage() {
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     if (!s) return;
     setS({ ...s, [key]: value });
+  };
+
+  const handlePriceRefresh = async () => {
+    setRefreshingPrices(true);
+    try {
+      await pricesApi.refresh();
+      toast.success(t.settings_price_refresh_started);
+    } catch {
+      toast.error(t.settings_price_refresh_error);
+    } finally {
+      setRefreshingPrices(false);
+    }
+  };
+
+  const handleCatalogSync = async () => {
+    setSyncingCatalog(true);
+    try {
+      await catalogApi.sync();
+      toast.success(t.settings_catalog_sync_started);
+    } catch {
+      toast.error(t.settings_catalog_sync_error);
+    } finally {
+      setSyncingCatalog(false);
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -141,14 +167,18 @@ export default function SettingsPage() {
           <input type="number" min={0} max={23} value={s.price_update_hour} onChange={(e) => set("price_update_hour", Number(e.target.value))} className={INPUT} style={{ width: "80px" }} />
         </Field>
         <Field label={t.settings_price_source}>
-          <select value={s.price_source} onChange={(e) => set("price_source", e.target.value)} className={INPUT} style={{ width: "auto" }}>
+          {/* Alt-Wert "current" (früheres UI) zählt als "daily" */}
+          <select value={s.price_source === "current" ? "daily" : s.price_source} onChange={(e) => set("price_source", e.target.value)} className={INPUT} style={{ width: "auto" }}>
             <option value="30d_avg">{t.settings_price_source_avg}</option>
-            <option value="current">{t.settings_price_source_current}</option>
+            <option value="daily">{t.settings_price_source_current}</option>
           </select>
         </Field>
-        <div className="pt-1">
-          <button type="button" onClick={() => save({ price_update_hour: s.price_update_hour, price_source: s.price_source })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+        <div className="pt-1 flex gap-3 flex-wrap">
+          <button type="button" onClick={() => save({ price_update_hour: s.price_update_hour, price_source: s.price_source === "current" ? "daily" : s.price_source })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             {t.form_save}
+          </button>
+          <button type="button" onClick={handlePriceRefresh} disabled={refreshingPrices} className="bg-gray-700 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-600 disabled:opacity-50">
+            {t.settings_price_refresh_now}
           </button>
         </div>
       </Section>
@@ -300,6 +330,16 @@ export default function SettingsPage() {
           </button>
         </div>
         <p className="text-gray-600 text-xs">{t.settings_backfill_logs_hint} <code>docker logs pokecollect-api-1 -f</code></p>
+      </Section>
+
+      {/* Katalog */}
+      <Section title={`📚 ${t.settings_section_catalog}`}>
+        <p className="text-gray-400 text-xs">{t.settings_catalog_hint}</p>
+        <div className="pt-1">
+          <button type="button" onClick={handleCatalogSync} disabled={syncingCatalog} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+            {t.settings_catalog_sync_now}
+          </button>
+        </div>
       </Section>
 
       {/* Konto */}
