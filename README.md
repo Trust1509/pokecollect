@@ -37,7 +37,6 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 - **TCGdex as the single data source** — card data, images (`high.webp`) and Cardmarket EUR prices, free and without an API key. Cardmarket OAuth remains an optional fallback.
 - **Daily cron jobs** — price refresh (hour configurable in settings) and catalog sync/enrichment.
 - **Price history** per card with chart.
-- **Image proxy/cache** with strict host allow-list (`assets.tcgdex.net`, HTTPS only).
 
 ### UI
 - **Mobile-first + PWA** — bottom navigation, installable, offline read access via service worker (HTTPS required for install/camera).
@@ -53,9 +52,11 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 ```
 web (Next.js 14, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  PostgreSQL 16
         │                              │
-        │  <img>/proxy                 ├──►  TCGdex API (cards, images, prices)
+        │  <img> direct                ├──►  TCGdex API (cards, images, prices)
         └──────────────────────────────┴──►  Gemini API (optional, card scan)
 ```
+
+Card images load directly from `assets.tcgdex.net` in the browser; own photos are served from the API's `/images` static mount.
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
 - **Frontend** `web/` — Next.js 14 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
@@ -86,6 +87,7 @@ docker compose up --build
 | `POSTGRES_PASSWORD` | ✅ | Database password |
 | `JWT_SECRET` | ✅ | Random string for JWT signing (min. 32 chars) |
 | `NEXT_PUBLIC_API_URL` | ✅ | URL the **browser** uses to reach the API (e.g. `http://192.168.x.x:3010`). Build-time variable — rebuild the web image after changing it. |
+| `CORS_ORIGINS` | ➖ | Comma-separated list of allowed browser origins (e.g. `http://192.168.x.x:3011`). Empty/unset = defaults `http://localhost:3011,http://localhost:3021`. |
 | `APP_USERNAME` / `APP_PASSWORD_HASH` | ➖ | Single-user login credentials (bcrypt hash) |
 | `GEMINI_API_KEY` | ➖ | Enables the strong Gemini scan engine; also manageable in the settings UI |
 | `CARDMARKET_*` | ➖ | Cardmarket OAuth 1.0a — optional price fallback only |

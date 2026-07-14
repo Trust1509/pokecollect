@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, AppSettings, ScanUsage } from "@/lib/api";
+import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, AppSettings, AppSettingsUpdate, ScanUsage } from "@/lib/api";
 import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
@@ -45,9 +45,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// Secret-Eingabefelder: lokaler State, getrennt von den (maskierten) Settings.
+// Leer = gespeicherten Wert behalten; nur ausgefüllte Felder gehen ins PUT.
+const EMPTY_SECRETS = {
+  cardmarket_app_token: "",
+  cardmarket_app_secret: "",
+  cardmarket_access_token: "",
+  cardmarket_access_secret: "",
+  gemini_api_key: "",
+};
+type SecretKey = keyof typeof EMPTY_SECRETS;
+
 export default function SettingsPage() {
   const { t } = useI18n();
   const [s, setS] = useState<AppSettings | null>(null);
+  const [secrets, setSecrets] = useState({ ...EMPTY_SECRETS });
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
@@ -61,12 +73,21 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const save = async (patch: Partial<AppSettings>) => {
+  const save = async (patch: AppSettingsUpdate, clearSecrets: SecretKey[] = []) => {
     if (!s) return;
     setSaving(true);
     try {
       const r = await settingsApi.update(patch);
       setS(r.data);
+      // Nach dem Speichern Passwortfelder wieder leeren — die Response ist
+      // maskiert, der Klartext bleibt nicht im Formular stehen (Issue #1).
+      if (clearSecrets.length) {
+        setSecrets((prev) => {
+          const next = { ...prev };
+          clearSecrets.forEach((k) => { next[k] = ""; });
+          return next;
+        });
+      }
       // Geteilten Einstellungs-Cache invalidieren (useSettings, Issue #14)
       refreshSettings().catch(() => {});
       toast.success(t.settings_saved);
@@ -81,6 +102,13 @@ export default function SettingsPage() {
     if (!s) return;
     setS({ ...s, [key]: value });
   };
+
+  const setSecret = (key: SecretKey, value: string) =>
+    setSecrets((prev) => ({ ...prev, [key]: value }));
+
+  // Placeholder für Secret-Felder: zeigt den maskierten Bestand ("gesetzt: •••• XXXX")
+  const secretPlaceholder = (isSet: boolean, masked: string) =>
+    isSet ? t.settings_secret_set_placeholder(masked) : undefined;
 
   const handlePriceRefresh = async () => {
     setRefreshingPrices(true);
@@ -214,31 +242,35 @@ export default function SettingsPage() {
       {/* API-Keys */}
       <Section title={`🔑 ${t.settings_section_api_keys}`}>
         <p className="text-gray-500 text-xs">{t.settings_api_keys_hint}</p>
+        <p className="text-gray-600 text-xs">{t.settings_secret_keep_hint}</p>
         <div className="space-y-3">
           <p className="text-gray-400 text-xs font-medium pt-1">Cardmarket (OAuth 1.0a)</p>
           <Field label="App Token">
-            <input type="password" value={s.cardmarket_app_token} onChange={(e) => set("cardmarket_app_token", e.target.value)} className={INPUT} autoComplete="off" />
+            <input type="password" value={secrets.cardmarket_app_token} onChange={(e) => setSecret("cardmarket_app_token", e.target.value)} placeholder={secretPlaceholder(s.cardmarket_app_token_set, s.cardmarket_app_token_masked)} className={INPUT} autoComplete="off" />
           </Field>
           <Field label="App Secret">
-            <input type="password" value={s.cardmarket_app_secret} onChange={(e) => set("cardmarket_app_secret", e.target.value)} className={INPUT} autoComplete="off" />
+            <input type="password" value={secrets.cardmarket_app_secret} onChange={(e) => setSecret("cardmarket_app_secret", e.target.value)} placeholder={secretPlaceholder(s.cardmarket_app_secret_set, s.cardmarket_app_secret_masked)} className={INPUT} autoComplete="off" />
           </Field>
           <Field label="Access Token">
-            <input type="password" value={s.cardmarket_access_token} onChange={(e) => set("cardmarket_access_token", e.target.value)} className={INPUT} autoComplete="off" />
+            <input type="password" value={secrets.cardmarket_access_token} onChange={(e) => setSecret("cardmarket_access_token", e.target.value)} placeholder={secretPlaceholder(s.cardmarket_access_token_set, s.cardmarket_access_token_masked)} className={INPUT} autoComplete="off" />
           </Field>
           <Field label="Access Secret">
-            <input type="password" value={s.cardmarket_access_secret} onChange={(e) => set("cardmarket_access_secret", e.target.value)} className={INPUT} autoComplete="off" />
+            <input type="password" value={secrets.cardmarket_access_secret} onChange={(e) => setSecret("cardmarket_access_secret", e.target.value)} placeholder={secretPlaceholder(s.cardmarket_access_secret_set, s.cardmarket_access_secret_masked)} className={INPUT} autoComplete="off" />
           </Field>
         </div>
         <div className="pt-1">
           <button
             type="button"
-            onClick={() => save({
-              cardmarket_app_token: s.cardmarket_app_token,
-              cardmarket_app_secret: s.cardmarket_app_secret,
-              cardmarket_access_token: s.cardmarket_access_token,
-              cardmarket_access_secret: s.cardmarket_access_secret,
-            })}
-            disabled={saving}
+            onClick={() => {
+              // Nur ausgefüllte Felder PUTen — leer heißt: Bestand behalten.
+              const entered = (Object.keys(EMPTY_SECRETS) as SecretKey[])
+                .filter((k) => k !== "gemini_api_key" && secrets[k] !== "");
+              if (!entered.length) return;
+              const patch: AppSettingsUpdate = {};
+              entered.forEach((k) => { patch[k] = secrets[k]; });
+              save(patch, entered);
+            }}
+            disabled={saving || (Object.keys(EMPTY_SECRETS) as SecretKey[]).every((k) => k === "gemini_api_key" || secrets[k] === "")}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
             {t.settings_save_api_keys}
@@ -252,8 +284,8 @@ export default function SettingsPage() {
           {t.settings_gemini_hint}{" "}
           <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com/apikey</a>
         </p>
-        <Field label="Gemini API Key">
-          <input type="password" value={s.gemini_api_key} onChange={(e) => set("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder="AIza…" />
+        <Field label="Gemini API Key" hint={t.settings_secret_keep_hint}>
+          <input type="password" value={secrets.gemini_api_key} onChange={(e) => setSecret("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.gemini_api_key_set, s.gemini_api_key_masked) ?? "AIza…"} />
         </Field>
         <Field label={t.settings_gemini_model} hint={t.settings_gemini_model_hint}>
           <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
@@ -264,7 +296,15 @@ export default function SettingsPage() {
         <div className="pt-1">
           <button
             type="button"
-            onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model, gemini_daily_limit: s.gemini_daily_limit })}
+            onClick={() => save(
+              {
+                gemini_model: s.gemini_model,
+                gemini_daily_limit: s.gemini_daily_limit,
+                // Key nur mitschicken, wenn eingegeben — leer = Bestand behalten
+                ...(secrets.gemini_api_key !== "" ? { gemini_api_key: secrets.gemini_api_key } : {}),
+              },
+              secrets.gemini_api_key !== "" ? ["gemini_api_key"] : [],
+            )}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >

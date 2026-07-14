@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.setting import AppSetting
-from app.schemas.setting import DEFAULTS, PasswordChange, SettingsResponse, SettingsUpdate
+from app.schemas.setting import DEFAULTS, SECRET_KEYS, PasswordChange, SettingsResponse, SettingsUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,7 +24,18 @@ def _set(db: Session, key: str, value: str):
         db.add(AppSetting(key=key, value=value))
 
 
+def _mask(value: str) -> str:
+    """Maske für Secrets: "•••• " + letzte 4 Zeichen, leer wenn nicht gesetzt."""
+    return f"•••• {value[-4:]}" if value else ""
+
+
 def _to_response(raw: dict[str, str]) -> SettingsResponse:
+    # Secrets nie im Klartext ausliefern (Issue #1) — nur gesetzt-Flag + Maske.
+    secret_fields: dict[str, bool | str] = {}
+    for key in SECRET_KEYS:
+        value = raw[key] or ""
+        secret_fields[f"{key}_set"] = bool(value)
+        secret_fields[f"{key}_masked"] = _mask(value)
     return SettingsResponse(
         placeholder_images_enabled=raw["placeholder_images_enabled"] == "true",
         cards_per_page=int(raw["cards_per_page"] or 48),
@@ -34,13 +45,9 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         price_source=raw["price_source"] or "30d_avg",
         default_language=raw["default_language"] or "DE",
         default_condition=raw["default_condition"] or "",
-        cardmarket_app_token=raw["cardmarket_app_token"] or "",
-        cardmarket_app_secret=raw["cardmarket_app_secret"] or "",
-        cardmarket_access_token=raw["cardmarket_access_token"] or "",
-        cardmarket_access_secret=raw["cardmarket_access_secret"] or "",
-        gemini_api_key=raw["gemini_api_key"] or "",
         gemini_model=raw["gemini_model"] or "gemini-2.5-flash",
         gemini_daily_limit=int(raw["gemini_daily_limit"] or 0),
+        **secret_fields,
     )
 
 

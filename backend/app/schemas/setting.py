@@ -20,6 +20,17 @@ DEFAULTS: dict[str, str] = {
     "gemini_daily_limit": "0",   # 0 = unbekannt/kein Limit anzeigen
 }
 
+# Secrets verlassen das Backend nie im Klartext (Issue #1): die Response
+# liefert je Secret nur noch <key>_set (bool) + <key>_masked ("•••• " +
+# letzte 4 Zeichen). Ändern geht weiter über PUT mit dem Klartext-Wert.
+SECRET_KEYS: tuple[str, ...] = (
+    "cardmarket_app_token",
+    "cardmarket_app_secret",
+    "cardmarket_access_token",
+    "cardmarket_access_secret",
+    "gemini_api_key",
+)
+
 
 class SettingsResponse(BaseModel):
     placeholder_images_enabled: bool
@@ -30,11 +41,16 @@ class SettingsResponse(BaseModel):
     price_source: str
     default_language: str
     default_condition: str
-    cardmarket_app_token: str
-    cardmarket_app_secret: str
-    cardmarket_access_token: str
-    cardmarket_access_secret: str
-    gemini_api_key: str
+    cardmarket_app_token_set: bool
+    cardmarket_app_token_masked: str
+    cardmarket_app_secret_set: bool
+    cardmarket_app_secret_masked: str
+    cardmarket_access_token_set: bool
+    cardmarket_access_token_masked: str
+    cardmarket_access_secret_set: bool
+    cardmarket_access_secret_masked: str
+    gemini_api_key_set: bool
+    gemini_api_key_masked: str
     gemini_model: str
     gemini_daily_limit: int
 

@@ -62,6 +62,7 @@ JWT_SECRET=<langer_zufälliger_string>
 APP_USERNAME=admin
 APP_PASSWORD_HASH=<bcrypt_hash>
 NEXT_PUBLIC_API_URL=http://<server-ip>:3010
+CORS_ORIGINS=http://<server-ip>:3011
 GEMINI_API_KEY=
 CARDMARKET_APP_TOKEN=
 CARDMARKET_APP_SECRET=
@@ -77,6 +78,11 @@ ln -s /mnt/HDDs/Applications/pokecollect/config/.env \
 > **Wichtig `NEXT_PUBLIC_API_URL`:** Next.js brennt diese URL zur **Build-Zeit** in den JavaScript-Bundle ein.
 > Sie muss die extern erreichbare IP/Domain des Servers enthalten, nicht `localhost`.
 > Nach jeder Änderung dieser Variable muss das Web-Image neu gebaut werden.
+
+> **`CORS_ORIGINS`:** Die API erlaubt nur noch die hier gelisteten Browser-Origins
+> (kommagetrennt, kein `*` mehr). Auf dem Server also die Web-URL eintragen:
+> `CORS_ORIGINS=http://<server-ip>:3011`. Leer/ungesetzt gilt der Entwicklungs-Default
+> `http://localhost:3011,http://localhost:3021`.
 
 Bcrypt-Hash generieren:
 ```bash

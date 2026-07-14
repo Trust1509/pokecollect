@@ -10,7 +10,19 @@ class Settings(BaseSettings):
     database_url: str
     jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
+    # 30 Tage (Lock-Spec Issue #1): Single-User-LAN-App, keine Revocation —
+    # der Web-Client hält das Token in localStorage und loggt sich bei 401 neu ein.
+    jwt_expire_minutes: int = 60 * 24 * 30  # 30 Tage
+
+    # Erlaubte CORS-Origins, kommagetrennt (Env CORS_ORIGINS). Leer/ungesetzt →
+    # Default: Prod-Web (3011) + lokaler Teststand (3021). Kein "*" mehr —
+    # seit Auth-Zwang (Issue #1) wäre eine Wildcard-Origin ein unnötiges Risiko.
+    cors_origins: str = ""
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return origins or ["http://localhost:3011", "http://localhost:3021"]
 
     # Cardmarket-OAuth ist seit v0.7.0 nur noch optionaler Preis-Fallback –
     # Primärquelle für Preise ist TCGdex (kein Key nötig).

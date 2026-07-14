@@ -28,6 +28,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://pokecollect:pokecollect@db:5432/pokecollect
       - JWT_SECRET=teststand-secret
+      # Teststand-Web läuft auf 3021 → muss als Origin erlaubt sein.
+      - CORS_ORIGINS=http://localhost:3021
     volumes:
       - images-test:/app/images
     depends_on:

@@ -213,12 +213,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# allow_credentials=False: Auth läuft (wenn genutzt) über den Authorization-
-# Header, nicht über Cookies. Wildcard-Origin + Credentials wäre zudem eine
-# ungültige CORS-Kombination, die Browser ablehnen.
+# allow_credentials=False: Auth läuft über den Authorization-Header, nicht
+# über Cookies. Origins kommen aus CORS_ORIGINS (kommagetrennt); ohne Env
+# greifen die Defaults für Prod-Web (3011) + Teststand (3021) — Details in
+# config.py::cors_origins_list. Kein "*" mehr (Issue #1).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

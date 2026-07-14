@@ -23,6 +23,9 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - APP_USERNAME=${APP_USERNAME:-admin}
       - APP_PASSWORD_HASH=${APP_PASSWORD_HASH}
+      # Kommagetrennte Browser-Origins; leer = localhost-Defaults (config.py).
+      # Prod setzt in der .env: CORS_ORIGINS=http://<server-ip>:3011
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
     volumes:
       - /mnt/HDDs/Applications/pokecollect/images:/app/images
     depends_on:

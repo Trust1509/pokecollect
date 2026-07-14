@@ -154,7 +154,33 @@ export const setsApi = {
   create: (data: Partial<PokemonSet>) => api.post<PokemonSet>("/sets", data),
 };
 
+// Secrets kommen vom Backend nur noch maskiert (Issue #1): je Secret ein
+// *_set-Flag + *_masked ("•••• XXXX"). Klartext gibt es nur in Richtung
+// PUT (AppSettingsUpdate), nie in der Response.
 export type AppSettings = {
+  placeholder_images_enabled: boolean;
+  cards_per_page: number;
+  default_sort: string;
+  price_update_enabled: boolean;
+  price_update_hour: number;
+  price_source: string;
+  default_language: string;
+  default_condition: string;
+  cardmarket_app_token_set: boolean;
+  cardmarket_app_token_masked: string;
+  cardmarket_app_secret_set: boolean;
+  cardmarket_app_secret_masked: string;
+  cardmarket_access_token_set: boolean;
+  cardmarket_access_token_masked: string;
+  cardmarket_access_secret_set: boolean;
+  cardmarket_access_secret_masked: string;
+  gemini_api_key_set: boolean;
+  gemini_api_key_masked: string;
+  gemini_model: string;
+  gemini_daily_limit: number;
+};
+
+export type AppSettingsUpdate = Partial<{
   placeholder_images_enabled: boolean;
   cards_per_page: number;
   default_sort: string;
@@ -170,7 +196,7 @@ export type AppSettings = {
   gemini_api_key: string;
   gemini_model: string;
   gemini_daily_limit: number;
-};
+}>;
 
 export const collectionApi = {
   list: () => api.get<Collection[]>("/collections"),
@@ -196,7 +222,7 @@ export const collectionApi = {
 
 export const settingsApi = {
   get: () => api.get<AppSettings>("/settings"),
-  update: (data: Partial<AppSettings>) => api.put<AppSettings>("/settings", data),
+  update: (data: AppSettingsUpdate) => api.put<AppSettings>("/settings", data),
   changePassword: (current_password: string, new_password: string) =>
     api.post("/settings/change-password", { current_password, new_password }),
 };
