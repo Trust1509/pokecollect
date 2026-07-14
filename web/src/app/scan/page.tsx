@@ -223,6 +223,9 @@ export default function ScanPage() {
         cropUrl: null,
         imPokedex: setPokedexRep,
       }));
+      if (res.data.limit_erreicht) {
+        toast(t.scan_limit_fallback, { icon: "⚠️" });
+      }
       if (!list.length) {
         toast.error(t.scan_no_results);
         return;

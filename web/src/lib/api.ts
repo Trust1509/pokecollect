@@ -245,6 +245,8 @@ export type ScanResponse = {
   engine: string;
   mode: ScanMode;
   candidates: ScanCandidate[];
+  limit_erreicht?: boolean;  // Gemini-Tageslimit griff → Server fiel auf OCR zurück
+  hinweis?: string | null;
 };
 
 export type ScanStatus = { gemini: boolean; ocr: boolean; active: string };

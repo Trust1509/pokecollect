@@ -85,7 +85,7 @@ export default function CatalogPage() {
             <div>
               <h1 className="text-xl font-bold text-white">{t.catalog_title}</h1>
               <p className="text-gray-400 text-sm">
-                {t.catalog_subtitle}{meta ? ` · ${meta.total.toLocaleString("de")} ${t.catalog_cards}` : ""}
+                {t.catalog_subtitle}{meta ? ` · ${meta.total.toLocaleString(t.date_locale)} ${t.catalog_cards}` : ""}
               </p>
             </div>
             <Link href="/collections" className="text-gray-500 hover:text-white text-sm">{t.collection_back}</Link>

@@ -2,16 +2,18 @@
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { useI18n } from "@/lib/i18n";
 
 type HistoryEntry = { erfasst_am: string; wert_eur: string | null };
 
 type Props = { history: HistoryEntry[] };
 
 export default function PriceChart({ history }: Props) {
-  if (!history.length) return <p className="text-gray-500 text-sm">Keine Preishistorie vorhanden.</p>;
+  const { t } = useI18n();
+  if (!history.length) return <p className="text-gray-500 text-sm">{t.price_history_empty}</p>;
 
   const data = history.map((h) => ({
-    date: new Date(h.erfasst_am).toLocaleDateString("de-AT"),
+    date: new Date(h.erfasst_am).toLocaleDateString(t.date_locale),
     wert: h.wert_eur ? parseFloat(h.wert_eur) : null,
   }));
 
