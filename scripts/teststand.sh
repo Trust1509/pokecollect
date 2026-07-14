@@ -5,6 +5,7 @@ set -eu
 export MSYS_NO_PATHCONV=1
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if command -v cygpath >/dev/null 2>&1; then ROOT="$(cygpath -w "$ROOT")"; fi
 COMPOSE="docker compose -p pokecollect-test -f $ROOT/docker-compose.test.yml"
 API="http://localhost:3020"
 
