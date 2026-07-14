@@ -1,4 +1,5 @@
 "use client";
+import { useId } from "react";
 import { PokemonSet } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import RaritySelect from "@/components/RaritySelect";
@@ -22,10 +23,12 @@ export function TextField({ label, value, onChange, type = "text", dense }: {
   type?: "text" | "number";
   dense?: boolean;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className={labelCls(dense)}>{label}</label>
+      <label htmlFor={id} className={labelCls(dense)}>{label}</label>
       <input
+        id={id}
         type={type}
         value={String(value ?? "")}
         onChange={(e) => onChange(type === "number" ? Number(e.target.value) || null : e.target.value)}
@@ -44,6 +47,7 @@ export function SelectField({ fieldKey, label, value, onChange, options, languag
   language?: string | null;
   dense?: boolean;
 }) {
+  const id = useId();
   // Seltenheit bekommt den Symbol-Picker statt eines nackten Selects
   if (fieldKey === "seltenheit") {
     return (
@@ -58,8 +62,9 @@ export function SelectField({ fieldKey, label, value, onChange, options, languag
   }
   return (
     <div>
-      <label className={labelCls(dense)}>{label}</label>
+      <label htmlFor={id} className={labelCls(dense)}>{label}</label>
       <select
+        id={id}
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value || null)}
         className={inputCls(dense)}
@@ -77,10 +82,12 @@ export function TextareaField({ label, value, onChange, dense }: {
   onChange: (v: string) => void;
   dense?: boolean;
 }) {
+  const id = useId();
   return (
     <div className="col-span-2">
-      <label className={labelCls(dense)}>{label}</label>
+      <label htmlFor={id} className={labelCls(dense)}>{label}</label>
       <textarea
+        id={id}
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
         rows={3}
@@ -98,13 +105,15 @@ export function PokedexNrField({ value, onChange, nameLoading, dense }: {
   dense?: boolean;
 }) {
   const { t } = useI18n();
+  const id = useId();
   return (
     <div>
-      <label className={labelCls(dense)}>
+      <label htmlFor={id} className={labelCls(dense)}>
         {t.form_pokedex_nr}
         {nameLoading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
       </label>
       <input
+        id={id}
         type="number"
         value={String(value ?? "")}
         onChange={(e) => onChange(Number(e.target.value) || null)}
@@ -124,10 +133,12 @@ export function CardNrField({ value, onChange, validate, selectedSet, error, den
   dense?: boolean;
 }) {
   const { t } = useI18n();
+  const id = useId();
   return (
     <div>
-      <label className={labelCls(dense)}>{t.form_card_nr}</label>
+      <label htmlFor={id} className={labelCls(dense)}>{t.form_card_nr}</label>
       <input
+        id={id}
         type="text"
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}

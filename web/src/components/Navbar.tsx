@@ -22,7 +22,7 @@ export default function Navbar() {
       </div>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        <button
+        <button type="button"
           onClick={() => setLang(lang === "DE" ? "EN" : "DE")}
           className="text-gray-400 hover:text-white text-xs border border-gray-700 rounded px-2 py-1"
           title={lang === "DE" ? "Switch to English" : "Zu Deutsch wechseln"}

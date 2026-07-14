@@ -86,8 +86,9 @@ function NewCardForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="text-gray-400 text-xs block mb-1">{t.form_card_name} *</label>
+          <label htmlFor="kartenname" className="text-gray-400 text-xs block mb-1">{t.form_card_name} *</label>
           <input
+            id="kartenname"
             type="text"
             value={String(form.kartenname ?? "")}
             onChange={(e) => set("kartenname", e.target.value)}
@@ -156,7 +157,7 @@ function NewCardForm() {
       </div>
 
       <div className="flex gap-3 mt-6">
-        <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+        <button type="button" onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
           {t.form_save}
         </button>
         <Link href="/" className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">

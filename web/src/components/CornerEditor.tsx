@@ -236,9 +236,8 @@ export default function CornerEditor({
               />
             </svg>
             {quad.map(([x, y], i) => (
-              <button
+              <button type="button"
                 key={i}
-                type="button"
                 onPointerDown={(e) => startHandle(e, i)}
                 className={`absolute w-7 h-7 rounded-full border-2 text-[10px] font-bold flex items-center justify-center touch-none ${
                   active === i ? "bg-pokemon-blue text-white border-white" : "bg-pokemon-yellow/90 text-black border-black"
@@ -276,33 +275,33 @@ export default function CornerEditor({
 
         {/* Zoom + Ausrichtung */}
         <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap text-sm">
-          <button onClick={() => vpCenterZoom(0.8)} disabled={zoom <= 1}
+          <button type="button" onClick={() => vpCenterZoom(0.8)} disabled={zoom <= 1}
             className="w-9 h-9 rounded bg-gray-700 text-white hover:bg-gray-600 disabled:opacity-40">−</button>
           <span className="text-gray-300 text-xs w-11 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => vpCenterZoom(1.25)} disabled={zoom >= 8}
+          <button type="button" onClick={() => vpCenterZoom(1.25)} disabled={zoom >= 8}
             className="w-9 h-9 rounded bg-gray-700 text-white hover:bg-gray-600 disabled:opacity-40">+</button>
           <span className="w-2" />
-          <button onClick={doRotate} title={t.scan_corners_rotate}
+          <button type="button" onClick={doRotate} title={t.scan_corners_rotate}
             className="px-2 h-9 rounded bg-gray-700 text-white text-xs hover:bg-gray-600">⟳ 90°</button>
-          <button onClick={doFlipH} title={t.scan_corners_fliph}
+          <button type="button" onClick={doFlipH} title={t.scan_corners_fliph}
             className={`w-9 h-9 rounded text-white ${flipH ? "bg-pokemon-blue" : "bg-gray-700 hover:bg-gray-600"}`}>⇋</button>
-          <button onClick={doFlipV} title={t.scan_corners_flipv}
+          <button type="button" onClick={doFlipV} title={t.scan_corners_flipv}
             className={`w-9 h-9 rounded text-white ${flipV ? "bg-pokemon-blue" : "bg-gray-700 hover:bg-gray-600"}`}>⇅</button>
-          <button onClick={centerView} disabled={zoom === 1 && pan.x >= 0}
+          <button type="button" onClick={centerView} disabled={zoom === 1 && pan.x >= 0}
             className="px-2 h-9 rounded bg-gray-700 text-white text-xs hover:bg-gray-600 disabled:opacity-40">
             {t.scan_corners_reset_view}
           </button>
         </div>
 
         <div className="flex gap-2 justify-end mt-3 flex-wrap">
-          <button onClick={() => { setQuad(initialQuad); resetOrient(); centerView(); }}
+          <button type="button" onClick={() => { setQuad(initialQuad); resetOrient(); centerView(); }}
             className="text-gray-400 hover:text-white text-sm px-3 py-1.5">
             {t.scan_corners_reset}
           </button>
-          <button onClick={onCancel} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded hover:bg-gray-600">
+          <button type="button" onClick={onCancel} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded hover:bg-gray-600">
             {t.scan_corners_cancel}
           </button>
-          <button onClick={() => onApply(quad, { flipH, flipV, rotate })}
+          <button type="button" onClick={() => onApply(quad, { flipH, flipV, rotate })}
             className="bg-green-600 text-white text-sm px-4 py-1.5 rounded hover:bg-green-700">
             {t.scan_corners_apply}
           </button>

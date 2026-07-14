@@ -74,7 +74,7 @@ export default function SortableCardGrid({ cards, apiBase, onReorder, onRemove }
                 <span className="text-xs text-white truncate">{name}</span>
                 <RarityBadge rarity={card.seltenheit} language={card.sprache} size="sm" />
               </div>
-              <button
+              <button type="button"
                 onClick={() => onRemove(card.id)}
                 title={t.collection_remove}
                 className="absolute top-1 right-1 bg-black/60 text-red-300 hover:text-red-100 rounded-full w-5 h-5 flex items-center justify-center text-xs"

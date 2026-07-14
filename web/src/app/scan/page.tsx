@@ -430,7 +430,7 @@ export default function ScanPage() {
                 ["multi", t.scan_mode_multi, t.scan_mode_multi_desc],
                 ["binder", t.scan_mode_binder, t.scan_mode_binder_desc],
               ] as const).map(([m, label, desc]) => (
-                <button
+                <button type="button"
                   key={m}
                   onClick={() => setMode(m)}
                   className={`rounded-lg border p-3 text-left transition ${
@@ -519,11 +519,11 @@ export default function ScanPage() {
                 </div>
                 <p className="text-center text-gray-500 text-xs">{t.scan_camera_hint}</p>
                 <div className="flex gap-2 justify-center items-center flex-wrap">
-                  <button onClick={() => void handleCapture()} disabled={busy}
+                  <button type="button" onClick={() => void handleCapture()} disabled={busy}
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50">
                     {busy ? t.scan_analyzing : t.scan_capture}
                   </button>
-                  <button onClick={stopCamera} className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">
+                  <button type="button" onClick={stopCamera} className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">
                     {t.scan_stop_camera}
                   </button>
                   <label className="flex items-center gap-1 text-xs text-gray-300 ml-2">
@@ -536,12 +536,12 @@ export default function ScanPage() {
               <div className="space-y-3 text-center">
                 <input ref={fileInputRef} type="file" accept="image/*" capture="environment"
                   onChange={handleFile} className="hidden" />
-                <button onClick={() => fileInputRef.current?.click()} disabled={busy || engineActive === "none"}
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy || engineActive === "none"}
                   className="bg-pokemon-blue text-white px-5 py-3 rounded-lg hover:bg-blue-500 disabled:opacity-50 w-full sm:w-auto">
                   {busy ? t.scan_analyzing : t.scan_take_photo}
                 </button>
                 <div>
-                  <button onClick={startCamera} disabled={engineActive === "none"}
+                  <button type="button" onClick={startCamera} disabled={engineActive === "none"}
                     className="text-pokemon-blue hover:underline text-sm disabled:opacity-50">
                     {t.scan_start_camera}
                   </button>
@@ -557,7 +557,7 @@ export default function ScanPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-white font-medium">{t.scan_results_title(candidates.length)}</h2>
-            <button onClick={reset} className="text-gray-500 hover:text-white text-sm">{t.scan_back}</button>
+            <button type="button" onClick={reset} className="text-gray-500 hover:text-white text-sm">{t.scan_back}</button>
           </div>
 
           {candidates.map((c, idx) => {
@@ -615,8 +615,7 @@ export default function ScanPage() {
                       </label>
                     )}
                     {sourceUrl && (
-                      <button
-                        type="button"
+                      <button type="button"
                         onClick={() => setEditorIdx(idx)}
                         className="mt-1 w-full text-[10px] text-pokemon-blue hover:underline"
                       >
@@ -706,7 +705,7 @@ export default function ScanPage() {
 
           <div className="fixed bottom-0 inset-x-0 bg-pokemon-dark/95 border-t border-gray-800 p-3">
             <div className="max-w-3xl mx-auto flex gap-3">
-              <button onClick={handleSave} disabled={busy || !candidates.some((c) => c.include)}
+              <button type="button" onClick={handleSave} disabled={busy || !candidates.some((c) => c.include)}
                 className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded hover:bg-green-700 disabled:opacity-50">
                 {busy ? t.scan_saving : t.scan_save_all}
               </button>
@@ -729,7 +728,7 @@ export default function ScanPage() {
           <div className="text-4xl">✅</div>
           <p className="text-white text-lg">{t.scan_saved(savedCount)}</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={reset} className="bg-pokemon-blue text-white px-4 py-2 rounded hover:bg-blue-500">
+            <button type="button" onClick={reset} className="bg-pokemon-blue text-white px-4 py-2 rounded hover:bg-blue-500">
               {t.scan_scan_again}
             </button>
             <Link href="/" className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600">

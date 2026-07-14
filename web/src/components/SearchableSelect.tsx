@@ -58,8 +58,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
 
   return (
     <div ref={wrapRef} className={`relative ${className ?? ""}`}>
-      <button
-        type="button"
+      <button type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2 bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-left"
       >

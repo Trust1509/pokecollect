@@ -59,7 +59,7 @@ export default function AllOwnedPage() {
         {/* Mobile: Anzahl + Lupe + Wert */}
         <div className="sm:hidden flex items-center justify-between gap-2 bg-pokemon-card rounded-lg px-3 py-2 mb-3 text-sm">
           <span className="font-semibold text-white">{t.home_cards_count(data?.total ?? 0)}</span>
-          <button onClick={() => setFiltersOpen((o) => !o)} className="text-gray-300 hover:text-white p-1" title={t.filter_title}>
+          <button type="button" onClick={() => setFiltersOpen((o) => !o)} className="text-gray-300 hover:text-white p-1" title={t.filter_title}>
             <Search size={18} />
           </button>
           {value && <span className="font-semibold text-yellow-400">{formatEur(value)}</span>}
@@ -77,7 +77,7 @@ export default function AllOwnedPage() {
               <div className="text-2xl font-bold text-yellow-400">{formatEur(value)}</div>
             </div>
           )}
-          <button
+          <button type="button"
             onClick={() => setFiltersOpen((o) => !o)}
             className="self-start flex items-center gap-2 bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200 hover:text-white"
           >
@@ -96,9 +96,9 @@ export default function AllOwnedPage() {
 
         {data && data.pages > 1 && (
           <div className="flex justify-end gap-2 text-sm items-center mt-3">
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">‹</button>
+            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">‹</button>
             <span className="text-gray-400">{page} / {data.pages}</span>
-            <button disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">›</button>
+            <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">›</button>
           </div>
         )}
       </div>

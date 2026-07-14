@@ -128,8 +128,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
             className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-gray-400 text-sm cursor-not-allowed"
           />
           {value && (
-            <button
-              type="button"
+            <button type="button"
               onClick={clear}
               className="text-gray-500 hover:text-red-400 px-2 text-sm"
               title="Set-Auswahl löschen"
@@ -178,16 +177,14 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <button type="button"
               onClick={handleAddSet}
               disabled={!newCode || !newName}
               className="bg-blue-700 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 disabled:opacity-40"
             >
               {t.form_set_add}
             </button>
-            <button
-              type="button"
+            <button type="button"
               onClick={() => setShowNew(false)}
               className="text-gray-400 text-xs px-3 py-1.5 rounded hover:text-white"
             >

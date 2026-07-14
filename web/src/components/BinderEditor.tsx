@@ -88,7 +88,7 @@ export default function BinderEditor({
     <div>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <p className="text-gray-400 text-sm">{t.binder_editor_hint}</p>
-        <button
+        <button type="button"
           onClick={handleAddPage}
           className="text-sm bg-pokemon-accent text-white rounded px-3 py-1.5 hover:bg-blue-700"
         >
@@ -110,7 +110,7 @@ export default function BinderEditor({
                 dragPage === p ? "border-pokemon-yellow" : "border-gray-700"
               }`}
             >
-              <button
+              <button type="button"
                 onClick={() => handleDeletePage(p)}
                 title={t.collection_remove}
                 className="absolute -top-2 -right-2 z-10 bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition hover:bg-red-600"

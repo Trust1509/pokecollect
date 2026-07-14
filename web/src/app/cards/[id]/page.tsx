@@ -76,10 +76,10 @@ function PokedexReplaceModal({
           </div>
         </div>
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm">
+          <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 text-sm">
             {t.form_cancel}
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 bg-pokemon-pokedex text-white rounded hover:opacity-80 text-sm font-medium">
+          <button type="button" onClick={onConfirm} className="px-4 py-2 bg-pokemon-pokedex text-white rounded hover:opacity-80 text-sm font-medium">
             {t.pokedex_replace_confirm}
           </button>
         </div>
@@ -384,8 +384,9 @@ export default function CardDetailPage() {
     if (type === "boolean") {
       return (
         <div key={key}>
-          <label className="text-gray-500 text-xs block">{label}</label>
+          <label htmlFor={`field_${key}`} className="text-gray-500 text-xs block">{label}</label>
           <input
+            id={`field_${key}`}
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
@@ -420,7 +421,7 @@ export default function CardDetailPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-4">
-        <button onClick={handleBack} className="text-gray-500 hover:text-white text-sm">{t.detail_back_generic}</button>
+        <button type="button" onClick={handleBack} className="text-gray-500 hover:text-white text-sm">{t.detail_back_generic}</button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -453,13 +454,13 @@ export default function CardDetailPage() {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageUpload} />
           <div className="mt-2 grid grid-cols-2 gap-1">
-            <button
+            <button type="button"
               onClick={() => cameraRef.current?.click()}
               className="text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
             >
               {t.detail_take_photo}
             </button>
-            <button
+            <button type="button"
               onClick={() => fileRef.current?.click()}
               className="text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
             >
@@ -467,7 +468,7 @@ export default function CardDetailPage() {
             </button>
           </div>
           {card.bild_karte_pfad && (
-            <button
+            <button type="button"
               onClick={() => void handleEditExisting()}
               className="w-full mt-1 text-sm bg-gray-800 text-pokemon-blue hover:text-white rounded px-3 py-1.5"
             >
@@ -475,7 +476,7 @@ export default function CardDetailPage() {
             </button>
           )}
           {!card.bild_karte_pfad && (
-            <button
+            <button type="button"
               onClick={() => { setShowUrlInput((v) => !v); setUrlInput(card.bild_pokedex_url ?? ""); }}
               className="w-full mt-1 text-sm bg-gray-800 text-gray-300 hover:text-white rounded px-3 py-1.5"
             >
@@ -492,11 +493,11 @@ export default function CardDetailPage() {
                 className="flex-1 min-w-0 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white text-xs"
                 onKeyDown={(e) => e.key === "Enter" && handleSaveUrl()}
               />
-              <button onClick={handleSaveUrl} className="text-xs bg-green-700 text-white rounded px-2 py-1 hover:bg-green-600">OK</button>
+              <button type="button" onClick={handleSaveUrl} className="text-xs bg-green-700 text-white rounded px-2 py-1 hover:bg-green-600">OK</button>
             </div>
           )}
           {(card.bild_karte_pfad || card.bild_pokedex_url) && (
-            <button
+            <button type="button"
               onClick={card.bild_karte_pfad ? handleDeleteImage : handleClearPokedexUrl}
               className="w-full mt-1 text-sm bg-red-950 text-red-400 hover:text-red-200 rounded px-3 py-1.5"
             >
@@ -517,14 +518,14 @@ export default function CardDetailPage() {
             <div className="flex gap-2">
               {editing ? (
                 <>
-                  <button onClick={handleSave} className="bg-green-600 text-white text-sm px-3 py-1.5 rounded hover:bg-green-700">{t.form_save}</button>
-                  <button onClick={() => { setEditing(false); setForm(card); setCardNrError(null); }} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded">{t.form_cancel}</button>
+                  <button type="button" onClick={handleSave} className="bg-green-600 text-white text-sm px-3 py-1.5 rounded hover:bg-green-700">{t.form_save}</button>
+                  <button type="button" onClick={() => { setEditing(false); setForm(card); setCardNrError(null); }} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded">{t.form_cancel}</button>
                 </>
               ) : (
-                <button onClick={() => setEditing(true)} className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">{t.detail_edit}</button>
+                <button type="button" onClick={() => setEditing(true)} className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">{t.detail_edit}</button>
               )}
               {card.besessen && (
-                <button onClick={handleDelete} className="bg-red-900 text-red-300 text-sm px-3 py-1.5 rounded hover:bg-red-800">{t.detail_delete}</button>
+                <button type="button" onClick={handleDelete} className="bg-red-900 text-red-300 text-sm px-3 py-1.5 rounded hover:bg-red-800">{t.detail_delete}</button>
               )}
             </div>
           </div>
@@ -630,7 +631,7 @@ export default function CardDetailPage() {
           <div className="bg-pokemon-card rounded-lg p-4">
             <h2 className="text-gray-300 font-medium mb-1">{t.detail_pokedex_flag}</h2>
             <p className="text-gray-500 text-xs mb-3">{t.detail_pokedex_flag_hint}</p>
-            <button
+            <button type="button"
               onClick={togglePokedex}
               className={`text-sm px-3 py-1.5 rounded ${
                 card.im_pokedex
@@ -647,7 +648,7 @@ export default function CardDetailPage() {
         <div className="bg-pokemon-card rounded-lg p-4">
           <h2 className="text-gray-300 font-medium mb-3">{t.detail_wishlist}</h2>
           <div className="flex items-center gap-3 flex-wrap">
-            <button
+            <button type="button"
               onClick={toggleWishlist}
               className={`text-sm px-3 py-1.5 rounded ${
                 card.wunschliste
@@ -682,7 +683,7 @@ export default function CardDetailPage() {
                       {card.prioritaet === "Chase" ? `🔥 ${card.prioritaet}` : card.prioritaet}
                     </span>
                   </span>
-                  <button
+                  <button type="button"
                     onClick={() => setEditingPriority(true)}
                     className="text-xs text-gray-500 hover:text-white underline"
                   >
@@ -704,7 +705,7 @@ export default function CardDetailPage() {
               {cardCollections.map((c) => (
                 <span key={c.id} className="inline-flex items-center gap-1 bg-gray-800 rounded-full px-3 py-1 text-sm text-white">
                   <Link href={`/collections/${c.id}`} className="hover:text-pokemon-yellow">{c.name}</Link>
-                  <button
+                  <button type="button"
                     onClick={() => handleRemoveFromCollection(c.id)}
                     className="text-gray-500 hover:text-red-400 ml-1"
                     title={t.collection_remove}

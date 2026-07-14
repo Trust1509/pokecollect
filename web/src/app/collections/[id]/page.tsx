@@ -213,7 +213,7 @@ export default function CollectionDetailPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <ViewToggle value={view} onChange={setView} />
-          <button
+          <button type="button"
             onClick={() => setShowAssign((v) => !v)}
             className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700"
           >
@@ -249,7 +249,7 @@ export default function CollectionDetailPage() {
                 const { src, isPlaceholder } = cardImageSrc(c, API_BASE);
                 const name = lang === "EN" && c.englischer_name ? c.englischer_name : c.kartenname;
                 return (
-                  <button
+                  <button type="button"
                     key={c.id}
                     onClick={() => handleAdd(c.id)}
                     draggable
@@ -285,7 +285,7 @@ export default function CollectionDetailPage() {
       ) : view === "binder" ? (
         <div>
           <div className="flex justify-end mb-2">
-            <button
+            <button type="button"
               onClick={() => setEditingPages((v) => !v)}
               className={`text-sm rounded px-3 py-1.5 ${
                 editingPages ? "bg-green-600 text-white hover:bg-green-700" : "bg-pokemon-card text-gray-300 hover:text-white"

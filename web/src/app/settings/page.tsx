@@ -11,8 +11,7 @@ const TOGGLE_BASE = "relative inline-flex h-6 w-11 items-center rounded-full tra
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button
-      type="button"
+    <button type="button"
       onClick={() => onChange(!checked)}
       className={`${TOGGLE_BASE} ${checked ? "bg-blue-600" : "bg-gray-600"}`}
     >
@@ -22,10 +21,13 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  // Label umschließt das Feld → implizite Label-Input-Verknüpfung (A11y, #15)
   return (
     <div>
-      <label className={LABEL}>{label}</label>
-      {children}
+      <label className="block">
+        <span className={LABEL}>{label}</span>
+        {children}
+      </label>
       {hint && <p className="text-gray-600 text-xs mt-1">{hint}</p>}
     </div>
   );
@@ -117,7 +119,7 @@ export default function SettingsPage() {
           </select>
         </Field>
         <div className="pt-1">
-          <button onClick={() => save({ cards_per_page: s.cards_per_page, default_sort: s.default_sort })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+          <button type="button" onClick={() => save({ cards_per_page: s.cards_per_page, default_sort: s.default_sort })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             Speichern
           </button>
         </div>
@@ -141,7 +143,7 @@ export default function SettingsPage() {
           </select>
         </Field>
         <div className="pt-1">
-          <button onClick={() => save({ price_update_hour: s.price_update_hour, price_source: s.price_source })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+          <button type="button" onClick={() => save({ price_update_hour: s.price_update_hour, price_source: s.price_source })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             Speichern
           </button>
         </div>
@@ -166,7 +168,7 @@ export default function SettingsPage() {
           </select>
         </Field>
         <div className="pt-1">
-          <button onClick={() => save({ default_language: s.default_language, default_condition: s.default_condition })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+          <button type="button" onClick={() => save({ default_language: s.default_language, default_condition: s.default_condition })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             Speichern
           </button>
         </div>
@@ -195,7 +197,7 @@ export default function SettingsPage() {
           </Field>
         </div>
         <div className="pt-1">
-          <button
+          <button type="button"
             onClick={() => save({
               cardmarket_app_token: s.cardmarket_app_token,
               cardmarket_app_secret: s.cardmarket_app_secret,
@@ -228,7 +230,7 @@ export default function SettingsPage() {
           <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
         </Field>
         <div className="pt-1">
-          <button
+          <button type="button"
             onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model, gemini_daily_limit: s.gemini_daily_limit })}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
@@ -277,7 +279,7 @@ export default function SettingsPage() {
           Priorität: Eigenes Foto → Manuelle URL → TCGdex → Pokédex-Artwork.
         </p>
         <div className="flex gap-3 pt-1 flex-wrap">
-          <button
+          <button type="button"
             onClick={async () => {
               try { await cardApi.backfillImages(false); toast.success("Backfill gestartet — läuft im Hintergrund"); }
               catch { toast.error("Fehler beim Starten"); }
@@ -286,7 +288,7 @@ export default function SettingsPage() {
           >
             Fehlende Bilder abrufen
           </button>
-          <button
+          <button type="button"
             onClick={async () => {
               if (!confirm("Alle vorhandenen Kartenbild-URLs neu von TCGdex abrufen?")) return;
               try { await cardApi.backfillImages(true); toast.success("Vollständiger Backfill gestartet"); }
@@ -312,7 +314,7 @@ export default function SettingsPage() {
           <input type="password" value={pw.confirm} onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))} className={INPUT} autoComplete="new-password" />
         </Field>
         <div className="pt-1">
-          <button onClick={handlePasswordChange} disabled={pwSaving || !pw.current || !pw.next} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
+          <button type="button" onClick={handlePasswordChange} disabled={pwSaving || !pw.current || !pw.next} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             Passwort ändern
           </button>
         </div>

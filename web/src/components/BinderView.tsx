@@ -318,12 +318,12 @@ export default function BinderView({
             />
           </label>
           {editable && onAddPage && (
-            <button onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
+            <button type="button" onClick={handleAddPage} className="text-xs bg-pokemon-card text-gray-300 hover:text-white rounded px-2 py-1">
               {t.binder_add_page}
             </button>
           )}
           {editable && onDeleteLastPage && totalPages > 1 && (
-            <button onClick={handleDeleteLastPage} className="text-xs bg-red-950/60 text-red-300 hover:text-red-100 rounded px-2 py-1">
+            <button type="button" onClick={handleDeleteLastPage} className="text-xs bg-red-950/60 text-red-300 hover:text-red-100 rounded px-2 py-1">
               {t.binder_delete_last_page}
             </button>
           )}
@@ -332,7 +332,7 @@ export default function BinderView({
 
       {/* Navigation (mit ⚙ direkt daneben) */}
       <div className="flex items-center gap-3 mt-4 text-sm">
-        <button
+        <button type="button"
           disabled={leftVisible <= 0}
           onClick={goPrev}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
@@ -340,14 +340,14 @@ export default function BinderView({
           ‹
         </button>
         <span className="text-gray-400">{pageLabel}</span>
-        <button
+        <button type="button"
           disabled={rightVisible >= totalPages - 1}
           onClick={goNext}
           className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40 hover:bg-gray-700"
         >
           ›
         </button>
-        <button
+        <button type="button"
           onClick={() => setShowOpts((o) => !o)}
           title={t.binder_display_options}
           className={`px-3 py-1.5 rounded ${showOpts ? "bg-pokemon-accent text-white" : "bg-pokemon-card text-gray-300 hover:text-white"}`}

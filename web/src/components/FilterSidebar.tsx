@@ -73,7 +73,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
     <aside className="w-full text-sm">
       {/* Toggle nur im ungesteuerten Modus (sonst übernimmt die Seite die Lupe) */}
       {!controlled && (
-        <button
+        <button type="button"
           onClick={() => setOpen(!actualOpen)}
           className="w-full flex items-center justify-between bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200"
         >
@@ -199,7 +199,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
         </select>
       </div>
 
-      <button
+      <button type="button"
         onClick={() => onChange({})}
         className="w-full text-gray-400 hover:text-white text-xs underline"
       >

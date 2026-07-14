@@ -38,7 +38,7 @@ export default function CatalogCardModal({ card, collections, onClose }: Props) 
       <div className="bg-pokemon-card rounded-lg p-4 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-start mb-3">
           <h2 className="text-white font-bold text-lg">{name}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
         </div>
 
         <div className="flex gap-4">
@@ -61,7 +61,7 @@ export default function CatalogCardModal({ card, collections, onClose }: Props) 
         </div>
 
         <div className="mt-4 space-y-2">
-          <button onClick={wish} disabled={busy}
+          <button type="button" onClick={wish} disabled={busy}
             className="w-full bg-pokemon-yellow text-black font-medium rounded px-3 py-2 hover:opacity-90 disabled:opacity-50">
             ★ {t.catalog_add_wishlist}
           </button>
@@ -71,7 +71,7 @@ export default function CatalogCardModal({ card, collections, onClose }: Props) 
               <option value="">{t.catalog_add_collection} …</option>
               {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <button onClick={addColl} disabled={busy || !collId}
+            <button type="button" onClick={addColl} disabled={busy || !collId}
               className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700 disabled:opacity-50">
               {t.collection_add}
             </button>

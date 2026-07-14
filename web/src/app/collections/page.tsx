@@ -80,7 +80,7 @@ export default function CollectionsPage() {
           <h1 className="text-2xl font-bold text-white">{t.collections_title}</h1>
           <p className="text-gray-400 text-sm">{t.collections_subtitle}</p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setShowNew((v) => !v)}
           className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600"
         >
@@ -112,10 +112,10 @@ export default function CollectionsPage() {
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={handleCreate} className="bg-green-600 text-white text-sm px-3 py-1.5 rounded hover:bg-green-700">
+            <button type="button" onClick={handleCreate} className="bg-green-600 text-white text-sm px-3 py-1.5 rounded hover:bg-green-700">
               {t.collections_create}
             </button>
-            <button onClick={() => setShowNew(false)} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded">
+            <button type="button" onClick={() => setShowNew(false)} className="bg-gray-700 text-white text-sm px-3 py-1.5 rounded">
               {t.form_cancel}
             </button>
           </div>
@@ -173,10 +173,10 @@ export default function CollectionsPage() {
                     className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
                   />
                   <div className="flex gap-2">
-                    <button onClick={handleSaveEdit} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700">
+                    <button type="button" onClick={handleSaveEdit} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700">
                       {t.collections_save}
                     </button>
-                    <button onClick={() => setEditId(null)} className="bg-gray-700 text-white text-xs px-3 py-1.5 rounded">
+                    <button type="button" onClick={() => setEditId(null)} className="bg-gray-700 text-white text-xs px-3 py-1.5 rounded">
                       {t.form_cancel}
                     </button>
                   </div>
@@ -194,10 +194,10 @@ export default function CollectionsPage() {
                     <Link href={`/collections/${c.id}`} className="text-pokemon-accent hover:text-blue-400 text-xs">
                       {t.collection_add_existing} →
                     </Link>
-                    <button onClick={() => startEdit(c)} className="text-gray-400 hover:text-white text-xs ml-auto">
+                    <button type="button" onClick={() => startEdit(c)} className="text-gray-400 hover:text-white text-xs ml-auto">
                       {t.collections_rename}
                     </button>
-                    <button onClick={() => handleDelete(c)} className="text-red-400 hover:text-red-300 text-xs">
+                    <button type="button" onClick={() => handleDelete(c)} className="text-red-400 hover:text-red-300 text-xs">
                       {t.collections_delete}
                     </button>
                   </div>

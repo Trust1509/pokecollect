@@ -100,7 +100,7 @@ export default function CatalogPage() {
       </div>
 
       {/* Filterleiste (ein-/ausklappbar wie überall) */}
-      <button
+      <button type="button"
         onClick={() => setFilterOpen((o) => !o)}
         className="w-full md:w-auto flex items-center justify-between gap-3 bg-pokemon-card border border-gray-700 rounded px-3 py-2 text-gray-200 mb-3"
       >
@@ -136,7 +136,7 @@ export default function CatalogPage() {
       </div>
 
       {(q || setCode || illustrator || generation || sort !== "set") && (
-        <button
+        <button type="button"
           onClick={() => { setQ(""); setSetCode(""); setIllustrator(""); setGeneration(""); setSort("set"); }}
           className="text-gray-400 hover:text-white text-xs underline"
         >
@@ -147,10 +147,10 @@ export default function CatalogPage() {
 
       {data && data.pages > 1 && (
         <div className="flex justify-end items-center gap-2 text-sm mb-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
+          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
             className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">‹</button>
           <span className="text-gray-400">{page} / {data.pages}</span>
-          <button disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
+          <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
             className="px-2 py-1 bg-pokemon-card rounded disabled:opacity-40">›</button>
         </div>
       )}
@@ -166,7 +166,7 @@ export default function CatalogPage() {
             const isAdded = added[c.card_id];
             return (
               <div key={c.card_id} className="relative rounded-lg border border-gray-700 overflow-hidden bg-pokemon-card">
-                <button onClick={() => setSelected(c)} className="block w-full text-left" title={name}>
+                <button type="button" onClick={() => setSelected(c)} className="block w-full text-left" title={name}>
                   <div className="aspect-[63/88] relative bg-gray-800">
                     {c.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -187,7 +187,7 @@ export default function CatalogPage() {
                     </div>
                   </div>
                 </button>
-                <button
+                <button type="button"
                   onClick={() => addWishlist(c)}
                   title={t.catalog_add_wishlist}
                   className={`absolute top-1 right-1 rounded-full p-1.5 ${isAdded ? "bg-pokemon-yellow text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
@@ -202,10 +202,10 @@ export default function CatalogPage() {
 
       {data && data.pages > 1 && (
         <div className="flex justify-center items-center gap-2 text-sm mt-4 pb-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
+          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
             className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40">‹</button>
           <span className="text-gray-400">{page} / {data.pages}</span>
-          <button disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
+          <button type="button" disabled={page >= data.pages} onClick={() => setPage((p) => p + 1)}
             className="px-3 py-1.5 bg-pokemon-card rounded disabled:opacity-40">›</button>
         </div>
       )}

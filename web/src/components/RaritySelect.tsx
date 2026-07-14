@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { RARITY_MAP } from "@/components/RarityBadge";
 
 function PromoSymbol({ size = 28 }: { size?: number }) {
@@ -28,6 +28,7 @@ type Props = {
 };
 
 export default function RaritySelect({ value, onChange, options, language, label }: Props) {
+  const id = useId();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const isEastern = language ? EASTERN.has(language) : false;
@@ -55,10 +56,11 @@ export default function RaritySelect({ value, onChange, options, language, label
 
   return (
     <div ref={wrapRef} className="relative">
-      {label && <label className="text-gray-400 text-xs block mb-1">{label}</label>}
+      {label && <label htmlFor={id} className="text-gray-400 text-xs block mb-1">{label}</label>}
 
       {/* Trigger */}
       <button
+        id={id}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-left text-sm flex items-center gap-2 hover:border-gray-500"
