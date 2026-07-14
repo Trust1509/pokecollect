@@ -89,7 +89,7 @@ export default function StatsPage() {
             <div key={c.id} className="flex justify-between items-center py-1 border-b border-gray-800">
               <Link href={`/cards/${c.id}`} className="text-white hover:text-yellow-400">{c.kartenname}</Link>
               <span className="text-gray-500 text-xs">
-                {new Date(c.hinzugefuegt_am).toLocaleDateString("de-AT")}
+                {new Date(c.hinzugefuegt_am).toLocaleDateString(t.date_locale)}
               </span>
             </div>
           ))}

@@ -128,7 +128,7 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
                     {card.im_pokedex && (
                       <span
                         className="w-2.5 h-2.5 rounded-full bg-pokemon-pokedex shrink-0"
-                        title="Im Pokédex"
+                        title={t.detail_pokedex_flag}
                       />
                     )}
                     {card.besessen && (

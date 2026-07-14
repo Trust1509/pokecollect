@@ -616,7 +616,7 @@ export default function CardDetailPage() {
               <div className="text-yellow-400 text-xl font-bold">{formatEur(card.wert_eur)}</div>
               {card.wert_aktualisiert && (
                 <div className="text-gray-500 text-xs mt-0.5">
-                  {t.detail_value_updated}: {new Date(card.wert_aktualisiert).toLocaleDateString("de-AT")}
+                  {t.detail_value_updated}: {new Date(card.wert_aktualisiert).toLocaleDateString(t.date_locale)}
                 </div>
               )}
             </div>

@@ -597,7 +597,7 @@ export default function ScanPage() {
                       const big = c.usePhoto ? (own ?? c.match?.image_url ?? null)
                                              : (c.match?.image_url ?? own ?? null);
                       return big ? (
-                        <a href={big} target="_blank" rel="noreferrer" title="Groß anzeigen">
+                        <a href={big} target="_blank" rel="noreferrer" title={t.scan_view_large}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={big} alt="" className="w-full rounded hover:opacity-90" />
                         </a>

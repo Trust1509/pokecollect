@@ -178,8 +178,8 @@ export default function CatalogPage() {
                   <div className="px-1.5 py-1">
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-white truncate flex-1">{name}</span>
-                      {c.in_pokedex && <span className="w-2 h-2 rounded-full bg-pokemon-pokedex shrink-0" title="Im Pokédex" />}
-                      {c.owned && <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" title="Besessen" />}
+                      {c.in_pokedex && <span className="w-2 h-2 rounded-full bg-pokemon-pokedex shrink-0" title={t.detail_pokedex_flag} />}
+                      {c.owned && <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" title={t.field_owned} />}
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-gray-400">
                       <span className="font-mono">{c.set_code ?? c.set_id}</span>

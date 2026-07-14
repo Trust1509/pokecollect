@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { settingsApi, cardApi, scanApi, AppSettings, ScanUsage } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
+import { useI18n } from "@/lib/i18n";
 
 const SECTION = "bg-pokemon-card rounded-lg p-5 space-y-4";
 const LABEL = "block text-gray-400 text-xs mb-1";
@@ -11,7 +12,8 @@ const TOGGLE_BASE = "relative inline-flex h-6 w-11 items-center rounded-full tra
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button type="button"
+    <button
+      type="button"
       onClick={() => onChange(!checked)}
       className={`${TOGGLE_BASE} ${checked ? "bg-blue-600" : "bg-gray-600"}`}
     >
@@ -43,6 +45,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n();
   const [s, setS] = useState<AppSettings | null>(null);
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
@@ -50,8 +53,9 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<ScanUsage | null>(null);
 
   useEffect(() => {
-    settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error("Einstellungen konnten nicht geladen werden"));
+    settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error(t.settings_load_error));
     scanApi.usage().then((r) => setUsage(r.data)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const save = async (patch: Partial<AppSettings>) => {
@@ -60,9 +64,9 @@ export default function SettingsPage() {
     try {
       const r = await settingsApi.update(patch);
       setS(r.data);
-      toast.success("Gespeichert");
+      toast.success(t.settings_saved);
     } catch {
-      toast.error("Fehler beim Speichern");
+      toast.error(t.form_save_error);
     } finally {
       setSaving(false);
     }
@@ -74,94 +78,94 @@ export default function SettingsPage() {
   };
 
   const handlePasswordChange = async () => {
-    if (pw.next !== pw.confirm) { toast.error("Passwörter stimmen nicht überein"); return; }
-    if (pw.next.length < 8) { toast.error("Neues Passwort muss mind. 8 Zeichen haben"); return; }
+    if (pw.next !== pw.confirm) { toast.error(t.settings_pw_mismatch); return; }
+    if (pw.next.length < 8) { toast.error(t.settings_pw_too_short); return; }
     setPwSaving(true);
     try {
       await settingsApi.changePassword(pw.current, pw.next);
       setPw({ current: "", next: "", confirm: "" });
-      toast.success("Passwort geändert");
+      toast.success(t.settings_pw_changed);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(msg ?? "Fehler beim Ändern");
+      toast.error(msg ?? t.settings_pw_change_error);
     } finally {
       setPwSaving(false);
     }
   };
 
-  if (!s) return <div className="text-gray-500 p-8">Lädt …</div>;
+  if (!s) return <div className="text-gray-500 p-8">{t.detail_loading}</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Einstellungen</h1>
+        <h1 className="text-2xl font-bold text-white">{t.nav_settings}</h1>
         <span className="text-gray-500 text-xs">PokéCollect v{APP_VERSION}</span>
       </div>
 
       {/* Anzeige */}
-      <Section title="🖼️ Anzeige">
-        <Field label="Pokédex-Platzhalterbilder" hint="Zeigt automatisch das offizielle Pokémon-Bild wenn kein eigenes Foto hinterlegt ist.">
+      <Section title={`🖼️ ${t.settings_section_display}`}>
+        <Field label={t.settings_placeholder_images} hint={t.settings_placeholder_images_hint}>
           <div className="flex items-center gap-3 mt-1">
             <Toggle checked={s.placeholder_images_enabled} onChange={(v) => { set("placeholder_images_enabled", v); save({ placeholder_images_enabled: v }); }} />
-            <span className="text-sm text-gray-300">{s.placeholder_images_enabled ? "Aktiviert" : "Deaktiviert"}</span>
+            <span className="text-sm text-gray-300">{s.placeholder_images_enabled ? t.settings_enabled : t.settings_disabled}</span>
           </div>
         </Field>
-        <Field label="Karten pro Seite">
+        <Field label={t.settings_cards_per_page}>
           <select value={s.cards_per_page} onChange={(e) => set("cards_per_page", Number(e.target.value))} className={INPUT} style={{ width: "auto" }}>
             {[24, 48, 96, 200].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </Field>
-        <Field label="Standard-Sortierung">
+        <Field label={t.settings_default_sort}>
           <select value={s.default_sort} onChange={(e) => set("default_sort", e.target.value)} className={INPUT} style={{ width: "auto" }}>
-            <option value="pokedex_nr">Pokédex-Nr.</option>
-            <option value="wert">Wert</option>
-            <option value="hinzugefuegt_am">Hinzugefügt</option>
+            <option value="pokedex_nr">{t.filter_sort_pokedex}</option>
+            <option value="wert">{t.filter_sort_value}</option>
+            <option value="hinzugefuegt_am">{t.filter_sort_added}</option>
           </select>
         </Field>
         <div className="pt-1">
           <button type="button" onClick={() => save({ cards_per_page: s.cards_per_page, default_sort: s.default_sort })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
-            Speichern
+            {t.form_save}
           </button>
         </div>
       </Section>
 
       {/* Preise */}
-      <Section title="💰 Preise">
-        <Field label="Automatische Preisaktualisierung" hint="Aktualisiert täglich die Cardmarket-Preise aller besessenen Karten.">
+      <Section title={`💰 ${t.settings_section_prices}`}>
+        <Field label={t.settings_price_update} hint={t.settings_price_update_hint}>
           <div className="flex items-center gap-3 mt-1">
             <Toggle checked={s.price_update_enabled} onChange={(v) => { set("price_update_enabled", v); save({ price_update_enabled: v }); }} />
-            <span className="text-sm text-gray-300">{s.price_update_enabled ? "Aktiviert" : "Deaktiviert"}</span>
+            <span className="text-sm text-gray-300">{s.price_update_enabled ? t.settings_enabled : t.settings_disabled}</span>
           </div>
         </Field>
-        <Field label="Uhrzeit der Aktualisierung" hint="Stunde (0–23). Änderung wird nach einem API-Neustart aktiv.">
+        <Field label={t.settings_price_update_hour} hint={t.settings_price_update_hour_hint}>
           <input type="number" min={0} max={23} value={s.price_update_hour} onChange={(e) => set("price_update_hour", Number(e.target.value))} className={INPUT} style={{ width: "80px" }} />
         </Field>
-        <Field label="Preisquelle">
+        <Field label={t.settings_price_source}>
           <select value={s.price_source} onChange={(e) => set("price_source", e.target.value)} className={INPUT} style={{ width: "auto" }}>
-            <option value="30d_avg">Cardmarket 30-Tage-Durchschnitt</option>
-            <option value="current">Cardmarket Tagespreis</option>
+            <option value="30d_avg">{t.settings_price_source_avg}</option>
+            <option value="current">{t.settings_price_source_current}</option>
           </select>
         </Field>
         <div className="pt-1">
           <button type="button" onClick={() => save({ price_update_hour: s.price_update_hour, price_source: s.price_source })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
-            Speichern
+            {t.form_save}
           </button>
         </div>
       </Section>
 
       {/* Sammlung */}
-      <Section title="📦 Sammlung">
+      <Section title={`📦 ${t.settings_section_collection}`}>
         {/* Listen entsprechen den Backend-Enums (schemas/card.py) */}
-        <Field label="Standard-Sprache für neue Karten">
+        <Field label={t.settings_default_language}>
           <select value={s.default_language} onChange={(e) => set("default_language", e.target.value)} className={INPUT} style={{ width: "auto" }}>
             {["DE", "EN", "CN", "JP", "FR", "ES", "IT"].map((l) => (
               <option key={l} value={l}>{l}</option>
             ))}
           </select>
         </Field>
-        <Field label="Standard-Zustand für neue Karten">
+        <Field label={t.settings_default_condition}>
           <select value={s.default_condition} onChange={(e) => set("default_condition", e.target.value)} className={INPUT} style={{ width: "auto" }}>
-            <option value="">– keiner –</option>
+            <option value="">{t.settings_none_option}</option>
             {["Mint", "Near Mint", "Excellent", "Good", "Played"].map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -169,14 +173,14 @@ export default function SettingsPage() {
         </Field>
         <div className="pt-1">
           <button type="button" onClick={() => save({ default_language: s.default_language, default_condition: s.default_condition })} disabled={saving} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
-            Speichern
+            {t.form_save}
           </button>
         </div>
       </Section>
 
       {/* API-Keys */}
-      <Section title="🔑 API-Keys">
-        <p className="text-gray-500 text-xs">Keys werden in der Datenbank gespeichert (nicht im Code oder der .env-Datei). Alle Keys sind optional – die App läuft vollständig über die kostenlose TCGdex-API.</p>
+      <Section title={`🔑 ${t.settings_section_api_keys}`}>
+        <p className="text-gray-500 text-xs">{t.settings_api_keys_hint}</p>
         <div className="space-y-3">
           <p className="text-gray-400 text-xs font-medium pt-1">Cardmarket (OAuth 1.0a)</p>
           <Field label="App Token">
@@ -197,7 +201,8 @@ export default function SettingsPage() {
           </Field>
         </div>
         <div className="pt-1">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => save({
               cardmarket_app_token: s.cardmarket_app_token,
               cardmarket_app_secret: s.cardmarket_app_secret,
@@ -208,42 +213,42 @@ export default function SettingsPage() {
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
-            API-Keys speichern
+            {t.settings_save_api_keys}
           </button>
         </div>
       </Section>
 
       {/* Scan / Gemini */}
-      <Section title="📷 Scan (Gemini)">
+      <Section title={`📷 ${t.settings_section_scan}`}>
         <p className="text-gray-400 text-xs">
-          Mit hinterlegtem Gemini-API-Key nutzt der Karten-Scan die starke Gemini-Bilderkennung
-          (ideal für ganze Binderseiten). Ohne Key läuft die lokale OCR. Key:{" "}
+          {t.settings_gemini_hint}{" "}
           <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com/apikey</a>
         </p>
         <Field label="Gemini API Key">
           <input type="password" value={s.gemini_api_key} onChange={(e) => set("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder="AIza…" />
         </Field>
-        <Field label="Gemini Modell" hint="Standard: gemini-2.5-flash">
+        <Field label={t.settings_gemini_model} hint={t.settings_gemini_model_hint}>
           <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
         </Field>
-        <Field label="Tägliches Limit (Anfragen)" hint="Aus deinem Google-AI-Plan. 0 = nicht anzeigen. Wird nur zur Anzeige des Verbrauchs genutzt.">
+        <Field label={t.settings_gemini_daily_limit} hint={t.settings_gemini_daily_limit_hint}>
           <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
         </Field>
         <div className="pt-1">
-          <button type="button"
+          <button
+            type="button"
             onClick={() => save({ gemini_api_key: s.gemini_api_key, gemini_model: s.gemini_model, gemini_daily_limit: s.gemini_daily_limit })}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
-            Scan-Einstellungen speichern
+            {t.settings_save_scan}
           </button>
         </div>
         {usage && (
           <div className="mt-3 border-t border-gray-700 pt-3 text-sm">
-            <p className="text-gray-400 text-xs mb-2">Gemini-Nutzung & Free-Tier ({usage.model})</p>
+            <p className="text-gray-400 text-xs mb-2">{t.settings_gemini_usage(usage.model)}</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-900 rounded p-2">
-                <div className="text-gray-500 text-xs">Heute (Anfragen/Tag)</div>
+                <div className="text-gray-500 text-xs">{t.settings_usage_today}</div>
                 <div className="text-white">{usage.today.requests} / {usage.limits.rpd}</div>
                 <div className="mt-1 h-1.5 bg-gray-700 rounded-full">
                   <div
@@ -252,70 +257,70 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="text-gray-500 text-xs mt-0.5">
-                  {Math.max(0, usage.limits.rpd - usage.today.requests)} Scans übrig heute
+                  {t.settings_usage_scans_left(Math.max(0, usage.limits.rpd - usage.today.requests))}
                 </div>
-                <div className="text-gray-400 text-xs mt-1">{usage.today.tokens.toLocaleString("de")} Tokens heute</div>
+                <div className="text-gray-400 text-xs mt-1">{t.settings_usage_tokens_today(usage.today.tokens.toLocaleString(t.date_locale))}</div>
               </div>
               <div className="bg-gray-900 rounded p-2">
-                <div className="text-gray-500 text-xs">Pro Scan / Limits</div>
-                <div className="text-white">≈ {usage.avg_tokens_per_scan.toLocaleString("de")} Tokens/Scan</div>
-                <div className="text-gray-400 text-xs mt-1">{usage.limits.rpm} Anfragen/Min</div>
-                <div className="text-gray-400 text-xs">{(usage.limits.tpm / 1_000_000).toLocaleString("de")} Mio Tokens/Min</div>
-                <div className="text-gray-500 text-xs mt-1">Gesamt: {usage.total.requests} Scans</div>
+                <div className="text-gray-500 text-xs">{t.settings_usage_per_scan}</div>
+                <div className="text-white">{t.settings_usage_tokens_per_scan(usage.avg_tokens_per_scan.toLocaleString(t.date_locale))}</div>
+                <div className="text-gray-400 text-xs mt-1">{t.settings_usage_rpm(usage.limits.rpm)}</div>
+                <div className="text-gray-400 text-xs">{t.settings_usage_tpm((usage.limits.tpm / 1_000_000).toLocaleString(t.date_locale))}</div>
+                <div className="text-gray-500 text-xs mt-1">{t.settings_usage_total(usage.total.requests)}</div>
               </div>
             </div>
             <p className="text-gray-600 text-xs mt-2">
-              Free-Tier: Limit pro Tag (RPD) wird täglich zurückgesetzt (~09:00 MEZ).
-              „Tägliches Limit" oben überschreibt die RPD-Anzeige.
+              {t.settings_usage_footnote}
             </p>
           </div>
         )}
       </Section>
 
       {/* Bilder */}
-      <Section title="🖼️ Kartenbilder (TCGdex)">
+      <Section title={`🖼️ ${t.settings_section_images}`}>
         <p className="text-gray-400 text-xs">
-          Lädt automatisch das exakte Kartenbild von TCGdex für alle Karten ohne eigenes Foto oder manuelle URL.
-          Priorität: Eigenes Foto → Manuelle URL → TCGdex → Pokédex-Artwork.
+          {t.settings_images_hint}
         </p>
         <div className="flex gap-3 pt-1 flex-wrap">
-          <button type="button"
+          <button
+            type="button"
             onClick={async () => {
-              try { await cardApi.backfillImages(false); toast.success("Backfill gestartet — läuft im Hintergrund"); }
-              catch { toast.error("Fehler beim Starten"); }
+              try { await cardApi.backfillImages(false); toast.success(t.settings_backfill_started); }
+              catch { toast.error(t.settings_backfill_error); }
             }}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600"
           >
-            Fehlende Bilder abrufen
+            {t.settings_backfill_missing}
           </button>
-          <button type="button"
+          <button
+            type="button"
             onClick={async () => {
-              if (!confirm("Alle vorhandenen Kartenbild-URLs neu von TCGdex abrufen?")) return;
-              try { await cardApi.backfillImages(true); toast.success("Vollständiger Backfill gestartet"); }
-              catch { toast.error("Fehler beim Starten"); }
+              if (!confirm(t.settings_backfill_confirm)) return;
+              try { await cardApi.backfillImages(true); toast.success(t.settings_backfill_full_started); }
+              catch { toast.error(t.settings_backfill_error); }
             }}
             className="bg-gray-700 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-600"
           >
-            Alle Bilder neu abrufen
+            {t.settings_backfill_all}
           </button>
         </div>
-        <p className="text-gray-600 text-xs">API-Logs zeigen den Fortschritt: <code>docker logs pokecollect-api-1 -f</code></p>
+        <p className="text-gray-600 text-xs">{t.settings_backfill_logs_hint} <code>docker logs pokecollect-api-1 -f</code></p>
       </Section>
 
       {/* Konto */}
-      <Section title="👤 Konto">
-        <Field label="Aktuelles Passwort">
+      <Section title={`👤 ${t.settings_section_account}`}>
+        <Field label={t.settings_pw_current}>
           <input type="password" value={pw.current} onChange={(e) => setPw((p) => ({ ...p, current: e.target.value }))} className={INPUT} autoComplete="current-password" />
         </Field>
-        <Field label="Neues Passwort" hint="Mindestens 8 Zeichen.">
+        <Field label={t.settings_pw_new} hint={t.settings_pw_new_hint}>
           <input type="password" value={pw.next} onChange={(e) => setPw((p) => ({ ...p, next: e.target.value }))} className={INPUT} autoComplete="new-password" />
         </Field>
-        <Field label="Neues Passwort bestätigen">
+        <Field label={t.settings_pw_confirm}>
           <input type="password" value={pw.confirm} onChange={(e) => setPw((p) => ({ ...p, confirm: e.target.value }))} className={INPUT} autoComplete="new-password" />
         </Field>
         <div className="pt-1">
           <button type="button" onClick={handlePasswordChange} disabled={pwSaving || !pw.current || !pw.next} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
-            Passwort ändern
+            {t.settings_pw_change}
           </button>
         </div>
       </Section>

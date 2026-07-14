@@ -77,7 +77,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
       setNewMax("");
       setShowNew(false);
     } catch {
-      toast.error("Set konnte nicht angelegt werden");
+      toast.error(t.set_create_error);
     }
   };
 
@@ -131,7 +131,7 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
             <button type="button"
               onClick={clear}
               className="text-gray-500 hover:text-red-400 px-2 text-sm"
-              title="Set-Auswahl löschen"
+              title={t.set_clear_title}
             >
               ✕
             </button>
@@ -161,17 +161,17 @@ export default function SetPicker({ value, onChange, sets, onSetAdded }: Props) 
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Set-Name"
+                placeholder={t.form_set_name}
                 className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
               />
             </div>
             <div>
-              <label className="text-gray-500 text-xs block mb-1">Max. Karten-Nr.</label>
+              <label className="text-gray-500 text-xs block mb-1">{t.set_max_nr}</label>
               <input
                 type="number"
                 value={newMax}
                 onChange={(e) => setNewMax(e.target.value)}
-                placeholder="z.B. 91"
+                placeholder={t.set_max_nr_placeholder}
                 className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white text-sm"
               />
             </div>
