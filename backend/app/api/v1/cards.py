@@ -349,26 +349,63 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 # ── Bilder ──────────────────────────────────────────────────────────────────
 
+# Upload-Härtung (Issue #2): nur echte Bildformate, die StaticFiles gefahrlos
+# ausliefern kann — kein .svg/.html im /images-Verzeichnis (aktive Inhalte).
+_ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+_MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB, analog Scan-Endpoint
+
+
+def _validated_suffix(upload: UploadFile) -> str:
+    """
+    Prüft Suffix (Allowlist), Content-Type (image/*) und Größe (12 MB) eines
+    Upload-Bilds. Liefert das normalisierte Suffix oder wirft 400/413.
+    """
+    suffix = Path(upload.filename or "").suffix.lower() or ".jpg"
+    if suffix not in _ALLOWED_IMAGE_SUFFIXES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Dateityp {suffix} nicht erlaubt (nur .jpg, .jpeg, .png, .webp)",
+        )
+    if not (upload.content_type or "").lower().startswith("image/"):
+        raise HTTPException(status_code=400, detail="Content-Type muss image/* sein")
+    upload.file.seek(0, os.SEEK_END)
+    size = upload.file.tell()
+    upload.file.seek(0)
+    if size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Bild zu groß (max. 12 MB)")
+    return suffix
+
+
 def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None) -> None:
     """
     Speichert ein hochgeladenes Bild aufrecht (EXIF-Orientierung angewandt) und
     optional ein Thumbnail. Handy-/Galerie-Uploads tragen oft nur eine
     Orientierungs-Marke statt gedrehter Pixel → sonst läge das Foto quer.
+    Bei Verarbeitungsfehlern wird die bereits geschriebene Rohdatei entfernt.
     """
     suffix = dst.suffix.lower()
     is_jpeg = suffix in (".jpg", ".jpeg")
     with dst.open("wb") as f:
         shutil.copyfileobj(upload.file, f)
-    with Image.open(dst) as img:
-        upright = ImageOps.exif_transpose(img)
-        if is_jpeg and upright.mode not in ("RGB", "L"):
-            upright = upright.convert("RGB")
-        kw = {"quality": 90} if is_jpeg else {}
-        upright.save(dst, **kw)   # aufrecht zurückschreiben (Marke entfernt)
+    try:
+        with Image.open(dst) as img:
+            upright = ImageOps.exif_transpose(img)
+            if is_jpeg and upright.mode not in ("RGB", "L"):
+                upright = upright.convert("RGB")
+            kw = {"quality": 90} if is_jpeg else {}
+            upright.save(dst, **kw)   # aufrecht zurückschreiben (Marke entfernt)
+            if thumb is not None:
+                t = upright.copy()
+                t.thumbnail(THUMB_SIZE)
+                t.save(thumb, **kw)
+    except Exception as exc:
+        # Rohdatei nicht liegen lassen (Issue #2) — sie wäre sonst öffentlich
+        # unter /images erreichbar, obwohl sie kein gültiges Bild ist.
+        dst.unlink(missing_ok=True)
         if thumb is not None:
-            t = upright.copy()
-            t.thumbnail(THUMB_SIZE)
-            t.save(thumb, **kw)
+            thumb.unlink(missing_ok=True)
+        log.warning("Upload-Bild nicht verarbeitbar: %s", exc)
+        raise HTTPException(status_code=400, detail="Bilddatei konnte nicht verarbeitet werden")
 
 
 @router.post("/{card_id}/image", response_model=CardResponse)
@@ -379,10 +416,12 @@ async def upload_image(
     db: Session = Depends(get_db),
 ):
     card = _card_or_404(card_id, db)
+    suffix = _validated_suffix(file)
+    if original is not None and original.filename:
+        osuffix = _validated_suffix(original)
     images_dir = Path(settings.images_dir)
     images_dir.mkdir(parents=True, exist_ok=True)
 
-    suffix = Path(file.filename).suffix.lower() or ".jpg"
     img_path = images_dir / f"card_{card_id}{suffix}"
     thumb_path = images_dir / f"card_{card_id}_thumb{suffix}"
     _save_upright(file, img_path, thumb=thumb_path)
@@ -392,7 +431,6 @@ async def upload_image(
     # Optional: ungeschnittenes Originalfoto aufbewahren → spätere Bearbeitung
     # kann großzügiger neu zuschneiden (statt nur den vorhandenen Zuschnitt).
     if original is not None and original.filename:
-        osuffix = Path(original.filename).suffix.lower() or ".jpg"
         orig_path = images_dir / f"card_{card_id}_orig{osuffix}"
         _save_upright(original, orig_path)
         card.bild_original_pfad = str(orig_path.relative_to(images_dir.parent))
