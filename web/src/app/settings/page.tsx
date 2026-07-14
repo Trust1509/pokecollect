@@ -401,6 +401,19 @@ export default function SettingsPage() {
             {t.settings_pw_change}
           </button>
         </div>
+        <div className="border-t border-gray-700 pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              // Token verwerfen → Login-Seite (harte Navigation, frischer State)
+              localStorage.removeItem("token");
+              window.location.href = "/login";
+            }}
+            className="bg-gray-700 text-white text-sm px-4 py-1.5 rounded hover:bg-gray-600"
+          >
+            {t.settings_logout}
+          </button>
+        </div>
       </Section>
     </div>
   );

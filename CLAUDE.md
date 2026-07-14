@@ -73,10 +73,13 @@ passende ADRs unter `docs/adr/`.
    `backend/app/main.py::_run_light_migrations`
    (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`, additiv, nie destruktiv ohne
    Owner-OK).
-6. **⚠️ SECURITY (offen, ROADMAP v1.0):** Die API erzwingt keine Auth —
-   `require_auth` (backend/app/api/deps.py) ist unverdrahtet, `GET /settings`
-   liefert API-Keys im Klartext ins LAN. Extern schützt Authelia. Bei jeder
-   Arbeit an Settings/Auth mitdenken; Fix ist als P0 vorgesehen.
+6. **SECURITY (seit Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein
+   JWT (`require_auth` via `include_router`-dependencies); auth-frei sind nur
+   `/auth/login`, `/health` und der `/images`-Mount. `GET /settings` liefert
+   Secrets nur maskiert (`*_set`/`*_masked`). Ohne `APP_PASSWORD_HASH`
+   startet die App nicht (kein Default-Passwort mehr). Neue Router IMMER
+   unter den Auth-Zwang in `api/v1/__init__.py` hängen; Secrets nie im
+   Klartext ausgeben.
 
 ## Agent skills
 

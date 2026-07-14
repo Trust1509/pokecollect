@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n";
+import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import PWARegister from "@/components/PWARegister";
@@ -31,11 +32,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de">
       <body className="min-h-screen bg-pokemon-dark">
         <I18nProvider>
-          <Navbar />
-          <main className="max-w-screen-2xl mx-auto px-4 py-6 pb-24 md:pb-6">
-            {children}
-          </main>
-          <BottomNav />
+          {/* AuthGuard: ohne Token → /login; verhindert Flackern + tokenlose
+              API-Requests, indem er bis zur Prüfung nichts rendert (Issue #1) */}
+          <AuthGuard>
+            <Navbar />
+            <main className="max-w-screen-2xl mx-auto px-4 py-6 pb-24 md:pb-6">
+              {children}
+            </main>
+            <BottomNav />
+          </AuthGuard>
           <PWARegister />
         </I18nProvider>
       </body>

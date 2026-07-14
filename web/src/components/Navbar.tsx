@@ -1,10 +1,15 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { APP_VERSION } from "@/lib/version";
 
 export default function Navbar() {
   const { t, lang, setLang } = useI18n();
+  const pathname = usePathname() ?? "/";
+
+  // Vor dem Login kein App-Chrome (Issue #1)
+  if (pathname === "/login") return null;
 
   return (
     <nav className="border-b border-gray-800 bg-pokemon-card px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6">

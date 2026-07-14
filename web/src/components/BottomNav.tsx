@@ -8,8 +8,9 @@ export default function BottomNav() {
   const { t } = useI18n();
   const pathname = usePathname() ?? "/";
 
-  // Scan-Seite hat eine eigene fixierte Aktionsleiste → Bottom-Nav ausblenden
-  if (pathname.startsWith("/scan")) return null;
+  // Scan-Seite hat eine eigene fixierte Aktionsleiste → Bottom-Nav ausblenden;
+  // vor dem Login (Issue #1) ebenfalls kein App-Chrome
+  if (pathname.startsWith("/scan") || pathname === "/login") return null;
 
   const items = [
     { href: "/", label: t.nav_collection, Icon: LayoutGrid, exact: true },

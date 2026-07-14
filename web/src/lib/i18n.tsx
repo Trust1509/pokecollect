@@ -380,6 +380,16 @@ const DE = {
   settings_pw_too_short: "Neues Passwort muss mind. 8 Zeichen haben",
   settings_pw_changed: "Passwort geändert",
   settings_pw_change_error: "Fehler beim Ändern",
+  settings_logout: "Abmelden",
+
+  // Login (/login)
+  login_title: "Anmelden",
+  login_username: "Benutzername",
+  login_password: "Passwort",
+  login_submit: "Anmelden",
+  login_submitting: "Anmelden …",
+  login_failed: "Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch",
+  login_error: "Anmeldung nicht möglich – Server nicht erreichbar",
 };
 
 const EN: typeof DE = {
@@ -746,6 +756,16 @@ const EN: typeof DE = {
   settings_pw_too_short: "New password must have at least 8 characters",
   settings_pw_changed: "Password changed",
   settings_pw_change_error: "Error changing password",
+  settings_logout: "Log out",
+
+  // Login (/login)
+  login_title: "Sign in",
+  login_username: "Username",
+  login_password: "Password",
+  login_submit: "Sign in",
+  login_submitting: "Signing in …",
+  login_failed: "Login failed – wrong username or password",
+  login_error: "Login not possible – server unreachable",
 };
 
 const translations: Record<Lang, typeof DE> = { DE, EN };

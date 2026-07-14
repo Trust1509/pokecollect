@@ -16,9 +16,10 @@ Domänensprache fest — Pflichtlektüre vor Architektur-/Feature-Arbeit
 3. **Testbar by default.** Services nehmen `db: Session` als Parameter und
    erzeugen keine `SessionLocal` selbst; pure Parser/Mapper haben Unit-Tests
    ohne Container; jede Verhaltensänderung läuft durch `scripts/gates.sh`.
-4. **Secrets nie im Klartext an Clients.** *(Zielzustand — heute durch
-   Issue #1/P0 verletzt: `GET /settings` liefert Keys klartext. Bis der Fix
-   released ist, gilt: keine neuen Endpunkte, die Secrets ausgeben.)*
+4. **Secrets nie im Klartext an Clients.** Umgesetzt seit Issue #1
+   (ADR-0003): `GET /settings` liefert je Secret nur `*_set` + `*_masked`;
+   alle Fach-Router erzwingen ein JWT. Neue Endpunkte dürfen niemals
+   Secrets im Klartext ausgeben.
 5. **Additive Light-Migrations.** Schema-Änderungen als idempotente
    Statements in `main.py::_run_light_migrations`; destruktive Statements
    (DROP/DELETE) nur mit Owner-OK und im Code als solche markiert.

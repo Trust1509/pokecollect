@@ -15,6 +15,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// 401 → Token verwerfen und zur Login-Seite (Issue #1). window.location statt
+// Next-Router: der Interceptor läuft außerhalb von React. Ausgenommen sind der
+// Login-Call selbst (falsches Passwort soll ein Toast sein, kein Redirect) und
+// Aufrufe, die schon auf /login passieren (keine Redirect-Schleife).
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      typeof window !== "undefined" &&
+      error?.response?.status === 401 &&
+      !String(error?.config?.url ?? "").includes("/auth/login") &&
+      window.location.pathname !== "/login"
+    ) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ── Types ─────────────────────────────────────────────────────────────────
 
 export type Card = {
