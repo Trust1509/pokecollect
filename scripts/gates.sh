@@ -50,10 +50,15 @@ web_gate() {
   docker build -t pokecollect-web-gate "$(host_path "$ROOT/web")"
 }
 
+# Wichtig: KEIN `backend_gate && web_gate` — links von && greift set -e nicht,
+# ein roter Backend-Gate liefe sonst still in das Erfolgs-Echo durch.
 case "$TARGET" in
   backend) backend_gate ;;
   web)     web_gate ;;
-  all)     backend_gate && web_gate ;;
+  all)
+    backend_gate
+    web_gate
+    ;;
   *) echo "Nutzung: sh scripts/gates.sh [backend|web|all]"; exit 2 ;;
 esac
 
