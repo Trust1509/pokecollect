@@ -3,11 +3,9 @@ Upload-Härtung (Issue #2): Suffix-Allowlist, Content-Type image/*,
 12-MB-Limit, Rohdatei-Cleanup bei kaputten Bildern.
 """
 
-import io
 from pathlib import Path
 
 import pytest
-from PIL import Image
 
 from app.config import settings
 
@@ -22,12 +20,6 @@ def card_id(client):
     cid = r.json()["id"]
     yield cid
     client.delete(f"/api/v1/cards/{cid}")
-
-
-def _png_bytes() -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", (10, 14), color=(200, 30, 30)).save(buf, format="PNG")
-    return buf.getvalue()
 
 
 def test_upload_rejects_forbidden_suffix(client, card_id):
@@ -69,10 +61,10 @@ def test_upload_cleans_up_broken_image(client, card_id):
     assert leftovers == [], f"Rohdatei blieb liegen: {leftovers}"
 
 
-def test_upload_accepts_valid_png(client, card_id):
+def test_upload_accepts_valid_png(client, card_id, png_bytes):
     r = client.post(
         f"/api/v1/cards/{card_id}/image",
-        files={"file": ("gut.png", _png_bytes(), "image/png")},
+        files={"file": ("gut.png", png_bytes, "image/png")},
     )
     assert r.status_code == 200, r.text
     body = r.json()

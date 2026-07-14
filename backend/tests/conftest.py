@@ -45,3 +45,15 @@ def no_external_fetch(monkeypatch):
         return None
 
     monkeypatch.setattr(cards_api, "_trigger_image_fetch", _noop)
+
+
+@pytest.fixture()
+def png_bytes() -> bytes:
+    """Ein kleines, echtes PNG für Upload-/Scan-Tests."""
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 14), color=(200, 30, 30)).save(buf, format="PNG")
+    return buf.getvalue()

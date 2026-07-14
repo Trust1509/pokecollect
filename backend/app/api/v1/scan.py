@@ -9,6 +9,7 @@ GET  /api/v1/scan/status   welche Engine aktiv ist (für die UI)
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
@@ -46,6 +47,22 @@ def _gemini_config(db: Session) -> tuple[str, str]:
     return key, model
 
 
+def _today_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def _gemini_limit_reached(db: Session) -> bool:
+    """
+    Manuelles Tageslimit (Setting gemini_daily_limit) DURCHSETZEN (Issue #3).
+    0 = unbegrenzt (bisherige Nur-Anzeige-Semantik bleibt für 0 erhalten).
+    """
+    limit = int(_setting(db, "gemini_daily_limit", "0") or 0)
+    if limit <= 0:
+        return False
+    row = db.get(GeminiUsage, _today_utc())
+    return bool(row and (row.requests or 0) >= limit)
+
+
 @router.get("/status")
 def scan_status(db: Session = Depends(get_db)):
     """Welche Erkennungs-Engine ist aktiv? (Hybrid-Anzeige im UI)"""
@@ -68,8 +85,7 @@ _GEMINI_FREE_LIMITS = {
 @router.get("/usage")
 def scan_usage(db: Session = Depends(get_db)):
     """Gemini-Nutzung + Free-Tier-Limits (zur Kostenkontrolle / Überblick)."""
-    from datetime import datetime, timezone
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = _today_utc()
     rows = db.scalars(
         select(GeminiUsage).order_by(GeminiUsage.day.desc()).limit(30)
     ).all()
@@ -121,16 +137,25 @@ async def scan(
     if len(data) > _MAX_BYTES:
         raise HTTPException(status_code=413, detail="Bild zu groß (max. 12 MB)")
 
-    mime = file.content_type or "image/jpeg"
+    mime = (file.content_type or "image/jpeg").lower()
+    if not mime.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Content-Type muss image/* sein")
 
     engine = "none"
     reads = None
+    hinweis: str | None = None
+    limit_erreicht = False
     # Hybrid: Gemini bevorzugt (stark bei Binder/Multi), sonst lokale OCR.
     gemini_key, gemini_model = _gemini_config(db)
     if gemini.is_enabled(gemini_key):
-        reads = await gemini.extract(data, api_key=gemini_key, model=gemini_model, mime_type=mime)
-        if reads is not None:
-            engine = "gemini"
+        if _gemini_limit_reached(db):
+            limit_erreicht = True
+            hinweis = "Gemini-Tageslimit erreicht – Erkennung über lokale OCR."
+            log.info("Gemini-Tageslimit erreicht – Scan fällt auf lokale OCR zurück.")
+        else:
+            reads = await gemini.extract(data, api_key=gemini_key, model=gemini_model, mime_type=mime)
+            if reads is not None:
+                engine = "gemini"
     if reads is None:
         reads = ocr.extract(data, mode=mode, rows=rows, cols=cols)
         engine = "ocr"
@@ -144,7 +169,10 @@ async def scan(
         reads = [max(reads, key=_area)]
 
     candidates = await resolve_reads(db, reads, default_lang=default_language)
-    return ScanResponse(engine=engine, mode=mode, candidates=candidates)
+    return ScanResponse(
+        engine=engine, mode=mode, candidates=candidates,
+        limit_erreicht=limit_erreicht, hinweis=hinweis,
+    )
 
 
 @router.post("/resolve", response_model=ScanCandidate)

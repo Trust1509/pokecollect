@@ -57,6 +57,8 @@ class ScanResponse(BaseModel):
     engine: str                            # "gemini" | "ocr"
     mode: ScanMode
     candidates: list[ScanCandidate]
+    limit_erreicht: bool = False           # Gemini-Tageslimit griff → OCR-Fallback
+    hinweis: Optional[str] = None          # menschenlesbarer Hinweis dazu
 
 
 # ── Commit (bestätigte Karten ablegen) ───────────────────────────────────────
