@@ -1,5 +1,43 @@
 # Changelog
 
+## [v0.9.14] – 2026-07-14 (Bauwelle 1: Härtung, DRY, i18n, Android-Aus)
+
+### Entscheidungen
+- **Android-App ausgemustert (ADR-0002):** `android/` von main entfernt; die
+  Web-App ist die einzige Client-Plattform und muss am Handy-Browser voll
+  skalieren. Branch `android-dev` bleibt als Archiv.
+- **Kredo verankert (ADR-0001):** CONTEXT.md mit sechs Grundsätzen + Glossar.
+
+### Härtung
+- **Foto-Upload:** Suffix-Allowlist (jpg/jpeg/png/webp), Content-Type-Prüfung,
+  12-MB-Limit, Aufräumen bei Verarbeitungsfehler (#2).
+- **Gemini-Tageslimit wird durchgesetzt** statt nur angezeigt — bei Erreichen
+  fällt der Scan auf lokale OCR zurück, das UI zeigt einen Hinweis (#3).
+
+### DRY / Architektur
+- **Ein Domain-Service fürs Karten-Anlegen** (`create_owned_card`):
+  Platzhalter-Adoption + Pokédex-Exklusivität + Bild-Fetch gelten jetzt auf
+  allen drei Wegen (Formular, Scan-Commit, Katalog-Übernahme) — vorher
+  erzeugte der Scan Duplikate neben Platzhaltern (#4).
+- Karten-Formulare (Neuanlage + Detail-Edit) teilen sich `useCardForm` +
+  Feld-Komponenten (#5); Listen-Kopf-UI als `ListPageHeader` + Hooks (#8);
+  Set-Code-Extraktion und Generationstabelle zentralisiert (#7);
+  Bild-Prioritätskette als eine Funktion mit thumb/full-Variante (#10).
+- **Services testbar:** DB-Session wird injiziert statt selbst erzeugt; 37
+  neue Unit-Tests für pure Parser/Mapper, Suite jetzt 64 Tests (#9).
+
+### UI / i18n
+- **Settings-Seite komplett DE/EN** (~45 neue Keys), Tooltips/Streuner
+  nachgezogen, Datums- und Zahlformate folgen der aktiven Sprache (#6).
+- **Statistik-Seite mobiltauglich** (Breakpoints, scrollbare Tabelle) (#10).
+- **A11y:** Labels mit Feldern verknüpft, Buttons explizit typisiert (#15).
+
+### Aufräumen
+- Tote Endpoints (`/auth/refresh`, `/cards/pokedex/{nr}`, `/cards/meta/sets`,
+  `PUT /sets/{code}`), `pokemontcg_api_key` (nie benutzt), tote api.ts-Wrapper,
+  `react-query`, `migrations/csv_import.py` + `python-dotenv` entfernt (#11).
+- `scripts/gates.sh`: `all`-Ziel brach bei rotem Backend-Gate nicht ab (Fix).
+
 ## [v0.9.13] – 2026-07-14 (Fundament: Tests, CI, Teststand + bcrypt-Fix)
 
 ### Fix
