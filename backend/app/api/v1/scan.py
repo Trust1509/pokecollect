@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from app.schemas.scan import (
     ScanCandidate, ScanCommitRequest, ScanCommitResponse, ScanMode,
     ScanRawRead, ScanResponse,
 )
+from app.services.card_creation import create_owned_card
 from app.services.scan import gemini, ocr
 from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
@@ -185,12 +186,14 @@ async def scan_resolve(read: ScanRawRead, db: Session = Depends(get_db)):
 
 
 @router.post("/commit", response_model=ScanCommitResponse)
-def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
+def scan_commit(payload: ScanCommitRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
     Legt die bestätigten Karten an. Ziel:
-      - pokedex     → besessen, optional je Karte Pokédex-Vertreter
+      - pokedex     → besessen, Pokédex-Vertreter automatisch (exklusiv)
       - collection  → besessen + Sammlung (mit Binder-Slot)
       - wishlist    → nicht besessen, auf Wunschliste (mit Priorität)
+    Besessene Karten laufen über den Domain-Service (Adoption + Auto-Flag
+    + Bild-Fetch, Issue #4).
     """
     is_wishlist = payload.target == "wishlist"
 
@@ -202,10 +205,9 @@ def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
         if not collection:
             raise HTTPException(status_code=404, detail="Sammlung nicht gefunden")
 
-    flagged_nrs: set[int] = set()  # je pokedex_nr nur einen Vertreter im Batch
     created_ids: list[int] = []
     for item in payload.items:
-        card = PokemonCard(
+        fields = dict(
             kartenname=item.kartenname,
             pokedex_nr=item.pokedex_nr,
             englischer_name=item.englischer_name,
@@ -217,29 +219,17 @@ def scan_commit(payload: ScanCommitRequest, db: Session = Depends(get_db)):
             sprache=item.sprache or "DE",
             zustand=item.zustand,
             notizen=item.notizen,
-            besessen=not is_wishlist,
-            wunschliste=is_wishlist,
-            prioritaet=(item.prioritaet if is_wishlist else None),
             tcgdex_card_id=item.tcgdex_card_id,
             set_id=item.set_id,
             dex_id=item.dex_id,
             bild_karte_url=item.bild_karte_url if is_allowed_image_url(item.bild_karte_url) else None,
         )
-        db.add(card)
-        db.flush()  # ID
-
-        # Pokédex-Vertreter je Karte setzen (exklusiv pro pokedex_nr)
-        if item.im_pokedex and card.pokedex_nr and not is_wishlist:
-            if card.pokedex_nr not in flagged_nrs:
-                existing = db.scalar(
-                    select(func.count(PokemonCard.id))
-                    .where(PokemonCard.pokedex_nr == card.pokedex_nr)
-                    .where(PokemonCard.im_pokedex == True)
-                    .where(PokemonCard.id != card.id)
-                )
-                if existing == 0:
-                    card.im_pokedex = True
-                    flagged_nrs.add(card.pokedex_nr)
+        if is_wishlist:
+            card = PokemonCard(**fields, besessen=False, wunschliste=True, prioritaet=item.prioritaet)
+            db.add(card)
+            db.flush()  # ID
+        else:
+            card = create_owned_card(db, fields, background_tasks=background_tasks, commit=False)
 
         # Sammlung + Binder-Slot
         if collection:

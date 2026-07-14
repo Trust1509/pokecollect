@@ -23,6 +23,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.api.v1.cards as cards_api
+import app.services.card_creation as card_creation
 from app.main import app
 
 
@@ -45,6 +46,7 @@ def no_external_fetch(monkeypatch):
         return None
 
     monkeypatch.setattr(cards_api, "_trigger_image_fetch", _noop)
+    monkeypatch.setattr(card_creation, "_trigger_image_fetch", _noop)
 
 
 @pytest.fixture()

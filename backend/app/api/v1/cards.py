@@ -15,11 +15,10 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db, SessionLocal
+from app.services.card_creation import _trigger_image_fetch, create_owned_card
 from app.services.card_image_service import (
     apply_card_to_model,
-    apply_species_image,
     fetch_tcgdex_card,
-    fetch_tcgdex_card_by_name,
     resolve_set_id,
 )
 from app.models.card import PokemonCard, PreisHistorie
@@ -206,84 +205,17 @@ def get_card_collections(card_id: int, db: Session = Depends(get_db)):
     ]
 
 
-async def _trigger_image_fetch(card_id: int):
-    """
-    Holt TCGdex-Daten (Bild high.webp, dexId, Varianten, tcgdex_card_id) im
-    Hintergrund und speichert sie. Eigenes Foto / manuelle URL behalten Vorrang
-    fürs Anzeigen – die Metadaten (Varianten/dexId) werden trotzdem gesetzt.
-    """
-    db = SessionLocal()
-    try:
-        card = db.get(PokemonCard, card_id)
-        if not card or not card.besessen:
-            return
-        set_id = card.set_id or resolve_set_id(db, card.set_edition)
-        # Exakte Auflösung über Set + aufgedruckte Nummer (sofern Nummer da).
-        tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache) if set_id else None
-        matched_exact = tc is not None
-        # Issue 2: keine Nummer/kein Treffer → Fallback über Namenssuche
-        # (wahrscheinliches Bild der gleichen Spezies).
-        if tc is None:
-            tc = await fetch_tcgdex_card_by_name(card.kartenname, card.sprache, set_id=set_id)
-        if tc is None:
-            return
-        overwrite = not (card.bild_karte_pfad or card.bild_pokedex_url)
-        # Treffer im bekannten Set gilt als exakt → volle Metadaten; sonst nur
-        # Bild + Pokédex-Nr., um keine falsche konkrete Karte zu erzwingen.
-        exact = matched_exact or bool(set_id and tc.set and tc.set.id == set_id)
-        if exact:
-            apply_card_to_model(card, tc, overwrite_image=overwrite)
-        else:
-            apply_species_image(card, tc, overwrite_image=overwrite)
-        db.commit()
-    finally:
-        db.close()
-
-
 @router.post("", response_model=CardResponse, status_code=201)
 def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # Wenn besessen + pokedex_nr gesetzt: vorhandenen Platzhalter übernehmen statt Duplikat anlegen
-    if data.besessen and data.pokedex_nr:
-        placeholder = db.scalars(
-            select(PokemonCard)
-            .where(PokemonCard.pokedex_nr == data.pokedex_nr)
-            .where(PokemonCard.besessen == False)
-        ).first()
-        if placeholder:
-            for field, value in data.model_dump().items():
-                setattr(placeholder, field, value)
-            placeholder.bild_karte_url = None  # wird neu abgerufen
-            # Auto-Pokédex-Flag: falls noch kein anderer im Pokédex ist
-            if not placeholder.im_pokedex:
-                existing_flag = db.scalar(
-                    select(func.count(PokemonCard.id))
-                    .where(PokemonCard.pokedex_nr == placeholder.pokedex_nr)
-                    .where(PokemonCard.im_pokedex == True)
-                    .where(PokemonCard.id != placeholder.id)
-                )
-                if existing_flag == 0:
-                    placeholder.im_pokedex = True
-            db.commit()
-            db.refresh(placeholder)
-            background_tasks.add_task(_trigger_image_fetch, placeholder.id)
-            return placeholder
+    # Besessene Karten laufen über den Domain-Service (Adoption + Auto-Flag
+    # + Bild-Fetch — eine Routine für alle Anlege-Pfade, Issue #4).
+    if data.besessen:
+        return create_owned_card(db, data.model_dump(), background_tasks=background_tasks)
 
     card = PokemonCard(**data.model_dump())
     db.add(card)
-    db.flush()  # ID vergeben, noch kein Commit
-    # Auto-Pokédex-Flag: erste besessene Karte für diese Pokédex-Nr. → automatisch im Pokédex
-    if card.besessen and card.pokedex_nr:
-        existing_flag = db.scalar(
-            select(func.count(PokemonCard.id))
-            .where(PokemonCard.pokedex_nr == card.pokedex_nr)
-            .where(PokemonCard.im_pokedex == True)
-            .where(PokemonCard.id != card.id)
-        )
-        if existing_flag == 0:
-            card.im_pokedex = True
     db.commit()
     db.refresh(card)
-    background_tasks.add_task(_trigger_image_fetch, card.id)
     return card
 
 

@@ -150,8 +150,13 @@ async def catalog_to_wishlist(card_id: str, prioritaet: str | None = Body(None, 
 
 
 @router.post("/{card_id}/collection")
-async def catalog_to_collection(card_id: str, collection_id: int = Query(...), db: Session = Depends(get_db)):
-    new_id = await catalog_svc.add_to_collection(db, card_id, collection_id)
+async def catalog_to_collection(
+    card_id: str,
+    background_tasks: BackgroundTasks,
+    collection_id: int = Query(...),
+    db: Session = Depends(get_db),
+):
+    new_id = await catalog_svc.add_to_collection(db, card_id, collection_id, background_tasks=background_tasks)
     if not new_id:
         raise HTTPException(status_code=404, detail="Katalog-Karte oder Sammlung nicht gefunden")
     return {"card_id": new_id}

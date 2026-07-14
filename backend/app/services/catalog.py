@@ -13,6 +13,7 @@ import asyncio
 import logging
 from typing import Optional
 
+from fastapi import BackgroundTasks
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,7 @@ from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.services import tcgdex
+from app.services.card_creation import create_owned_card
 from app.services.scan.resolver import _map_rarity
 
 log = logging.getLogger(__name__)
@@ -224,7 +226,12 @@ async def add_to_wishlist(db: Session, card_id: str, prioritaet: Optional[str] =
     return card.id
 
 
-async def add_to_collection(db: Session, card_id: str, collection_id: int) -> Optional[int]:
+async def add_to_collection(
+    db: Session,
+    card_id: str,
+    collection_id: int,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> Optional[int]:
     row = db.get(TcgdexCatalog, card_id)
     if not row:
         return None
@@ -232,9 +239,11 @@ async def add_to_collection(db: Session, card_id: str, collection_id: int) -> Op
     if not coll:
         return None
     fields = await _build_card_from_catalog(db, row)
-    card = PokemonCard(**fields, sprache="DE", besessen=True)
-    db.add(card)
-    db.flush()
+    # Domain-Service: Platzhalter-Adoption + Auto-im_pokedex + Bild-Fetch (Issue #4)
+    card = create_owned_card(
+        db, {**fields, "sprache": "DE"},
+        background_tasks=background_tasks, commit=False,
+    )
     db.execute(collection_cards.insert().values(collection_id=collection_id, card_id=card.id, position=None))
     db.commit()
     db.refresh(card)
