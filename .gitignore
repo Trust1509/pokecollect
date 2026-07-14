@@ -1,5 +1,4 @@
 .env
-CLAUDE.md
 notion_export/
 migrations/cards.csv
 migrations/notion_export*.csv

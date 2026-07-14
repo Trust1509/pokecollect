@@ -17,7 +17,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _USERNAME = os.getenv("APP_USERNAME", "admin")
 _PASSWORD_HASH = os.getenv(
     "APP_PASSWORD_HASH",
-    # Default hash for "changeme" – MUST be changed in production
+    # Default hash for "secret" – MUST be changed in production
     "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
 )
 

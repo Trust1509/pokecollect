@@ -1,5 +1,34 @@
 # Changelog
 
+## [v0.9.13] – 2026-07-14 (Fundament: Tests, CI, Teststand + bcrypt-Fix)
+
+### Fix
+- **Login-Endpoint repariert:** `passlib 1.7.4` ist mit `bcrypt >= 4.1`
+  inkompatibel — ohne Pin zog der Image-Build bcrypt 5.x, wodurch
+  `POST /auth/login` und der Passwortwechsel in den Einstellungen mit 500
+  abbrachen. Jetzt `bcrypt==4.0.1` gepinnt. (Gefunden von der neuen Test-Suite
+  bei ihrem allerersten Lauf.)
+- Irreführender Kommentar korrigiert: das eingebaute Default-Passwort ist
+  `secret`, nicht `changeme` (Hash war schon immer der für `secret`).
+
+### Entwicklungs-Fundament (keine Funktionsänderung)
+- **Backend-Test-Suite:** 12 Smoke-Tests (`backend/tests/`) gegen echtes
+  PostgreSQL — Health, Set-Seed, Karten-CRUD, Platzhalter-Invarianten,
+  Settings, Auth. Läuft über den echten Migrationspfad (create_all +
+  Light-Migrations), kein SQLite.
+- **Lokale Gates ohne Node/Python:** `scripts/gates.sh` baut beide Images und
+  fährt pytest gegen ein Wegwerf-Postgres — alles in Docker.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) bei jedem Push —
+  Backend-pytest (Postgres-Service) + Web `tsc --noEmit` + `next build`.
+- **Lokaler Teststand:** Compose-Projekt `pokecollect-test`
+  (`scripts/teststand.sh`, Web :3021 / API :3020) mit Seed-Befehl für
+  Browser-Verifikation ohne Prod-Runden.
+- **Reproduzierbare Web-Builds:** `package-lock.json` committed (im
+  Node-Container erzeugt), Dockerfile nutzt `npm ci`.
+- **Agent-/Prozess-Setup:** `CLAUDE.md` (jetzt versioniert), `docs/agents/`
+  (Issue-Tracker-, Triage-Label-, Domain-Doc-Konventionen), Triage-Labels im
+  GitHub-Repo angelegt.
+
 ## [v0.9.12] – 2026-06-13 (Pokémon TCG Pocket ausschließen)
 
 ### Fix

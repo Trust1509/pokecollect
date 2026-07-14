@@ -2,8 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install --frozen-lockfile 2>/dev/null || npm install
+# package-lock.json ist committed (im Node-Container erzeugt) → npm ci = reproduzierbar
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 ARG NEXT_PUBLIC_API_URL=http://localhost:3010
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL

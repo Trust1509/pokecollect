@@ -1,0 +1,69 @@
+# CI-Gates: laufen bei jedem Push auf main (und auf PRs, falls doch mal einer kommt).
+# Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc + build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pokecollect
+          POSTGRES_PASSWORD: pokecollect
+          POSTGRES_DB: pokecollect_test
+        ports:
+          - "5440:5432"
+        options: >-
+          --health-cmd "pg_isready -U pokecollect"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements-dev.txt
+      - name: Tests
+        env:
+          DATABASE_URL: postgresql://pokecollect:pokecollect@localhost:5440/pokecollect_test
+          JWT_SECRET: ci-secret
+          IMAGES_DIR: /tmp/ci-images
+        run: |
+          mkdir -p /tmp/ci-images
+          python -m pytest tests -q
+
+  web:
+    name: Web (tsc + next build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Abhängigkeiten installieren
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3010
+        run: npm run build

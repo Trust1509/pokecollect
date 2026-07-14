@@ -1,0 +1,51 @@
+# Lokaler Teststand (Docker Desktop) — Compose-Projekt "pokecollect-test".
+# Zweck: Browser-Verifikation vor jedem Release, ohne Prod-Runden.
+#   Start:  sh scripts/teststand.sh up
+#   Seed:   sh scripts/teststand.sh seed
+#   Stop:   sh scripts/teststand.sh down   (reset = down + Volumes löschen)
+# Web http://localhost:3021 · API http://localhost:3020 · Postgres nur intern.
+# Testdaten/Test-Secrets — bewusst hart verdrahtet, hier liegt nichts Echtes.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pokecollect
+      POSTGRES_PASSWORD: pokecollect
+      POSTGRES_DB: pokecollect
+    volumes:
+      - pgdata-test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pokecollect"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    ports:
+      - "3020:8000"
+    environment:
+      - DATABASE_URL=postgresql://pokecollect:pokecollect@db:5432/pokecollect
+      - JWT_SECRET=teststand-secret
+    volumes:
+      - images-test:/app/images
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3020
+    ports:
+      - "3021:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata-test:
+  images-test:
