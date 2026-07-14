@@ -60,12 +60,20 @@ export function useCardForm<T extends CardFormShape>(
       try {
         const names = await fetchPokemonNames(nr);
         if (names) {
-          setForm((f) => ({
-            ...f,
-            kartenname: (!f.kartenname || autoFilled.current.kartenname) ? names.de : f.kartenname,
-            englischer_name: (!f.englischer_name || autoFilled.current.englischer_name) ? names.en : f.englischer_name,
-          } as T));
-          autoFilled.current = { kartenname: true, englischer_name: true };
+          setForm((f) => {
+            // Flag nur für Felder setzen, die WIRKLICH auto-befüllt wurden —
+            // sonst markiert ein Zwischen-Lookup (langsames Tippen: "2" → "25")
+            // den manuell eingegebenen Namen als "auto" und der nächste
+            // Lookup überschreibt ihn.
+            const fillName = !f.kartenname || autoFilled.current.kartenname;
+            const fillEn = !f.englischer_name || autoFilled.current.englischer_name;
+            autoFilled.current = { kartenname: fillName, englischer_name: fillEn };
+            return {
+              ...f,
+              kartenname: fillName ? names.de : f.kartenname,
+              englischer_name: fillEn ? names.en : f.englischer_name,
+            } as T;
+          });
         }
       } finally {
         setNameLoading(false);
