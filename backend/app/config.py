@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     # Eine Projektversion pro Dev-Stand (nicht getrennt nach Front-/Backend).
     # Spiegelt web/src/lib/version.ts › APP_VERSION; bei jedem Release beide
     # hochzählen. Per Env-Var APP_VERSION überschreibbar.
-    app_version: str = "0.9.14"
+    app_version: str = "0.9.15"
 
     database_url: str
     jwt_secret: str

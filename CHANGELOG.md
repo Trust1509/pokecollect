@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.9.15] – 2026-07-14 (Bauwelle 2a: Settings wirken, Admin-Buttons, Architektur-Schnitt)
+
+### Einstellungen, die jetzt wirklich wirken (#12)
+- **Preisquelle** (30-Tage-Durchschnitt vs. Tagespreis) wird beim Preisupdate
+  tatsächlich ausgewertet (Tagespreis = TCGdex `avg1`, Fallback avg30-Kette).
+- **Cardmarket-Keys aus den Einstellungen werden benutzt** (DB vor .env) —
+  wer Keys hat, kann sie nutzen; TCGdex bleibt Primärquelle.
+- **Zwei Admin-Buttons:** „Preise jetzt aktualisieren" und „Katalog jetzt
+  synchronisieren" (mit Status-Toast) — vorher nur per curl erreichbar.
+- Entfernt: `POST /sets/sync`, `/catalog/enrich`, `/catalog/enrich-all`
+  (Cron erledigt das täglich), `migrations/001_initial.sql` (create_all +
+  Light-Migrations sind die Quelle der Wahrheit).
+
+### Architektur-Schnitt (#14, keine Funktionsänderung)
+- Backend: Bild-Verarbeitung (`services/card_images.py`) und Statistik
+  (`services/stats.py`) aus dem cards-Router gelöst (477→314 Zeilen).
+- Web: geteilte Daten-Hooks (`useEnums`/`useSets`/`useSettings`, ein Fetch
+  pro Sitzung statt je Seite), zentrale `API_BASE`, Kartendetail-Seite in
+  Panels geschnitten (759→300 Zeilen), `setTimeout`-Nachladen durch echten
+  Refetch ersetzt.
+
+### Kleinigkeiten
+- Formular-Placeholder folgen der Sprache; Formular behält manuell
+  getippte Namen auch bei langsam eingegebener Pokédex-Nr. (Altbug).
+- `deploy.sh`/`scripts/*.sh` tragen jetzt Execute-Bits.
+
 ## [v0.9.14] – 2026-07-14 (Bauwelle 1: Härtung, DRY, i18n, Android-Aus)
 
 ### Entscheidungen
