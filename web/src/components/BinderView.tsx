@@ -3,7 +3,7 @@ import { DragEvent as ReactDragEvent, TouchEvent as ReactTouchEvent, useEffect, 
 import Image from "next/image";
 import Link from "next/link";
 import { Card, BINDER_LAYOUTS } from "@/lib/api";
-import { cardImageSrc } from "@/lib/utils";
+import { cardImageSrc, setCodeFromEdition } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -33,12 +33,6 @@ function parseLayout(layout: string): { cols: number; rows: number } {
   const m = layout.match(/^(\d+)x(\d+)$/);
   if (!m) return { cols: 3, rows: 3 };
   return { cols: Number(m[1]), rows: Number(m[2]) };
-}
-
-function extractSetCode(setEdition: string | null): string {
-  if (!setEdition) return "";
-  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)\s*$/);
-  return m ? m[1] : "";
 }
 
 const GAP = 8;        // gap zwischen Pockets
@@ -215,7 +209,7 @@ export default function BinderView({
 
             const { src, isPlaceholder } = cardImageSrc(card, apiBase, placeholderEnabled);
             const name = lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname;
-            const code = extractSetCode(card.set_edition);
+            const code = setCodeFromEdition(card.set_edition) ?? "";
             const dimmed = highlightIds ? !highlightIds.has(card.id) : false;
             return (
               <div

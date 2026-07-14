@@ -61,6 +61,9 @@ export function cardMatchesFilters(card: MatchCard, f: FilterCriteria): boolean 
   return true;
 }
 
+// Bewusste Web-Kopie der Generationsgrenzen (clientseitiges Dimmen) —
+// Quelle der Wahrheit: backend/app/domain/pokedex.py::GEN_RANGES.
+// Bei Gen-10-Erweiterung BEIDE Stellen anpassen.
 export function generation(pokedexNr: number | null): number | null {
   if (!pokedexNr) return null;
   const ranges: [number, number][] = [
@@ -99,11 +102,20 @@ export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined): str
   return `https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/${nr}.png`;
 }
 
-/** "Paldeas Schicksale (PAF)" → "PAF"; sonst die ersten Zeichen. */
+/**
+ * "Paldeas Schicksale (PAF)" → "PAF"; null wenn kein Klammer-Kürzel.
+ * Regex-Vertrag mit backend/app/services/card_image_service.py::extract_set_code —
+ * bei Änderungen beide Stellen anpassen (Punkt + bis 8 Zeichen, z. B. "SV03.5").
+ */
+export function setCodeFromEdition(setEdition: string | null | undefined): string | null {
+  if (!setEdition) return null;
+  const m = setEdition.match(/\(([A-Z0-9.]{1,8})\)\s*$/);
+  return m ? m[1] : null;
+}
+
+/** Anzeige-Variante: fällt statt null auf die ersten Zeichen zurück. */
 export function extractSetCode(setEdition: string | null | undefined): string {
-  if (!setEdition) return "";
-  const m = setEdition.match(/\(([A-Z0-9]{1,6})\)\s*$/);
-  return m ? m[1] : setEdition.slice(0, 4);
+  return setCodeFromEdition(setEdition) ?? (setEdition ? setEdition.slice(0, 4) : "");
 }
 
 type CardImageFields = {

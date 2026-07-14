@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db, SessionLocal
+from app.domain.pokedex import GEN_RANGES
 from app.services.card_creation import _trigger_image_fetch, create_owned_card
 from app.services.card_image_service import (
     apply_card_to_model,
@@ -41,17 +42,6 @@ def _card_or_404(card_id: int, db: Session) -> PokemonCard:
     if not card:
         raise HTTPException(status_code=404, detail="Karte nicht gefunden")
     return card
-
-
-def _generation(pokedex_nr: Optional[int]) -> Optional[int]:
-    if not pokedex_nr:
-        return None
-    ranges = [(1, 151), (152, 251), (252, 386), (387, 493),
-              (494, 649), (650, 721), (722, 809), (810, 905), (906, 1025)]
-    for gen, (lo, hi) in enumerate(ranges, start=1):
-        if lo <= pokedex_nr <= hi:
-            return gen
-    return None
 
 
 @router.get("", response_model=CardListResponse)
@@ -145,11 +135,7 @@ def list_cards(
         q = q.where(PokemonCard.bild_karte_pfad.is_(None))
         q = q.where(PokemonCard.bild_pokedex_url.is_(None))
     if generation:
-        gen_ranges = {
-            1: (1, 151), 2: (152, 251), 3: (252, 386), 4: (387, 493),
-            5: (494, 649), 6: (650, 721), 7: (722, 809), 8: (810, 905), 9: (906, 1025),
-        }
-        r = gen_ranges.get(generation)
+        r = GEN_RANGES.get(generation)
         if r:
             q = q.where(PokemonCard.pokedex_nr.between(r[0], r[1]))
 

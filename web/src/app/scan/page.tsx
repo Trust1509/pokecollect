@@ -10,6 +10,7 @@ import SetPicker from "@/components/SetPicker";
 import RaritySelect from "@/components/RaritySelect";
 import CornerEditor from "@/components/CornerEditor";
 import { cropToCardPhoto, loadImg, normalizeOrientation, CropTransform } from "@/lib/cardCrop";
+import { setCodeFromEdition } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 type Step = "setup" | "review" | "done";
@@ -24,13 +25,6 @@ type EditableCandidate = ScanCandidate & {
 };
 
 const LANGS = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"];
-
-/** "Paldeas Schicksale (PAF)" → "PAF" */
-function codeFromEdition(edition: string | null | undefined): string | null {
-  if (!edition) return null;
-  const m = edition.match(/\(([A-Z0-9.]{1,8})\)\s*$/);
-  return m ? m[1] : null;
-}
 
 function parseLayout(layout: string): { cols: number; rows: number } {
   const m = layout.match(/^(\d+)x(\d+)$/);
@@ -319,7 +313,7 @@ export default function ScanPage() {
     try {
       const r = await scanApi.resolve({
         name: String(s.kartenname ?? c.raw.name ?? ""),
-        set_code: codeFromEdition(s.set_edition as string),
+        set_code: setCodeFromEdition(s.set_edition as string),
         number: (s.karten_nr as string) ?? null,
         language: (s.sprache as string) ?? "DE",
       });

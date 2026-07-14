@@ -10,6 +10,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db, run_with_session
+from app.domain.pokedex import GEN_RANGES
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.schemas.catalog import CatalogItem, CatalogListResponse
@@ -17,12 +18,6 @@ from app.services import catalog as catalog_svc
 from app.services.set_sync import sync_sets
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
-
-_GEN_RANGES = {
-    1: (1, 151), 2: (152, 251), 3: (252, 386), 4: (387, 493),
-    5: (494, 649), 6: (650, 721), 7: (722, 809), 8: (810, 905), 9: (906, 1025),
-}
-
 
 @router.get("", response_model=CatalogListResponse)
 def list_catalog(
@@ -51,8 +46,8 @@ def list_catalog(
         query = query.where(TcgdexCatalog.set_id == set_id)
     if illustrator:
         query = query.where(TcgdexCatalog.illustrator.ilike(f"%{illustrator}%"))
-    if generation and generation in _GEN_RANGES:
-        lo, hi = _GEN_RANGES[generation]
+    if generation and generation in GEN_RANGES:
+        lo, hi = GEN_RANGES[generation]
         query = query.where(TcgdexCatalog.dex_id.between(lo, hi))
 
     if sort == "name":

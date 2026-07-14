@@ -157,3 +157,41 @@ def test_quad_invalid():
     assert _quad({}) is None
     assert _quad({"corners": [[0, 0], [1, 1]]}) is None
     assert _quad({"corners": [[0, 0], [1, 1], [2, 2], ["x", 3]]}) is None
+
+
+# ── domain.pokedex.generation + extract_set_code (#7) ────────────────────────
+
+from app.domain.pokedex import GEN_RANGES, generation
+from app.services.card_image_service import extract_set_code
+
+
+def test_generation_boundaries():
+    assert generation(1) == 1
+    assert generation(151) == 1
+    assert generation(152) == 2
+    assert generation(905) == 8
+    assert generation(906) == 9
+    assert generation(1025) == 9
+
+
+def test_generation_unknown():
+    assert generation(None) is None
+    assert generation(0) is None
+    assert generation(1026) is None
+
+
+def test_gen_ranges_cover_pokedex_without_gaps():
+    borders = sorted(GEN_RANGES.values())
+    assert borders[0][0] == 1
+    assert borders[-1][1] == 1025
+    for (lo1, hi1), (lo2, _hi2) in zip(borders, borders[1:]):
+        assert lo2 == hi1 + 1
+
+
+def test_extract_set_code_variants():
+    # Regex-Vertrag mit web/src/lib/utils.ts::setCodeFromEdition
+    assert extract_set_code("Paldeas Schicksale (PAF)") == "PAF"
+    assert extract_set_code("Pokémon 151 (SV03.5)") == "SV03.5"
+    assert extract_set_code("ohne Kürzel") is None
+    assert extract_set_code(None) is None
+    assert extract_set_code("(zulang123456)") is None
