@@ -23,7 +23,7 @@ def gemini_calls(monkeypatch):
 
     async def fake_extract(data, api_key, model=None, mime_type="image/jpeg"):
         calls.append(mime_type)
-        return []
+        return [], 7  # keine Karten erkannt, 7 Tokens verbraucht
 
     monkeypatch.setattr(gemini, "is_enabled", lambda key: True)
     monkeypatch.setattr(gemini, "extract", fake_extract)
@@ -78,7 +78,9 @@ def test_scan_limit_falls_back_to_ocr(client, gemini_calls, daily_limit_reached,
 
 
 def test_scan_below_limit_uses_gemini(client, gemini_calls, png_bytes):
-    """Ohne Limit (0 = unbegrenzt) läuft der Scan über Gemini."""
+    """Ohne Limit (0 = unbegrenzt) läuft der Scan über Gemini + Usage-Buchung."""
+    usage_before = client.get("/api/v1/scan/usage").json()["today"]
+
     r = client.post(
         "/api/v1/scan",
         files={"file": ("scan.png", png_bytes, "image/png")},
@@ -89,6 +91,11 @@ def test_scan_below_limit_uses_gemini(client, gemini_calls, png_bytes):
     assert body["engine"] == "gemini"
     assert body["limit_erreicht"] is False
     assert body["hinweis"] is None
+
+    # _record_usage wurde vom Aufrufer gebucht (Issue #9: aus gemini.py gehoben)
+    usage_after = client.get("/api/v1/scan/usage").json()["today"]
+    assert usage_after["requests"] == usage_before["requests"] + 1
+    assert usage_after["tokens"] == usage_before["tokens"] + 7
 
 
 def test_scan_rejects_non_image_content_type(client, png_bytes):

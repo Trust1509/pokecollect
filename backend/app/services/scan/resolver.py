@@ -100,6 +100,31 @@ def _map_rarity(rarity_en: Optional[str]) -> Optional[str]:
     return _RARITY_MAP.get(rarity_en.strip().lower(), rarity_en)
 
 
+def _confidence(
+    raw_confidence: Optional[float],
+    *,
+    matched: bool,
+    via_search: bool,
+    via_number: bool,
+    uncertain_count: int,
+) -> float:
+    """
+    Confidence-Formel (pur, unit-testbar): Roh-Sicherheit der Engine,
+    angehoben je nach Match-Qualität und gedämpft durch unsichere Felder.
+    """
+    base = raw_confidence if raw_confidence is not None else 0.3
+    if matched and not via_search:
+        confidence = max(base, 0.85)
+    elif matched and via_number:
+        confidence = max(base, 0.8)        # Name + Nummer eindeutig
+    elif matched and via_search:
+        confidence = min(max(base, 0.6), 0.75)
+    else:
+        confidence = min(base, 0.35)
+    confidence = round(confidence * (1 - 0.1 * uncertain_count), 2)
+    return max(0.0, min(1.0, confidence))
+
+
 def _is_promo_set(name: Optional[str]) -> bool:
     """Erkennt Promo-Sets am Namen (z.B. 'SVP Black Star Promos')."""
     return bool(name) and "promo" in name.lower()
@@ -261,17 +286,13 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             uncertain.append("match")
 
     # Confidence: Roh-Sicherheit der Engine, gedämpft durch fehlende Felder/Match
-    base = read.confidence if read.confidence is not None else 0.3
-    if tc and not via_search:
-        confidence = max(base, 0.85)
-    elif tc and via_number:
-        confidence = max(base, 0.8)        # Name + Nummer eindeutig
-    elif tc and via_search:
-        confidence = min(max(base, 0.6), 0.75)
-    else:
-        confidence = min(base, 0.35)
-    confidence = round(confidence * (1 - 0.1 * len(uncertain)), 2)
-    confidence = max(0.0, min(1.0, confidence))
+    confidence = _confidence(
+        read.confidence,
+        matched=tc is not None,
+        via_search=via_search,
+        via_number=via_number,
+        uncertain_count=len(uncertain),
+    )
 
     return ScanCandidate(
         position=read.position,

@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Qu
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, run_with_session
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.schemas.catalog import CatalogItem, CatalogListResponse
@@ -108,24 +108,24 @@ def catalog_meta(db: Session = Depends(get_db)):
 @router.post("/sync")
 async def trigger_catalog_sync(background_tasks: BackgroundTasks):
     """Sets voll-syncen + Katalog-Basis aufbauen (Hintergrund). Danach ggf. /enrich."""
-    async def _job():
+    async def _job(db: Session):
         await sync_sets()
-        await catalog_svc.sync_catalog()
-    background_tasks.add_task(_job)
+        await catalog_svc.sync_catalog(db)
+    background_tasks.add_task(run_with_session, _job)
     return {"detail": "Katalog-Sync gestartet (Sets + Katalog-Basis) – läuft im Hintergrund."}
 
 
 @router.post("/enrich")
 async def trigger_catalog_enrich(background_tasks: BackgroundTasks, limit: int = Query(500, ge=1, le=5000)):
     """Volldetails (Illustrator/Rarity/dexId/Varianten) für N Karten nachladen."""
-    background_tasks.add_task(catalog_svc.enrich_catalog, limit)
+    background_tasks.add_task(run_with_session, catalog_svc.enrich_catalog, limit)
     return {"detail": f"Enrichment für bis zu {limit} Karten gestartet."}
 
 
 @router.post("/enrich-all")
 async def trigger_catalog_enrich_all(background_tasks: BackgroundTasks):
     """Reichert ALLE noch offenen Karten an (läuft selbstständig durch). Einmal aufrufen."""
-    background_tasks.add_task(catalog_svc.enrich_all)
+    background_tasks.add_task(run_with_session, catalog_svc.enrich_all)
     return {"detail": "Enrichment aller Karten gestartet – läuft im Hintergrund bis fertig."}
 
 

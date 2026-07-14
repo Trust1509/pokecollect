@@ -64,6 +64,22 @@ def _gemini_limit_reached(db: Session) -> bool:
     return bool(row and (row.requests or 0) >= limit)
 
 
+def _record_usage(db: Session, total_tokens: int) -> None:
+    """Zählt eine Gemini-Anfrage + Tokens für den aktuellen UTC-Tag."""
+    try:
+        day = _today_utc()
+        row = db.get(GeminiUsage, day)
+        if row:
+            row.requests = (row.requests or 0) + 1
+            row.tokens = (row.tokens or 0) + int(total_tokens or 0)
+        else:
+            db.add(GeminiUsage(day=day, requests=1, tokens=int(total_tokens or 0)))
+        db.commit()
+    except Exception as exc:  # Nutzung tracken darf den Scan nie stören
+        db.rollback()
+        log.debug("Gemini-Usage konnte nicht gezählt werden: %s", exc)
+
+
 @router.get("/status")
 def scan_status(db: Session = Depends(get_db)):
     """Welche Erkennungs-Engine ist aktiv? (Hybrid-Anzeige im UI)"""
@@ -154,7 +170,10 @@ async def scan(
             hinweis = "Gemini-Tageslimit erreicht – Erkennung über lokale OCR."
             log.info("Gemini-Tageslimit erreicht – Scan fällt auf lokale OCR zurück.")
         else:
-            reads = await gemini.extract(data, api_key=gemini_key, model=gemini_model, mime_type=mime)
+            reads, gemini_tokens = await gemini.extract(
+                data, api_key=gemini_key, model=gemini_model, mime_type=mime)
+            if gemini_tokens is not None:
+                _record_usage(db, gemini_tokens)
             if reads is not None:
                 engine = "gemini"
     if reads is None:

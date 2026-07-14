@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, run_with_session
 from app.models.card import PokemonCard, PreisHistorie
 from app.schemas.card import PreisHistorieResponse
 from app.services.pricing import refresh_prices_for_cards
@@ -16,9 +16,11 @@ async def trigger_price_refresh(
     db: Session = Depends(get_db),
 ):
     ids = list(db.scalars(
-        select(PokemonCard.id).where(PokemonCard.besessen == True)
+        select(PokemonCard.id).where(PokemonCard.besessen == True)  # noqa: E712
     ).all())
-    background_tasks.add_task(refresh_prices_for_cards, ids)
+    # Eigene Session für den Hintergrund-Job — die Request-Session ist beim
+    # Ausführen der BackgroundTask bereits geschlossen.
+    background_tasks.add_task(run_with_session, refresh_prices_for_cards, ids)
     return {"message": f"Preisupdate für {len(ids)} Karten gestartet"}
 
 

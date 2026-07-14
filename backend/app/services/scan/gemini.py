@@ -54,13 +54,15 @@ async def extract(
     api_key: str,
     model: Optional[str] = None,
     mime_type: str = "image/jpeg",
-) -> Optional[list[ScanRawRead]]:
+) -> tuple[Optional[list[ScanRawRead]], Optional[int]]:
     """
-    Schickt das Bild an Gemini und liefert die erkannten Karten.
-    None signalisiert einen harten Fehler (Aufrufer kann auf OCR ausweichen).
+    Schickt das Bild an Gemini und liefert (erkannte Karten, Token-Verbrauch).
+    Karten = None signalisiert einen harten Fehler (Aufrufer kann auf OCR
+    ausweichen). Tokens = None heißt: kein zählbarer API-Call (der Aufrufer
+    bucht die Nutzung — Session-Injection statt eigener Session, Issue #9).
     """
     if not api_key:
-        return None
+        return None, None
     model = model or DEFAULT_MODEL
 
     b64 = base64.b64encode(image_bytes).decode("ascii")
@@ -90,25 +92,35 @@ async def extract(
             )
     except httpx.HTTPError as exc:
         log.warning("Gemini-Request fehlgeschlagen: %s", exc)
-        return None
+        return None, None
 
     if resp.status_code != 200:
         log.warning("Gemini Status %s: %s", resp.status_code, resp.text[:300])
-        return None
+        return None, None
 
     try:
         data = resp.json()
-        _record_usage(data.get("usageMetadata", {}).get("totalTokenCount", 0))
+    except ValueError as exc:
+        log.warning("Gemini-Antwort kein JSON: %s", exc)
+        return None, None
+
+    # Erfolgreicher (kontingentierter) Call → Tokens an den Aufrufer melden
+    try:
+        tokens = int(data.get("usageMetadata", {}).get("totalTokenCount", 0) or 0)
+    except (TypeError, ValueError):
+        tokens = 0
+
+    try:
         text = data["candidates"][0]["content"]["parts"][0]["text"]
         parsed = json.loads(text)
     except (KeyError, IndexError, ValueError, TypeError) as exc:
         log.warning("Gemini-Antwort nicht interpretierbar: %s", exc)
-        return None
+        return None, tokens
 
     if isinstance(parsed, dict):
         parsed = [parsed]
     if not isinstance(parsed, list):
-        return None
+        return None, tokens
 
     out: list[ScanRawRead] = []
     for idx, item in enumerate(parsed):
@@ -125,29 +137,7 @@ async def extract(
             quad=_quad(item),
         )
         out.append(read)
-    return out
-
-
-def _record_usage(total_tokens: int) -> None:
-    """Zählt eine Gemini-Anfrage + Tokens für den aktuellen UTC-Tag."""
-    try:
-        from datetime import datetime, timezone
-        from app.database import SessionLocal
-        from app.models.gemini_usage import GeminiUsage
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        db = SessionLocal()
-        try:
-            row = db.get(GeminiUsage, day)
-            if row:
-                row.requests = (row.requests or 0) + 1
-                row.tokens = (row.tokens or 0) + int(total_tokens or 0)
-            else:
-                db.add(GeminiUsage(day=day, requests=1, tokens=int(total_tokens or 0)))
-            db.commit()
-        finally:
-            db.close()
-    except Exception as exc:  # Nutzung tracken darf den Scan nie stören
-        log.debug("Gemini-Usage konnte nicht gezählt werden: %s", exc)
+    return out, tokens
 
 
 def _str(v) -> Optional[str]:

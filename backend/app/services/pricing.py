@@ -21,8 +21,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy.orm import Session
+
 from app.config import settings
-from app.database import SessionLocal
 from app.models.card import PokemonCard, PreisHistorie
 from app.services import tcgdex
 from app.services.card_image_service import fetch_tcgdex_card, resolve_set_id
@@ -61,16 +62,12 @@ def pick_cardmarket_price(cm: CardMarketPricing, folierung: Optional[str]) -> Op
     return Decimal(str(val))
 
 
-async def _price_for_card(card: PokemonCard) -> Optional[Decimal]:
+async def _price_for_card(db: Session, card: PokemonCard) -> Optional[Decimal]:
     """Holt den Cardmarket-Preis für eine Karte über TCGdex."""
     set_id = card.set_id
     if not set_id:
         # set_id liegt evtl. noch nicht an der Karte – über das Set auflösen
-        db = SessionLocal()
-        try:
-            set_id = resolve_set_id(db, card.set_edition)
-        finally:
-            db.close()
+        set_id = resolve_set_id(db, card.set_edition)
     if not set_id:
         return None
     tc = await fetch_tcgdex_card(set_id, card.karten_nr, card.sprache)
@@ -79,20 +76,20 @@ async def _price_for_card(card: PokemonCard) -> Optional[Decimal]:
     return pick_cardmarket_price(tc.pricing.cardmarket, card.folierung)
 
 
-async def refresh_prices_for_cards(card_ids: list[int]) -> None:
+async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
     """
     Aktualisiert Preise (TCGdex Cardmarket EUR) für die angegebenen Karten,
     schreibt Preisverlauf in preis_historie. Karten ohne Preis bleiben
-    unverändert (kein 0-Wert).
+    unverändert (kein 0-Wert). Session kommt injiziert (Kredo „testbar by
+    default"); Hintergrund-Aufrufer nutzen database.run_with_session.
     """
     updated = 0
-    db = SessionLocal()
     try:
         for card_id in card_ids:
             card = db.get(PokemonCard, card_id)
             if not card:
                 continue
-            price = await _price_for_card(card)
+            price = await _price_for_card(db, card)
             if price is None:
                 price = _cardmarket_oauth_fallback(card)
             if price is None:
@@ -107,8 +104,6 @@ async def refresh_prices_for_cards(card_ids: list[int]) -> None:
     except Exception as exc:
         log.error("Fehler beim Preisupdate: %s", exc)
         db.rollback()
-    finally:
-        db.close()
 
 
 def _cardmarket_oauth_fallback(card: PokemonCard) -> Optional[Decimal]:

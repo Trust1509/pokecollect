@@ -17,7 +17,6 @@ from fastapi import BackgroundTasks
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
@@ -54,18 +53,14 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
     row.enriched = True
 
 
-async def sync_catalog() -> dict:
+async def sync_catalog(db: Session) -> dict:
     """Katalog-Basis aus allen Set-Details (DE + EN) aufbauen/aktualisieren."""
     en_sets = await tcgdex.get_sets("en")
     if not en_sets:
         return {"error": "no_data"}
     set_ids = [s.id for s in en_sets]
 
-    db = SessionLocal()
-    try:
-        set_meta = {r.set_id: (r.code, r.name) for r in db.scalars(select(PokemonSet)).all() if r.set_id}
-    finally:
-        db.close()
+    set_meta = {r.set_id: (r.code, r.name) for r in db.scalars(select(PokemonSet)).all() if r.set_id}
 
     sem = asyncio.Semaphore(_CONC)
     results: dict[str, dict] = {}
@@ -85,66 +80,58 @@ async def sync_catalog() -> dict:
         and results[sid]["en"]["serie"].get("id") in tcgdex.EXCLUDED_SERIES
     }
 
-    db = SessionLocal()
     created = updated = 0
-    try:
-        if excluded:
-            # Früher evtl. indizierte Pocket-Karten entfernen (Self-Healing).
-            db.query(TcgdexCatalog).filter(
-                TcgdexCatalog.set_id.in_(excluded)
-            ).delete(synchronize_session=False)
-        existing = {r.card_id: r for r in db.scalars(select(TcgdexCatalog)).all()}
-        for sid in set_ids:
-            if sid in excluded:
-                continue  # Pocket-Set überspringen
-            res = results.get(sid, {})
-            en_d, de_d = res.get("en", {}), res.get("de", {})
-            de_cards = {c.get("id"): c for c in (de_d.get("cards") or [])}
-            code, sname = set_meta.get(sid, (None, None))
-            for c in (en_d.get("cards") or []):
-                cid = c.get("id")
-                if not cid:
-                    continue
-                dec = de_cards.get(cid, {})
-                name_en = c.get("name")
-                name_de = dec.get("name") or name_en
-                image = dec.get("image") or c.get("image")
-                local_id = c.get("localId") or dec.get("localId")
-                row = existing.get(cid)
-                if not row:
-                    row = TcgdexCatalog(card_id=cid)
-                    db.add(row)
-                    existing[cid] = row
-                    created += 1
-                else:
-                    updated += 1
-                row.set_id = sid
-                row.set_code = code
-                row.set_name = sname
-                row.local_id = local_id
-                row.local_id_num = _num(local_id)
-                row.name = name_de
-                row.name_en = name_en
-                if image:
-                    row.image = image
-                    row.image_url = tcgdex.image_url(image)
-            db.commit()  # je Set committen (kleinere Transaktionen)
-    finally:
-        db.close()
+    if excluded:
+        # Früher evtl. indizierte Pocket-Karten entfernen (Self-Healing).
+        db.query(TcgdexCatalog).filter(
+            TcgdexCatalog.set_id.in_(excluded)
+        ).delete(synchronize_session=False)
+    existing = {r.card_id: r for r in db.scalars(select(TcgdexCatalog)).all()}
+    for sid in set_ids:
+        if sid in excluded:
+            continue  # Pocket-Set überspringen
+        res = results.get(sid, {})
+        en_d, de_d = res.get("en", {}), res.get("de", {})
+        de_cards = {c.get("id"): c for c in (de_d.get("cards") or [])}
+        code, sname = set_meta.get(sid, (None, None))
+        for c in (en_d.get("cards") or []):
+            cid = c.get("id")
+            if not cid:
+                continue
+            dec = de_cards.get(cid, {})
+            name_en = c.get("name")
+            name_de = dec.get("name") or name_en
+            image = dec.get("image") or c.get("image")
+            local_id = c.get("localId") or dec.get("localId")
+            row = existing.get(cid)
+            if not row:
+                row = TcgdexCatalog(card_id=cid)
+                db.add(row)
+                existing[cid] = row
+                created += 1
+            else:
+                updated += 1
+            row.set_id = sid
+            row.set_code = code
+            row.set_name = sname
+            row.local_id = local_id
+            row.local_id_num = _num(local_id)
+            row.name = name_de
+            row.name_en = name_en
+            if image:
+                row.image = image
+                row.image_url = tcgdex.image_url(image)
+        db.commit()  # je Set committen (kleinere Transaktionen)
 
     log.info("Katalog-Sync: %d neu, %d aktualisiert (%d Sets).", created, updated, len(set_ids))
     return {"created": created, "updated": updated, "sets": len(set_ids)}
 
 
-async def enrich_catalog(limit: int = 500) -> dict:
+async def enrich_catalog(db: Session, limit: int = 500) -> dict:
     """Holt Volldetails (Illustrator/Rarity/dexId/Varianten) für N noch nicht angereicherte Karten."""
-    db = SessionLocal()
-    try:
-        ids = [r.card_id for r in db.scalars(
-            select(TcgdexCatalog).where(TcgdexCatalog.enriched == False).limit(limit)  # noqa: E712
-        ).all()]
-    finally:
-        db.close()
+    ids = [r.card_id for r in db.scalars(
+        select(TcgdexCatalog).where(TcgdexCatalog.enriched == False).limit(limit)  # noqa: E712
+    ).all()]
     if not ids:
         return {"enriched": 0, "remaining": 0}
 
@@ -159,28 +146,24 @@ async def enrich_catalog(limit: int = 500) -> dict:
 
     await asyncio.gather(*(one(c) for c in ids))
 
-    db = SessionLocal()
     n = 0
-    try:
-        for cid, tc in data.items():
-            row = db.get(TcgdexCatalog, cid)
-            if row:
-                _apply_full(row, tc)
-                n += 1
-        db.commit()
-        remaining = db.scalar(
-            select(func.count()).select_from(TcgdexCatalog).where(TcgdexCatalog.enriched == False)  # noqa: E712
-        ) or 0
-    finally:
-        db.close()
+    for cid, tc in data.items():
+        row = db.get(TcgdexCatalog, cid)
+        if row:
+            _apply_full(row, tc)
+            n += 1
+    db.commit()
+    remaining = db.scalar(
+        select(func.count()).select_from(TcgdexCatalog).where(TcgdexCatalog.enriched == False)  # noqa: E712
+    ) or 0
     log.info("Katalog-Enrichment: %d angereichert, %d verbleibend.", n, remaining)
     return {"enriched": n, "remaining": int(remaining)}
 
 
-async def enrich_all() -> None:
+async def enrich_all(db: Session) -> None:
     """Reichert in Etappen an, bis nichts mehr übrig ist (Hintergrund-Dauerlauf)."""
     while True:
-        res = await enrich_catalog(limit=500)
+        res = await enrich_catalog(db, limit=500)
         if not res.get("enriched") or not res.get("remaining"):
             break
         await asyncio.sleep(1)
