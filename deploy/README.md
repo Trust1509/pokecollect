@@ -87,6 +87,12 @@ ln -s /mnt/HDDs/Applications/pokecollect/config/.env \
 > **`APP_PASSWORD_HASH` ist Pflicht:** Seit Issue #1 gibt es kein eingebautes
 > Default-Passwort mehr — ohne gesetzten Hash verweigert die API den Start
 > (Fehlermeldung im Container-Log nennt die Abhilfe).
+>
+> ⚠️ **`$` im Hash als `$$` escapen!** Compose interpoliert die .env-Werte:
+> aus `$2b$12$Xyz…` wird sonst still ein kaputter Hash (WARN „The Xyz variable
+> is not set" beim Start, Login unmöglich). Richtig: `APP_PASSWORD_HASH=$$2b$$12$$Xyz…`
+> Einzeiler zum Nachrüsten:
+> `sed -i '/^APP_PASSWORD_HASH=/s/\$/$$/g' /pfad/zur/.env` (nur EINMAL ausführen).
 
 Bcrypt-Hash generieren (mit lokalem Python):
 ```bash
