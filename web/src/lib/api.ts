@@ -247,6 +247,22 @@ export const settingsApi = {
     api.post("/settings/change-password", { current_password, new_password }),
 };
 
+// ── Daten: CSV-Export / Backup / Restore (Issue #17) ──────────────────────
+// Downloads laufen als authentifizierte Blob-GETs über die axios-Instanz —
+// ein nackter <a href> hätte keinen Authorization-Header und liefe in 401.
+export const dataApi = {
+  exportCsv: () => api.get<Blob>("/data/export.csv", { responseType: "blob" }),
+  backup: () => api.get<Blob>("/data/backup", { responseType: "blob" }),
+  // Destruktiv — das Backend verlangt confirm="JA_WIRKLICH"; das UI sichert
+  // zusätzlich mit Checkbox + Bestätigungsdialog ab.
+  restore: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("confirm", "JA_WIRKLICH");
+    return api.post<{ detail: string }>("/data/restore", form);
+  },
+};
+
 // ── Scan ──────────────────────────────────────────────────────────────────
 
 export type ScanMode = "single" | "multi" | "binder";

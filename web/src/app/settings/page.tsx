@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, AppSettings, AppSettingsUpdate, ScanUsage } from "@/lib/api";
+import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, dataApi, AppSettings, AppSettingsUpdate, ScanUsage } from "@/lib/api";
 import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
@@ -66,6 +66,11 @@ export default function SettingsPage() {
   const [usage, setUsage] = useState<ScanUsage | null>(null);
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [syncingCatalog, setSyncingCatalog] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoreAck, setRestoreAck] = useState(false);
 
   useEffect(() => {
     settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error(t.settings_load_error));
@@ -131,6 +136,61 @@ export default function SettingsPage() {
       toast.error(t.settings_catalog_sync_error);
     } finally {
       setSyncingCatalog(false);
+    }
+  };
+
+  // Downloads: authentifizierter axios-GET (Blob) → createObjectURL →
+  // programmatischer a[download]-Klick. Ein nackter <a href> hätte keinen
+  // Authorization-Header und liefe in 401 (Issue #17).
+  const triggerBlobDownload = (data: Blob, contentDisposition: unknown, fallbackName: string) => {
+    const m = String(contentDisposition ?? "").match(/filename="?([^";]+)"?/);
+    const url = URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = m?.[1] ?? fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const r = await dataApi.exportCsv();
+      triggerBlobDownload(r.data, r.headers["content-disposition"], `pokecollect-export-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch {
+      toast.error(t.settings_export_error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const r = await dataApi.backup();
+      triggerBlobDownload(r.data, r.headers["content-disposition"], `pokecollect-backup-${new Date().toISOString().slice(0, 10)}.zip`);
+    } catch {
+      toast.error(t.settings_backup_error);
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreFile || !restoreAck) return;
+    if (!confirm(t.settings_restore_confirm)) return;
+    setRestoring(true);
+    try {
+      await dataApi.restore(restoreFile);
+      toast.success(t.settings_restore_success);
+      // Harte Neuladung: alle Caches/Listen spiegeln danach den Backup-Stand.
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(msg ?? t.settings_restore_error);
+      setRestoring(false);
     }
   };
 
@@ -381,6 +441,56 @@ export default function SettingsPage() {
         <div className="pt-1">
           <button type="button" onClick={handleCatalogSync} disabled={syncingCatalog} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             {t.settings_catalog_sync_now}
+          </button>
+        </div>
+      </Section>
+
+      {/* Daten: Export / Backup / Restore (Issue #17) */}
+      <Section title={`💾 ${t.settings_section_data}`}>
+        <p className="text-gray-400 text-xs">{t.settings_data_hint}</p>
+        <div className="flex gap-3 pt-1 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            {exporting ? t.settings_data_busy : t.settings_export_csv}
+          </button>
+          <button
+            type="button"
+            onClick={handleBackup}
+            disabled={backingUp}
+            className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            {backingUp ? t.settings_data_busy : t.settings_backup_download}
+          </button>
+        </div>
+        <div className="border-t border-gray-700 pt-3 space-y-3">
+          <p className="text-white text-sm font-medium">{t.settings_restore_title}</p>
+          <p className="text-gray-500 text-xs">{t.settings_restore_hint}</p>
+          <input
+            type="file"
+            accept=".zip,application/zip"
+            onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-gray-300 file:mr-3 file:rounded file:border-0 file:bg-gray-700 file:px-3 file:py-1.5 file:text-sm file:text-white hover:file:bg-gray-600"
+          />
+          <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={restoreAck}
+              onChange={(e) => setRestoreAck(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>{t.settings_restore_ack}</span>
+          </label>
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={restoring || !restoreFile || !restoreAck}
+            className="bg-pokemon-red text-white text-sm px-4 py-1.5 rounded hover:opacity-90 disabled:opacity-50"
+          >
+            {restoring ? t.settings_restore_running : t.settings_restore_button}
           </button>
         </div>
       </Section>

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.api.deps import require_auth
-from app.api.v1 import auth, cards, catalog, collections, prices, scan, settings, sets
+from app.api.v1 import auth, cards, catalog, collections, data, prices, scan, settings, sets
 
 router = APIRouter(prefix="/api/v1")
 
@@ -15,6 +15,7 @@ for protected in (
     cards.router,
     catalog.router,
     collections.router,
+    data.router,
     prices.router,
     scan.router,
     settings.router,

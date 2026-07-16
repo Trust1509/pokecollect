@@ -263,6 +263,10 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Downloads (CSV-Export/Backup, Issue #17) laufen als authentifizierte
+    # XHR-Blobs — der Browser darf den Dateinamen nur lesen, wenn der Header
+    # per CORS freigegeben ist.
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(v1_router)
