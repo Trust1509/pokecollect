@@ -1,0 +1,68 @@
+# PokéCollect — HTTPS im LAN mit Caddy-eigener CA (tls internal), Issue #18
+#
+# ARCHITEKTUR: EIN Hostname (pokecollect.lan) für Web UND API.
+# Die API hängt unter /api/* und /images/* am selben Host, alles andere geht
+# ans Web-Frontend. Vorteile:
+#   - NEXT_PUBLIC_API_URL=https://pokecollect.lan passt exakt (der Web-Client
+#     hängt selbst /api/v1 an — web/src/lib/api.ts).
+#   - Web + API sind same-origin → im Browser kein CORS-Problem.
+#   - Nur EIN Zertifikat / EIN DNS-Eintrag.
+#
+# WICHTIG: `handle` statt `handle_path`! Die API serviert ihre Routen selbst
+# unter /api/v1/… — handle_path würde das /api-Präfix wegschneiden und
+# jede Anfrage in 404 laufen lassen.
+#
+# ── Einbindung ────────────────────────────────────────────────────────────────
+# Variante A — BESTEHENDER Caddy-Container (bevorzugt, wenn schon einer läuft):
+#   Diesen Block ans bestehende Caddyfile anhängen, dann `caddy reload`.
+#   Upstreams unten: Host-IP + veröffentlichte Ports des PokéCollect-Stacks
+#   (<server-ip>:3010 = API, <server-ip>:3011 = Web). Alternativ den Caddy-
+#   Container ins pokecollect-Docker-Netz hängen und die Container-Upstreams
+#   verwenden (siehe Kommentare in den handle-Blöcken + deploy/README.md).
+# Variante B — In-Stack-Caddy (kein eigener Caddy vorhanden):
+#   Auskommentierten caddy-Service in docker-compose.yml aktivieren; er mountet
+#   genau diese Datei als Caddyfile. Dann in den handle-Blöcken die
+#   In-Stack-Upstreams (api:8000 / web:3000) einkommentieren.
+#
+# ── Danach zwingend ──────────────────────────────────────────────────────────
+# 1. .env:  NEXT_PUBLIC_API_URL=https://pokecollect.lan
+#           CORS_ORIGINS=http://<server-ip>:3011,https://pokecollect.lan
+# 2. Web-Image NEU BAUEN (NEXT_PUBLIC_API_URL ist ein Build-Arg!):
+#      docker compose build web && docker compose up -d web api
+# 3. DNS: pokecollect.lan → <server-ip> (Router-DNS/Pi-hole — Handys können
+#    keine hosts-Datei; Details in deploy/README.md).
+# 4. Caddy-CA-Zertifikat einmalig am Handy installieren (deploy/README.md
+#    → "HTTPS im LAN (tls internal)").
+
+pokecollect.lan {
+	# LAN-only: Zertifikat von Caddys eingebauter CA statt Let's Encrypt.
+	tls internal
+
+	# API — FastAPI serviert selbst unter /api/v1/… (deshalb KEIN handle_path)
+	handle /api/* {
+		reverse_proxy <server-ip>:3010
+		# In-Stack / gemeinsames Docker-Netz stattdessen:
+		# reverse_proxy api:8000
+	}
+
+	# Kartenbilder — StaticFiles-Mount der API (auth-frei für <img>-Tags)
+	handle /images/* {
+		reverse_proxy <server-ip>:3010
+		# In-Stack / gemeinsames Docker-Netz stattdessen:
+		# reverse_proxy api:8000
+	}
+
+	# API-Healthcheck (praktisch zum Testen: https://pokecollect.lan/health)
+	handle /health {
+		reverse_proxy <server-ip>:3010
+		# In-Stack / gemeinsames Docker-Netz stattdessen:
+		# reverse_proxy api:8000
+	}
+
+	# Web-Frontend (Next.js) — Catch-all für alles Übrige
+	handle {
+		reverse_proxy <server-ip>:3011
+		# In-Stack / gemeinsames Docker-Netz stattdessen:
+		# reverse_proxy web:3000
+	}
+}

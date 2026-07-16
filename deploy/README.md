@@ -263,3 +263,148 @@ docker logs authelia --tail 30
 # Konfiguration validieren:
 docker exec authelia authelia validate-config --config /config/configuration.yml
 ```
+
+---
+
+## HTTPS im LAN (tls internal) — Issue #18
+
+> **Warum:** Erst mit HTTPS schaltet der Browser die guten Sachen frei:
+> **PWA-Installation** („Zum Startbildschirm" als echte App inkl. Offline-
+> Grundlagen) und **Kamera/`getUserMedia` ohne Chrome-Flag** (der Karten-Scan
+> läuft dann direkt im Handy-Browser, ohne `unsafely-treat-insecure-origin-
+> as-secure`-Bastelei). Da die App LAN-only ist, gibt es kein Let's-Encrypt-
+> Zertifikat — stattdessen stellt Caddy mit `tls internal` Zertifikate aus
+> seiner **eigenen CA** aus; deren Wurzelzertifikat installiert man einmalig
+> am Handy.
+
+**Architektur:** EIN Hostname `pokecollect.lan` für Web **und** API
+(`/api/*` und `/images/*` → API, Rest → Web). Dadurch:
+
+- `NEXT_PUBLIC_API_URL=https://pokecollect.lan` passt exakt (der Web-Client
+  hängt selbst `/api/v1` an).
+- Web und API sind same-origin → kein CORS-Gefrickel im Browser.
+
+> ⚠️ Im Caddyfile bewusst `handle` statt `handle_path`: Die API serviert ihre
+> Routen selbst unter `/api/v1/…` — `handle_path` würde das Präfix abschneiden
+> und alles in 404 laufen lassen.
+
+> Das ältere `deploy/Caddyfile.snippet` (ohne Unterordner) ist das
+> **Authelia-Setup für externen Zugriff** mit echter Domain — für HTTPS im
+> LAN gilt das neue `deploy/caddy/Caddyfile.snippet`.
+
+### Schritt 0 — für beide Wege: DNS + .env
+
+1. **DNS:** `pokecollect.lan` muss im LAN auf `<server-ip>` zeigen. Handys
+   haben keine editierbare hosts-Datei → der Eintrag gehört in den
+   **Router-DNS** (FritzBox: Heimnetz → Netzwerk → Gerät → Name) oder in
+   **Pi-hole/AdGuard** (Local DNS Records). Test am Handy:
+   `https://pokecollect.lan/health` (Zertifikatswarnung ist vor Schritt 3 normal).
+2. **.env anpassen** (`/mnt/HDDs/Applications/pokecollect/config/.env`):
+
+   ```bash
+   # Browser-URL der API hinter dem Proxy (Build-Arg!):
+   NEXT_PUBLIC_API_URL=https://pokecollect.lan
+   # HTTPS-Origin ZUSÄTZLICH erlauben (direkter Port-Zugriff bleibt möglich):
+   CORS_ORIGINS=http://<server-ip>:3011,https://pokecollect.lan
+   ```
+
+3. **Web-Image neu bauen — Pflicht!** `NEXT_PUBLIC_API_URL` wird zur
+   **Build-Zeit** ins JS-Bundle gebrannt; ein Neustart reicht nicht:
+
+   ```bash
+   cd /mnt/HDDs/Applications/pokecollect/app
+   docker compose build web && docker compose up -d web api
+   ```
+
+   > Hinweis: Danach spricht das Web-Frontend die API **nur noch über
+   > `https://pokecollect.lan`** an — auch wer die Seite über
+   > `http://<server-ip>:3011` öffnet. Am PC ohne installiertes CA-Zertifikat
+   > blockt der Browser diese Aufrufe, bis man die CA auch dort installiert
+   > (Schritt 3) oder einmalig `https://pokecollect.lan` besucht und dem
+   > Zertifikat vertraut.
+
+### Weg 1 — Bestehender Caddy-Container (bevorzugt)
+
+1. Inhalt von `deploy/caddy/Caddyfile.snippet` ans bestehende Caddyfile
+   anhängen:
+
+   ```bash
+   cat /mnt/HDDs/Applications/pokecollect/app/deploy/caddy/Caddyfile.snippet \
+     >> /mnt/HDDs/Applications/caddy/Caddyfile
+   ```
+
+2. Im angehängten Block `<server-ip>` durch die echte Server-IP ersetzen
+   (Upstreams `…:3010` für die API, `…:3011` fürs Web).
+
+   **Netzwerk-Hinweise:** Über `Host-IP:Port` funktioniert es immer, weil der
+   PokéCollect-Stack die Ports 3010/3011 veröffentlicht. Eleganter ist ein
+   **gemeinsames Docker-Netz**: den Caddy-Container ins Netz
+   `pokecollect_pokecollect` hängen (`docker network connect
+   pokecollect_pokecollect <caddy-container>` bzw. in dessen Compose-Datei als
+   externes Netz eintragen) — dann gelten die Container-Upstreams `api:8000`
+   und `web:3000` (Kommentare im Snippet) und die Host-Ports 3010/3011
+   könnten sogar geschlossen werden.
+
+3. Caddy neu laden:
+
+   ```bash
+   docker exec <caddy-container> caddy reload --config /etc/caddy/Caddyfile
+   ```
+
+### Weg 2 — In-Stack-Caddy (kein eigener Caddy vorhanden)
+
+1. In `deploy/caddy/Caddyfile.snippet` in **allen vier** `handle`-Blöcken die
+   In-Stack-Upstreams einkommentieren (`api:8000` / `web:3000`) und die
+   `<server-ip>`-Zeilen auskommentieren.
+2. In `docker-compose.yml` den auskommentierten `caddy:`-Service aktivieren
+   (Kommentarzeichen entfernen). Das `/data`-Volume **nicht** weglassen — es
+   persistiert die Caddy-CA; ohne Volume gäbe es nach jedem Neuaufsetzen eine
+   neue CA und das am Handy installierte Zertifikat würde ungültig.
+3. Dataset/Ordner fürs CA-Volume anlegen und starten:
+
+   ```bash
+   mkdir -p /mnt/HDDs/Applications/pokecollect/caddy/{data,config}
+   cd /mnt/HDDs/Applications/pokecollect/app
+   docker compose up -d caddy
+   ```
+
+### Schritt 3 — Caddy-CA-Zertifikat exportieren + am Handy installieren
+
+Die Wurzel-CA liegt im Caddy-Container unter
+`/data/caddy/pki/authorities/local/root.crt`:
+
+```bash
+docker cp <caddy-container>:/data/caddy/pki/authorities/local/root.crt \
+  /tmp/pokecollect-lan-ca.crt
+```
+
+Die Datei aufs Handy bringen (E-Mail an sich selbst, USB, Nextcloud, …).
+
+**Android:**
+
+1. `root.crt` am Handy speichern (Downloads).
+2. Einstellungen → **Sicherheit & Datenschutz** → **Weitere
+   Sicherheitseinstellungen** → **Verschlüsselung & Anmeldedaten** →
+   **Zertifikat installieren** → **CA-Zertifikat** (Pfad je nach Hersteller
+   leicht anders; notfalls in den Einstellungen nach „Zertifikat" suchen).
+3. Warnung mit „Trotzdem installieren" bestätigen und die Datei wählen.
+4. Chrome/Firefox neu starten → `https://pokecollect.lan` zeigt das Schloss.
+
+**iOS/iPadOS (zwei Schritte — der zweite wird gern vergessen!):**
+
+1. `root.crt` in Safari/Mail öffnen → „Profil geladen" → Einstellungen →
+   **Allgemein** → **VPN & Geräteverwaltung** → Profil **installieren**.
+2. **Zusätzlich:** Einstellungen → **Allgemein** → **Info** →
+   **Zertifikatsvertrauenseinstellungen** → Schalter für die Caddy-CA
+   („Caddy Local Authority …") **aktivieren**. Ohne diesen zweiten Schritt
+   bleibt das Zertifikat unvertrauenswürdig.
+
+### Schritt 4 — Testen
+
+1. `https://pokecollect.lan/health` → `{"status":"ok", …}` mit Schloss.
+2. `https://pokecollect.lan` → Login-Seite, Anmelden funktioniert
+   (wenn nicht: CORS_ORIGINS gesetzt + API neu gestartet? Web-Image neu gebaut?).
+3. Kartenbilder laden (`/images/*` läuft über den Proxy).
+4. Handy-Browser: Menü → **App installieren / Zum Startbildschirm** → die
+   PWA-Installation wird jetzt angeboten; der Scan darf die Kamera ohne
+   Chrome-Flag öffnen.

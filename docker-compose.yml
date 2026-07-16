@@ -71,6 +71,32 @@ services:
       - pokecollect
     restart: unless-stopped
 
+  # ── Optional: HTTPS im LAN via Caddy mit tls internal (Issue #18) ─────────
+  # NUR aktivieren, wenn KEIN eigener Caddy läuft — läuft bereits einer
+  # (bevorzugter Weg), stattdessen deploy/caddy/Caddyfile.snippet dort
+  # einbinden. Beide Wege Schritt für Schritt: deploy/README.md →
+  # "HTTPS im LAN (tls internal)".
+  # Vor dem Aktivieren im Snippet die In-Stack-Upstreams einkommentieren
+  # (api:8000 / web:3000) und NEXT_PUBLIC_API_URL=https://pokecollect.lan
+  # setzen + Web-Image neu bauen (Build-Arg!).
+  # caddy:
+  #   image: caddy:2-alpine
+  #   ports:
+  #     - "443:443"
+  #   volumes:
+  #     - ./deploy/caddy/Caddyfile.snippet:/etc/caddy/Caddyfile:ro
+  #     # /data persistiert die Caddy-CA — ohne dieses Volume erzeugt jeder
+  #     # Neustart eine NEUE CA und das am Handy installierte Zertifikat
+  #     # wird ungültig!
+  #     - /mnt/HDDs/Applications/pokecollect/caddy/data:/data
+  #     - /mnt/HDDs/Applications/pokecollect/caddy/config:/config
+  #   depends_on:
+  #     - api
+  #     - web
+  #   networks:
+  #     - pokecollect
+  #   restart: unless-stopped
+
 networks:
   pokecollect:
     driver: bridge
