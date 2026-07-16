@@ -103,6 +103,11 @@ export type Enums = {
   prioritaet: string[];
 };
 
+export type CollectionProgress = {
+  erfuellt: number;
+  soll: number;
+};
+
 export type Collection = {
   id: number;
   name: string;
@@ -111,6 +116,33 @@ export type Collection = {
   binder_slots: number | null;
   erstellt_am: string | null;
   karten_anzahl: number;
+  // Set-Sammlung / Sammelziel (Issue #16)
+  typ: string; // "frei" | "set_ziel"
+  ziel_set_id: string | null;
+  ziel_folierung: string | null;
+  ziel_sprache: string | null;
+  ziel_master_set: boolean;
+  fortschritt: CollectionProgress | null; // nur bei typ="set_ziel"
+};
+
+// Soll-Slot einer Set-Sammlung: Katalog-Karte + erfüllt-Status (Issue #16)
+export type SollSlot = {
+  id: number;
+  tcgdex_card_id: string;
+  soll_folierung: string | null; // null = Regel (ziel_folierung) gilt
+  position: number | null;
+  erfuellt: boolean;
+  karte_id: number | null;
+  karte: Card | null; // erfüllende Bestandskarte
+  name: string | null;
+  name_en: string | null;
+  local_id: string | null;
+  image_url: string | null;
+  rarity: string | null;
+  set_id: string | null;
+  set_code: string | null;
+  set_name: string | null;
+  dex_id: number | null;
 };
 
 export type CollectionCard = Card & { position: number | null };
@@ -221,8 +253,15 @@ export type AppSettingsUpdate = Partial<{
 export const collectionApi = {
   list: () => api.get<Collection[]>("/collections"),
   get: (id: number) => api.get<Collection>(`/collections/${id}`),
-  create: (data: { name: string; beschreibung?: string | null }) =>
-    api.post<Collection>("/collections", data),
+  create: (data: {
+    name: string;
+    beschreibung?: string | null;
+    typ?: string;
+    ziel_set_id?: string | null;
+    ziel_folierung?: string | null;
+    ziel_sprache?: string | null;
+    ziel_master_set?: boolean;
+  }) => api.post<Collection>("/collections", data),
   update: (id: number, data: { name?: string; beschreibung?: string | null; binder_layout?: string; binder_slots?: number }) =>
     api.put<Collection>(`/collections/${id}`, data),
   delete: (id: number) => api.delete(`/collections/${id}`),
@@ -238,6 +277,20 @@ export const collectionApi = {
   setPositions: (id: number, positions: { card_id: number; position: number }[]) =>
     api.put(`/collections/${id}/cards/positions`, { positions }),
   forCard: (cardId: number) => api.get<Collection[]>(`/cards/${cardId}/collections`),
+  // Soll-Liste / Fortschritt einer Set-Sammlung (Issue #16)
+  soll: (id: number) => api.get<SollSlot[]>(`/collections/${id}/soll`),
+  addSoll: (id: number, tcgdexCardId: string, sollFolierung?: string | null) =>
+    api.post<SollSlot>(`/collections/${id}/soll`, {
+      tcgdex_card_id: tcgdexCardId,
+      soll_folierung: sollFolierung ?? null,
+    }),
+  updateSoll: (id: number, sollId: number, data: { soll_folierung?: string | null; position?: number }) =>
+    api.put<SollSlot>(`/collections/${id}/soll/${sollId}`, data),
+  removeSoll: (id: number, sollId: number) =>
+    api.delete(`/collections/${id}/soll/${sollId}`),
+  sollToWishlist: (id: number, sollId: number) =>
+    api.post<{ card_id: number }>(`/collections/${id}/soll/${sollId}/wishlist`),
+  progress: (id: number) => api.get<CollectionProgress>(`/collections/${id}/progress`),
 };
 
 export const settingsApi = {

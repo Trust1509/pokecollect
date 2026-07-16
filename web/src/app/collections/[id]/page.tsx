@@ -8,15 +8,19 @@ import { API_BASE, Card, CollectionCard, Collection, cardApi, collectionApi } fr
 import SortableCardGrid from "@/components/SortableCardGrid";
 import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
 import BinderEditor from "@/components/BinderEditor";
+import GoalProgress from "@/components/GoalProgress";
+import SollView from "@/components/SollView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
 import { cardImageSrc, extractSetCode } from "@/lib/utils";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
+import { useSets } from "@/lib/useSets";
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const id = Number(params?.id);
   const { t, lang } = useI18n();
+  const { sets } = useSets();
   const [collection, setCollection] = useState<Collection | null>(null);
   const [cards, setCards] = useState<CollectionCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +201,12 @@ export default function CollectionDetailPage() {
     position: c.position ?? idx,
   }));
 
+  // Set-Sammlung (Issue #16): Soll-Ansicht statt freier Karten-Zuweisung
+  const isGoal = collection?.typ === "set_ziel";
+  const zielSet = isGoal
+    ? sets.find((s) => s.set_id === collection?.ziel_set_id) ?? null
+    : null;
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-4">
@@ -204,30 +214,46 @@ export default function CollectionDetailPage() {
       </div>
 
       <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-white">{collection?.name ?? "…"}</h1>
           {collection?.beschreibung && <p className="text-gray-400 text-sm">{collection.beschreibung}</p>}
-          <p className="text-gray-500 text-xs mt-1">{t.collections_card_count(collection?.karten_anzahl ?? cards.length)}</p>
+          {isGoal && collection ? (
+            <>
+              <p className="text-gray-500 text-xs mt-1">
+                {zielSet ? `${zielSet.name} (${zielSet.code})` : collection.ziel_set_id}
+                {collection.ziel_folierung ? ` · ${collection.ziel_folierung}` : ""}
+                {collection.ziel_sprache ? ` · ${collection.ziel_sprache}` : ""}
+                {` · ${collection.ziel_master_set ? t.soll_master_badge : t.soll_official_badge}`}
+              </p>
+              {collection.fortschritt && (
+                <GoalProgress progress={collection.fortschritt} className="mt-2 max-w-xs" />
+              )}
+            </>
+          ) : (
+            <p className="text-gray-500 text-xs mt-1">{t.collections_card_count(collection?.karten_anzahl ?? cards.length)}</p>
+          )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <ViewToggle value={view} onChange={setView} />
-          <button type="button"
-            onClick={() => setShowAssign((v) => !v)}
-            className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700"
-          >
-            {t.collection_add_existing}
-          </button>
-          <Link
-            href={`/cards/new?collection=${id}`}
-            className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600"
-          >
-            {t.collection_create_new}
-          </Link>
-        </div>
+        {!isGoal && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <ViewToggle value={view} onChange={setView} />
+            <button type="button"
+              onClick={() => setShowAssign((v) => !v)}
+              className="bg-pokemon-accent text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700"
+            >
+              {t.collection_add_existing}
+            </button>
+            <Link
+              href={`/cards/new?collection=${id}`}
+              className="bg-pokemon-red text-white text-sm px-3 py-1.5 rounded hover:bg-red-600"
+            >
+              {t.collection_create_new}
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Zuweisungs-Panel */}
-      {showAssign && (
+      {!isGoal && showAssign && (
         <div className="bg-pokemon-card rounded-lg p-4 mb-6">
           <input
             type="text"
@@ -278,7 +304,9 @@ export default function CollectionDetailPage() {
         </div>
       )}
 
-      {loading ? (
+      {isGoal && collection ? (
+        <SollView collection={collection} onMetaChange={loadMeta} />
+      ) : loading ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
       ) : view === "binder" ? (
         <div>

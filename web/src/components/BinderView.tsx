@@ -9,6 +9,18 @@ import { useI18n } from "@/lib/i18n";
 
 export type BinderItem = { card: Card; position: number };
 
+// Geister-Slot (Issue #16): fehlende Soll-Karte einer Set-Sammlung —
+// gedimmter Katalog-Platzhalter statt leerer Tasche, optional mit
+// Wunschlisten-Aktion. Externe Bild-URLs kommen als <img> (kein next/image).
+export type BinderGhost = {
+  position: number;
+  imageUrl: string | null;
+  label: string;
+  sub?: string | null;
+  onWishlist?: () => void;
+  wishlistTitle?: string;
+};
+
 type Props = {
   items: BinderItem[];
   apiBase: string;
@@ -25,6 +37,8 @@ type Props = {
   storageKey?: string;
   /** Wenn gesetzt: Karten, deren id NICHT enthalten ist, werden ausgegraut (Filter-Hervorhebung). */
   highlightIds?: Set<number> | null;
+  /** Fehlende Soll-Slots einer Set-Sammlung (gedimmte Katalog-Platzhalter). */
+  ghosts?: BinderGhost[];
 };
 
 export const ASSIGN_DRAG_TYPE = "application/x-pokecollect-add";
@@ -43,7 +57,7 @@ const SIZE_KEY = "binder_card_size";
 export default function BinderView({
   items, apiBase, placeholderEnabled = true, layout,
   onLayoutChange, editable = false, onMoveToSlot, onAddAtSlot,
-  binderSlots, onAddPage, onDeleteLastPage, storageKey, highlightIds,
+  binderSlots, onAddPage, onDeleteLastPage, storageKey, highlightIds, ghosts,
 }: Props) {
   const { t, lang } = useI18n();
   const { cols, rows } = parseLayout(layout);
@@ -96,7 +110,15 @@ export default function BinderView({
     return m;
   }, [items]);
 
-  const maxSlot = items.length ? Math.max(...items.map((i) => i.position)) : -1;
+  const ghostMap = useMemo(() => {
+    const m = new Map<number, BinderGhost>();
+    for (const g of ghosts ?? []) m.set(g.position, g);
+    return m;
+  }, [ghosts]);
+
+  const maxItemSlot = items.length ? Math.max(...items.map((i) => i.position)) : -1;
+  const maxGhostSlot = ghosts?.length ? Math.max(...ghosts.map((g) => g.position)) : -1;
+  const maxSlot = Math.max(maxItemSlot, maxGhostSlot);
   const contentPages = maxSlot >= 0 ? Math.floor(maxSlot / perPage) + 1 : 1;
   const slotPages = binderSlots != null ? Math.ceil(binderSlots / perPage) : 0;
   const totalPages = Math.max(contentPages, slotPages, 1);
@@ -196,6 +218,46 @@ export default function BinderView({
               : {};
 
             if (!card) {
+              const ghost = ghostMap.get(slot);
+              if (ghost) {
+                return (
+                  <div
+                    key={slot}
+                    {...dropProps}
+                    className="aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800/60 ring-1 ring-black/40"
+                  >
+                    {ghost.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={ghost.imageUrl}
+                        alt={ghost.label}
+                        loading="lazy"
+                        className="w-full h-full object-cover opacity-30 grayscale"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-600 text-[10px] text-center p-1">
+                        {ghost.label}
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1">
+                      <span className="text-[10px] text-gray-500 truncate">{ghost.label}</span>
+                      {ghost.sub && (
+                        <span className="text-[10px] text-gray-600 font-mono shrink-0">{ghost.sub}</span>
+                      )}
+                    </div>
+                    {ghost.onWishlist && (
+                      <button
+                        type="button"
+                        onClick={ghost.onWishlist}
+                        title={ghost.wishlistTitle}
+                        className="absolute top-1 right-1 rounded-full px-1.5 py-1 bg-black/60 text-white hover:bg-black/80 text-[11px] leading-none"
+                      >
+                        ★
+                      </button>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div
                   key={slot}
