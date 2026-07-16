@@ -167,6 +167,14 @@ def _run_light_migrations():
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id ON pokemon_cards (tcgdex_card_id)",
         # Originalfoto (ungeschnitten) zusätzlich zum Zuschnitt aufbewahren (v0.9.10)
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_original_pfad TEXT",
+        # ── Set-Sammlungen / Sammelziele (Issue #16) ─────────────────────────
+        # Die neue Tabelle collection_soll legt create_all an (models/collection.py);
+        # hier nur die additiven Spalten auf der bestehenden collections-Tabelle.
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS typ TEXT DEFAULT 'frei'",
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS ziel_set_id TEXT",
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS ziel_folierung TEXT",
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS ziel_sprache TEXT",
+        "ALTER TABLE collections ADD COLUMN IF NOT EXISTS ziel_master_set BOOLEAN DEFAULT FALSE",
         # Pokémon TCG Pocket (serie 'tcgp') ist rein digital → aus Katalog & Sets
         # entfernen, falls früher synchronisiert. Reihenfolge: erst Katalog (die
         # Subquery braucht die Set-Zeilen), dann die Sets selbst. Der Sync legt
