@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.2.0] – 2026-07-18 (Quick-Wins: Kurzcode-Suche, besserer Scan) — gefahrlos
+
+### Suche & Scan
+- **Kurzcode-Suche „PFL 001":** In Katalog- und Kartensuche löst ein
+  `KÜRZEL NUMMER` direkt auf Set + Kartennummer auf — spart am Handy das
+  Filtern über zwei Felder. Unbekannte Kürzel fallen automatisch auf die
+  normale Volltextsuche zurück (#19).
+- **Treffsichererer Scan:** Findet die Namenssuche nichts, sucht der Resolver
+  einmal ohne Karten-Suffix (ex/GX/V/VSTAR/VMAX) erneut — breitere
+  TCGdex-Treffer, ohne echte Namen wie „Iksbat" zu verstümmeln (#20).
+
 ## [v1.1.0] – 2026-07-18 (Set-Sammlungen, Export/Backup, HTTPS) — ⚠️ enthält Migration
 
 ### ⚠️ Deploy-Hinweis
