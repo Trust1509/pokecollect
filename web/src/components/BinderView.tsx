@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card, BINDER_LAYOUTS } from "@/lib/api";
 import { cardImageSrc, setCodeFromEdition } from "@/lib/utils";
+import { rememberCardOrder } from "@/lib/cardNav";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -284,7 +285,12 @@ export default function BinderView({
                   editable ? "cursor-move" : ""
                 } ${dimmed ? "opacity-20 grayscale" : card.besessen ? "" : "opacity-50"}`}
               >
-                <Link href={`/cards/${card.id}`} draggable={false} className="block w-full h-full">
+                <Link
+                  href={`/cards/${card.id}`}
+                  draggable={false}
+                  className="block w-full h-full"
+                  onClick={() => rememberCardOrder(items.map((it) => it.card.id))}
+                >
                   {src ? (
                     <Image
                       src={src}

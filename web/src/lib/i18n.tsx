@@ -300,6 +300,10 @@ const DE = {
   detail_value_updated: "Aktualisiert",
   detail_placeholder: "Pokédex-Platzhalter",
   detail_no_image: "Kein Bild",
+  detail_prev_card: "Vorherige Karte",
+  detail_next_card: "Nächste Karte",
+  detail_zoom_image: "Bild vergrößern",
+  detail_close_image: "Bild schließen",
   detail_saved: "Gespeichert",
 
   // Field labels
@@ -731,6 +735,10 @@ const EN: typeof DE = {
   detail_value_updated: "Updated",
   detail_placeholder: "Pokédex placeholder",
   detail_no_image: "No image",
+  detail_prev_card: "Previous card",
+  detail_next_card: "Next card",
+  detail_zoom_image: "Enlarge image",
+  detail_close_image: "Close image",
   detail_saved: "Saved",
 
   field_card_name: "Card name",

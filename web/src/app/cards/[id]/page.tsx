@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { API_BASE, cardApi, pricesApi, Card } from "@/lib/api";
@@ -8,7 +8,9 @@ import PriceChart from "@/components/PriceChart";
 import PhotoPanel from "@/components/carddetail/PhotoPanel";
 import EditForm from "@/components/carddetail/EditForm";
 import CollectionsPanel from "@/components/carddetail/CollectionsPanel";
+import ImageLightbox from "@/components/ImageLightbox";
 import { cardImageSrc } from "@/lib/utils";
+import { cardNeighbors } from "@/lib/cardNav";
 import { useEnums } from "@/lib/useEnums";
 import { useSets } from "@/lib/useSets";
 import { useI18n } from "@/lib/i18n";
@@ -102,11 +104,36 @@ export default function CardDetailPage() {
   const [editingPriority, setEditingPriority] = useState(false);
   const [conflictCard, setConflictCard] = useState<Card | null>(null);
   const [showPokedexModal, setShowPokedexModal] = useState(false);
+  // Bild-Großansicht + Vor/Zurück-Navigation (Issue #24)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [neighbors, setNeighbors] = useState<{ prev: number | null; next: number | null }>({ prev: null, next: null });
 
   useEffect(() => {
     cardApi.get(Number(id)).then((r) => { setCard(r.data); setForm(r.data); });
     pricesApi.history(Number(id)).then((r) => setHistory(r.data));
   }, [id]);
+
+  // Nachbar-Karten aus der zuletzt genutzten Liste bestimmen (sessionStorage).
+  useEffect(() => { if (id) setNeighbors(cardNeighbors(Number(id))); }, [id]);
+
+  const goTo = useCallback((nid: number | null) => {
+    if (nid != null) router.push(`/cards/${nid}`);
+  }, [router]);
+
+  const handleSwipe = (dir: "prev" | "next") => goTo(dir === "next" ? neighbors.next : neighbors.prev);
+
+  // Tastatur ←/→ blättert (nicht in Formularfeldern, nicht bei offener Lightbox).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (lightboxSrc) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.key === "ArrowLeft") goTo(neighbors.prev);
+      else if (e.key === "ArrowRight") goTo(neighbors.next);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [neighbors, lightboxSrc, goTo]);
 
   const doSetPokedex = async (value: boolean) => {
     if (!card) return;
@@ -179,8 +206,29 @@ export default function CardDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <button type="button" onClick={handleBack} className="text-gray-500 hover:text-white text-sm">{t.detail_back_generic}</button>
+        {/* Vor/Zurück zwischen Karten der zuletzt genutzten Liste (Issue #24) */}
+        <div className="flex items-center gap-2">
+          <button type="button"
+            onClick={() => goTo(neighbors.prev)}
+            disabled={neighbors.prev == null}
+            aria-label={t.detail_prev_card}
+            title={t.detail_prev_card}
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-pokemon-card text-gray-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
+          >
+            ‹
+          </button>
+          <button type="button"
+            onClick={() => goTo(neighbors.next)}
+            disabled={neighbors.next == null}
+            aria-label={t.detail_next_card}
+            title={t.detail_next_card}
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-pokemon-card text-gray-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed text-lg leading-none"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -189,6 +237,8 @@ export default function CardDetailPage() {
           card={card}
           onCardUpdated={(c) => setCard(c)}
           onCardSaved={(c) => { setCard(c); setForm(c); }}
+          onImageClick={(src) => setLightboxSrc(src)}
+          onSwipeCard={handleSwipe}
         />
 
         {/* Details */}
@@ -295,6 +345,9 @@ export default function CardDetailPage() {
           t={t}
         />
       )}
+
+      {/* Bild-Großansicht (Issue #24) */}
+      <ImageLightbox src={lightboxSrc} alt={card.kartenname} onClose={() => setLightboxSrc(null)} />
     </div>
   );
 }

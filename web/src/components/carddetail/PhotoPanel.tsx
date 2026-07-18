@@ -18,9 +18,13 @@ type Props = {
   onCardUpdated: (card: Card) => void;
   /** Server-Antwort übernehmen UND Formular synchronisieren (URL-Änderungen). */
   onCardSaved: (card: Card) => void;
+  /** Klick/Tap aufs Kartenbild → Vollbild-Lightbox öffnen (Issue #24). */
+  onImageClick?: (src: string) => void;
+  /** Horizontales Wischen aufs Kartenbild → Vor/Zurück blättern (Issue #24, Mobil). */
+  onSwipeCard?: (dir: "prev" | "next") => void;
 };
 
-export default function PhotoPanel({ card, onCardUpdated, onCardSaved }: Props) {
+export default function PhotoPanel({ card, onCardUpdated, onCardSaved, onImageClick, onSwipeCard }: Props) {
   const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -33,11 +37,37 @@ export default function PhotoPanel({ card, onCardUpdated, onCardSaved }: Props) 
   const editorBlobRef = useRef<Blob | null>(null);
   const editorOriginalRef = useRef<Blob | null>(null);  // Original mit-hochladen (nur bei neuem Foto)
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Tap-vs-Wisch aufs Kartenbild (Issue #24): Tap öffnet die Lightbox, ein
+  // horizontaler Wisch blättert zur Nachbarkarte und unterdrückt den Folge-Klick.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeSuppressClick = useRef(false);
 
+  const onPhotoTouchStart = (e: React.TouchEvent) => {
+    if (editorUrl) return;               // Foto-Editor offen → nicht blättern
+    const tch = e.touches[0];
+    swipeStart.current = { x: tch.clientX, y: tch.clientY };
+  };
+  const onPhotoTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start || editorUrl || !onSwipeCard) return;
+    const tch = e.changedTouches[0];
+    const dx = tch.clientX - start.x;
+    const dy = tch.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swipeSuppressClick.current = true; // folgenden Zoom-Klick unterdrücken
+      onSwipeCard(dx < 0 ? "next" : "prev");
+    }
+  };
   // Bild-Prioritätskette zentral in cardImageSrc (Vertrag mit dem Backend,
   // siehe backend/app/services/card_image_service.py:14-18) — Issue #10
   const { src: imgSrc, isPlaceholder } = cardImageSrc(card, API_BASE, true, "full");
   const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
+  // Tap/Klick aufs Bild öffnet die Lightbox — außer direkt nach einem Wisch.
+  const handleImageClick = () => {
+    if (swipeSuppressClick.current) { swipeSuppressClick.current = false; return; }
+    if (imgSrc && onImageClick) onImageClick(imgSrc);
+  };
 
   // Foto gewählt/aufgenommen → erst im Eck-Editor zuschneiden/entzerren,
   // dann hochladen. So lässt sich das Foto vor dem Speichern bearbeiten.
@@ -153,7 +183,11 @@ export default function PhotoPanel({ card, onCardUpdated, onCardSaved }: Props) 
 
   return (
     <div className="shrink-0 w-full max-w-[13rem] mx-auto md:mx-0 md:w-52">
-      <div className="aspect-[63/88] relative bg-gray-800 rounded-lg overflow-hidden">
+      <div
+        className="aspect-[63/88] relative bg-gray-800 rounded-lg overflow-hidden"
+        onTouchStart={onPhotoTouchStart}
+        onTouchEnd={onPhotoTouchEnd}
+      >
         {imgSrc ? (
           <>
             <Image
@@ -171,6 +205,16 @@ export default function PhotoPanel({ card, onCardUpdated, onCardSaved }: Props) 
               <div className="absolute bottom-0 inset-x-0 bg-black/60 text-center text-gray-400 text-xs py-1">
                 {t.detail_placeholder}
               </div>
+            )}
+            {onImageClick && (
+              // Transparente Ebene über dem Bild: Tap/Klick öffnet die Lightbox
+              // (Wisch-Gesten laufen über die onTouch-Handler des Containers).
+              <button
+                type="button"
+                onClick={handleImageClick}
+                aria-label={t.detail_zoom_image}
+                className="absolute inset-0 z-10 cursor-zoom-in"
+              />
             )}
           </>
         ) : (

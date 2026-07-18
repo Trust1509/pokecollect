@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
 import { cardImageSrc, extractSetCode, formatEur } from "@/lib/utils";
+import { rememberCardOrder } from "@/lib/cardNav";
 import RarityBadge from "@/components/RarityBadge";
 import { useI18n } from "@/lib/i18n";
 
@@ -57,7 +58,11 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
         const setCode = extractSetCode(card.set_edition) || "–";
 
         return (
-          <Link key={card.id} href={`/cards/${card.id}`}>
+          <Link
+            key={card.id}
+            href={`/cards/${card.id}`}
+            onClick={() => rememberCardOrder(cards.map((c) => c.id))}
+          >
             <div
               className={`
                 relative rounded-lg border-2 overflow-hidden cursor-pointer
