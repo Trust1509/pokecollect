@@ -92,12 +92,19 @@ def _nr_matches(karten_nr: Optional[str], local_id: Optional[str]) -> bool:
 
 
 def _set_matches(card: PokemonCard, cat: TcgdexCatalog) -> bool:
-    """Set-Zugehörigkeit: stabile set_id, sonst Set-Kürzel im set_edition-Feld."""
+    """
+    Set-Zugehörigkeit: stabile set_id bevorzugt, sonst das Kürzel im
+    set_edition-Feld — toleriert beide gebräuchlichen Formen „Name (OBF)"
+    (SetPicker/Katalog mit Set-Name) UND das nackte Kürzel „OBF"
+    (Katalog-Fallback ohne Set-Name, Import, Alt-Daten).
+    """
     if card.set_id:
         return card.set_id == cat.set_id
-    if cat.set_code and card.set_edition:
-        return f"({cat.set_code})" in card.set_edition
-    return False
+    if not (cat.set_code and card.set_edition):
+        return False
+    code = cat.set_code.strip().upper()
+    ed = card.set_edition.strip().upper()
+    return f"({code})" in ed or ed == code
 
 
 def _rule_ok(card: PokemonCard, required_folierung: Optional[str], required_sprache: Optional[str]) -> bool:
@@ -136,7 +143,10 @@ def soll_status(db: Session, collection: Collection) -> list[dict]:
         conds.append(PokemonCard.set_id.in_(set_ids))
     set_codes = {c.set_code for c in catalog.values() if c.set_code}
     for code in set_codes:
+        # „Name (OBF)" ODER nacktes „OBF" (ilike ohne Wildcard = exakt, aber
+        # case-insensitiv). _set_matches prüft danach noch präzise nach.
         conds.append(PokemonCard.set_edition.ilike(f"%({code})%"))
+        conds.append(PokemonCard.set_edition.ilike(code))
     owned = db.scalars(
         select(PokemonCard).where(PokemonCard.besessen == True, or_(*conds))  # noqa: E712
     ).all()

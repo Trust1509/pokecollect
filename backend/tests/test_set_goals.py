@@ -214,6 +214,18 @@ def test_progress_fallback_set_und_nummer(client, goal_set):
         db.close()
 
 
+def test_progress_fallback_nacktes_set_kuerzel(client, goal_set):
+    """set_edition trägt nur das nackte Kürzel „OBF" (Katalog-Fallback ohne
+    Set-Name / Alt-Daten / Seed) — muss trotzdem matchen, nicht nur „Name (OBF)"."""
+    coll = _create_goal(client, name="TSG-Nackt")
+    db = SessionLocal()
+    try:
+        _add_owned(db, set_edition=SET_CODE, karten_nr="1")
+        assert client.get(f"/api/v1/collections/{coll['id']}/progress").json()["erfuellt"] == 1
+    finally:
+        db.close()
+
+
 def test_mehrfach_zaehlung_ueber_ziele(client, goal_set):
     """Eine Karte erfüllt mehrere Ziele gleichzeitig — keine Exklusiv-Zuordnung."""
     a = _create_goal(client, name="TSG-A")
