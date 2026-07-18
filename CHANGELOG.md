@@ -1,5 +1,37 @@
 # Changelog
 
+## [v1.1.0] – 2026-07-18 (Set-Sammlungen, Export/Backup, HTTPS) — ⚠️ enthält Migration
+
+### ⚠️ Deploy-Hinweis
+- **Additive Migration** (neue Tabelle `collection_soll` + 5 Spalten an
+  `collections`) — läuft automatisch beim Start, kein manueller Schritt.
+  Backup vor dem Deploy trotzdem empfohlen (jetzt per Knopf, siehe unten).
+
+### Set-Sammlungen (Issue #16)
+- **Sammlungen können jetzt Sammelziele sein:** beim Anlegen ein Set wählen,
+  optional nach **Folierung** (z. B. nur Holo) und **Sprache** einschränken,
+  Umschalter „inkl. Secret Rares" (Master-Set). Dasselbe Set lässt sich
+  mehrfach mit verschiedenen Regeln sammeln.
+- **Automatisch vorbefüllte, aber kuratierbare Soll-Liste:** Startvorschlag aus
+  dem TCGdex-Katalog (bei Folierungs-Zielen die passenden Varianten), danach
+  Karten hinzufügen/entfernen und die Folierung je Slot anpassen.
+- **Fortschritt** je Ziel („X / Soll" + Balken) in Liste und Detail; fehlende
+  Karten per Klick auf die Wunschliste. Binder- und Rasteransicht zeigen
+  erfüllte Karten echt, fehlende als gedimmte Katalog-Platzhalter.
+- Eine Karte zählt für alle passenden Ziele gleichzeitig.
+
+### Daten: Export & Backup (Issue #17)
+- Neuer Abschnitt „Daten" in den Einstellungen: **CSV-Export** der Sammlung
+  (Excel-tauglich mit BOM), **Backup als ZIP** (Datenbank + eigene Fotos,
+  self-contained inkl. Katalog) und **Wiederherstellen** per Upload mit
+  doppelter Sicherheitsabfrage.
+
+### HTTPS im LAN (Issue #18)
+- Doku + Caddyfile-Snippet für HTTPS via `tls internal` — für einen
+  bestehenden externen Caddy oder als optionalen In-Stack-Service. Schaltet
+  PWA-Installation und Kamera-Scan am Handy ohne Browser-Flag frei.
+  (Owner-Schritt: Snippet einbinden + CA-Zertifikat am Handy installieren.)
+
 ## [v1.0.0] – 2026-07-14 (Auth: Login-Pflicht, maskierte Secrets) — ⚠️ Deploy nur mit vorbereiteter .env!
 
 ### ⚠️ Breaking / Deploy-Checkliste
