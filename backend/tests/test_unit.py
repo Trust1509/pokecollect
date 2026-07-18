@@ -12,7 +12,7 @@ import pytest
 
 from app.services.pricing import normalize_price_source, pick_cardmarket_price
 from app.services.scan.gemini import _bbox, _quad
-from app.services.scan.resolver import _confidence, _map_rarity
+from app.services.scan.resolver import _confidence, _map_rarity, strip_card_suffix
 from app.services.tcgdex import CardMarketPricing, local_id_from_card_nr
 
 
@@ -244,3 +244,35 @@ def test_extract_set_code_variants():
     assert extract_set_code("ohne Kürzel") is None
     assert extract_set_code(None) is None
     assert extract_set_code("(zulang123456)") is None
+
+
+# ── resolver.strip_card_suffix (#20) ─────────────────────────────────────────
+
+@pytest.mark.parametrize("name,expected", [
+    ("Glurak-ex", "Glurak"),
+    ("Pikachu V", "Pikachu"),
+    ("Mewtu VSTAR", "Mewtu"),
+    ("Zacian V-UNION", "Zacian"),
+    ("Rayquaza VMAX", "Rayquaza"),
+    ("Charizard ex", "Charizard"),
+    ("Lucario GX", "Lucario"),
+    # unverändert: kein Suffix bzw. Suffix steckt mitten im Wort
+    ("Relaxo", "Relaxo"),
+    ("Iksbat", "Iksbat"),
+    ("Ho-Oh", "Ho-Oh"),
+    ("Porygon-Z", "Porygon-Z"),
+])
+def test_strip_card_suffix(name, expected):
+    assert strip_card_suffix(name) == expected
+
+
+def test_strip_card_suffix_leer():
+    assert strip_card_suffix(None) is None
+    assert strip_card_suffix("") == ""
+
+
+def test_confidence_suffix_fallback_gedaempft():
+    # via_suffix deckelt einen Namens-Treffer zusätzlich auf <= 0.6
+    c = _confidence(0.9, matched=True, via_search=True, via_number=False,
+                    uncertain_count=0, via_suffix=True)
+    assert c <= 0.6

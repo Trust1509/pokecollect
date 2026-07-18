@@ -8,6 +8,7 @@ wie der Set-Sync und füllt den Bestätigungs-Dialog vor.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 from sqlalchemy import select
@@ -19,6 +20,20 @@ from app.services import tcgdex
 from app.services.set_sync import PTCGO_TO_SETID
 
 log = logging.getLogger(__name__)
+
+
+# Karten-Suffixe (ex/GX/V/VMAX/VSTAR/V-UNION) am Wortende — nur nach einem
+# Trennzeichen (Space/Bindestrich), damit „Iksbat"/„Relaxo" o. Ä. NICHT
+# fälschlich beschnitten werden. Für den Namens-Fallback beim Scan (#20).
+_SUFFIX_RE = re.compile(r"[\s\-]+(ex|gx|v|vmax|vstar|v-?union|vunion)\s*$", re.IGNORECASE)
+
+
+def strip_card_suffix(name: Optional[str]) -> Optional[str]:
+    """„Glurak-ex" → „Glurak", „Pikachu V" → „Pikachu"; sonst unverändert."""
+    if not name:
+        return name
+    stripped = _SUFFIX_RE.sub("", name).strip()
+    return stripped or name
 
 
 def _set_by_code(db: Session, code: Optional[str]) -> Optional[PokemonSet]:
@@ -107,6 +122,7 @@ def _confidence(
     via_search: bool,
     via_number: bool,
     uncertain_count: int,
+    via_suffix: bool = False,
 ) -> float:
     """
     Confidence-Formel (pur, unit-testbar): Roh-Sicherheit der Engine,
@@ -121,6 +137,9 @@ def _confidence(
         confidence = min(max(base, 0.6), 0.75)
     else:
         confidence = min(base, 0.35)
+    # Suffix-Fallback (#20): unschärferer Treffer (Name ohne ex/GX/V…) → dämpfen.
+    if matched and via_suffix:
+        confidence = min(confidence, 0.6)
     confidence = round(confidence * (1 - 0.1 * uncertain_count), 2)
     return max(0.0, min(1.0, confidence))
 
@@ -168,9 +187,19 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     # localId eindeutig machen (robust gegen falsch erkannte Set-Kürzel).
     via_search = False
     via_number = False
+    via_suffix = False
     results: list[dict] = []
     if tc is None and read.name:
         results = await tcgdex.search_cards({"name": read.name}, tcg_lang)
+
+        # Suffix-Fallback (#20): kein Treffer + Name trägt ein Karten-Suffix
+        # (ex/GX/V/…) → einmal ohne Suffix breiter suchen. Die localId macht
+        # danach wie gehabt eindeutig.
+        if not results:
+            base = strip_card_suffix(read.name)
+            if base and base != read.name:
+                results = await tcgdex.search_cards({"name": base}, tcg_lang)
+                via_suffix = bool(results)
 
         def _norm(x: object) -> str:
             return str(x).lstrip("0") or "0"
@@ -291,6 +320,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         matched=tc is not None,
         via_search=via_search,
         via_number=via_number,
+        via_suffix=via_suffix,
         uncertain_count=len(uncertain),
     )
 
