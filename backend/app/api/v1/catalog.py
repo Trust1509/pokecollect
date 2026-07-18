@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db, run_with_session
 from app.domain.pokedex import GEN_RANGES
+from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.schemas.catalog import CatalogItem, CatalogListResponse
@@ -33,13 +34,31 @@ def list_catalog(
 ):
     query = select(TcgdexCatalog)
     if q:
-        term = f"%{q.strip()}%"
-        query = query.where(or_(
-            TcgdexCatalog.name.ilike(term),
-            TcgdexCatalog.name_en.ilike(term),
-            TcgdexCatalog.illustrator.ilike(term),
-            TcgdexCatalog.local_id.ilike(term),
-        ))
+        # Kurzcode „PFL 001" → Set-Kürzel + Nummer, aber nur wenn das Kürzel
+        # wirklich ein Set im Katalog ist (sonst kapert „Mew 151" die
+        # Namenssuche). Andernfalls normale Volltextsuche.
+        kc = parse_kurzcode(q)
+        kc_hit = False
+        if kc:
+            exists = db.scalar(
+                select(TcgdexCatalog.card_id)
+                .where(TcgdexCatalog.set_code == kc.code)
+                .limit(1)
+            )
+            if exists:
+                query = query.where(
+                    TcgdexCatalog.set_code == kc.code,
+                    func.ltrim(TcgdexCatalog.local_id, "0") == kc.nr,
+                )
+                kc_hit = True
+        if not kc_hit:
+            term = f"%{q.strip()}%"
+            query = query.where(or_(
+                TcgdexCatalog.name.ilike(term),
+                TcgdexCatalog.name_en.ilike(term),
+                TcgdexCatalog.illustrator.ilike(term),
+                TcgdexCatalog.local_id.ilike(term),
+            ))
     if set_code:
         query = query.where(TcgdexCatalog.set_code == set_code)
     if set_id:

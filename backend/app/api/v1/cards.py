@@ -15,8 +15,10 @@ from app.services.card_images import (
     store_card_image,
 )
 from app.services.stats import collect_stats
+from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
+from app.models.pokemon_set import PokemonSet
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
@@ -110,13 +112,29 @@ def list_cards(
     if pokedex_nr is not None:
         q = q.where(PokemonCard.pokedex_nr == pokedex_nr)
     if search:
-        term = f"%{search}%"
-        # Suche nach Name UND partieller Pokédex-Nr. (z.B. "2" findet #2, #23, #253 …)
-        q = q.where(
-            PokemonCard.kartenname.ilike(term)
-            | PokemonCard.englischer_name.ilike(term)
-            | cast(PokemonCard.pokedex_nr, String).ilike(term)
-        )
+        # Kurzcode „PFL 001" → Set-Kürzel + Kartennummer, aber nur wenn das
+        # Kürzel ein bekanntes Set ist (sonst kapert es die Namenssuche).
+        kc = parse_kurzcode(search)
+        kc_hit = False
+        if kc:
+            is_set = db.scalar(select(PokemonSet.code).where(PokemonSet.code == kc.code))
+            if is_set:
+                q = q.where(
+                    or_(
+                        PokemonCard.set_edition.ilike(f"%({kc.code})%"),
+                        PokemonCard.set_edition.ilike(kc.code),
+                    ),
+                    func.ltrim(func.split_part(PokemonCard.karten_nr, "/", 1), "0") == kc.nr,
+                )
+                kc_hit = True
+        if not kc_hit:
+            term = f"%{search}%"
+            # Suche nach Name UND partieller Pokédex-Nr. (z.B. "2" findet #2, #23, #253 …)
+            q = q.where(
+                PokemonCard.kartenname.ilike(term)
+                | PokemonCard.englischer_name.ilike(term)
+                | cast(PokemonCard.pokedex_nr, String).ilike(term)
+            )
     if bild_status == "eigenes_foto":
         q = q.where(PokemonCard.bild_karte_pfad.isnot(None))
     elif bild_status == "externe_url":
