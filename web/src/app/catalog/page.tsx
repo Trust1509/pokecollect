@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { Star } from "lucide-react";
+import { Star, Check } from "lucide-react";
 import {
   CatalogItem, CatalogListResponse, Collection,
   catalogApi, collectionApi,
@@ -27,6 +27,11 @@ export default function CatalogPage() {
   const [loading, setLoading] = useState(false);
   const [added, setAdded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<CatalogItem | null>(null);
+  // Auswahl-Modus (Issue #23): additiv zur Einzel-Kachel-Aktion
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkCollId, setBulkCollId] = useState("");
 
   const [q, setQ] = useState("");
   const [setCode, setSetCode] = useState("");
@@ -77,8 +82,69 @@ export default function CatalogPage() {
     } catch { toast.error(t.collections_error); }
   };
 
+  // ── Auswahl-Modus + Bulk-Add (Issue #23) ─────────────────────────────────
+  const toggleSelectMode = () => {
+    setSelectMode((m) => {
+      if (m) { setSelectedIds(new Set()); setBulkCollId(""); }
+      return !m;
+    });
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const pageIds = useMemo(() => (data?.items ?? []).map((c) => c.card_id), [data]);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectAllPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSel = pageIds.every((id) => next.has(id));
+      pageIds.forEach((id) => (allSel ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  };
+
+  // Bulk = bestehende Einzel-Endpunkte in einer Schleife (DRY, kein Bulk-API).
+  const runBulk = async (
+    action: (id: string) => Promise<unknown>,
+    doneMsg: (n: number) => string,
+  ) => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length || bulkBusy) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const id of ids) {
+      try { await action(id); ok += 1; } catch { /* Fehler unten gezählt */ }
+    }
+    const fail = ids.length - ok;
+    if (fail === 0) toast.success(doneMsg(ok));
+    else if (ok > 0) toast.error(t.catalog_bulk_partial(ok, fail));
+    else toast.error(t.collections_error);
+    setBulkBusy(false);
+    // Nach Erfolg Auswahl leeren + Katalog/meta refetchen (#14-State)
+    setSelectedIds(new Set());
+    setBulkCollId("");
+    catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
+    load();
+  };
+
+  const bulkWishlist = () =>
+    runBulk((id) => catalogApi.addWishlist(id), (n) => t.catalog_bulk_wishlist_done(n));
+
+  const bulkCollection = () => {
+    const cid = Number(bulkCollId);
+    if (!cid) return;
+    return runBulk((id) => catalogApi.addCollection(id, cid), (n) => t.catalog_bulk_collection_done(n));
+  };
+
   return (
-    <div>
+    <div className={selectMode && selectedIds.size > 0 ? "pb-24 md:pb-20" : undefined}>
       <ListPageHeader
         title={
           <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
@@ -138,7 +204,26 @@ export default function CatalogPage() {
       )}
       </ListPageHeader>
 
-      {data && <Pager page={page} pages={data.pages} onPage={setPage} className="justify-end mb-2" />}
+      {/* Auswahl-Umschalter + Pager (Issue #23) */}
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+        <div className="flex items-center gap-3">
+          <button type="button"
+            onClick={toggleSelectMode}
+            className={`text-sm rounded px-3 py-1.5 border ${selectMode ? "bg-pokemon-accent border-pokemon-accent text-white" : "bg-pokemon-card border-gray-700 text-gray-200 hover:text-white"}`}
+          >
+            {selectMode ? t.catalog_select_done : t.catalog_select_mode}
+          </button>
+          {selectMode && !!data?.items.length && (
+            <button type="button"
+              onClick={toggleSelectAllPage}
+              className="text-xs text-gray-400 hover:text-white underline"
+            >
+              {allOnPageSelected ? t.catalog_select_none_page : t.catalog_select_all_page}
+            </button>
+          )}
+        </div>
+        {data && <Pager page={page} pages={data.pages} onPage={setPage} />}
+      </div>
 
       {loading && !data ? (
         <div className="flex items-center justify-center h-64 text-gray-500">{t.detail_loading}</div>
@@ -149,9 +234,12 @@ export default function CatalogPage() {
           {data.items.map((c) => {
             const name = lang === "EN" && c.name_en ? c.name_en : (c.name ?? c.name_en ?? c.card_id);
             const isAdded = added[c.card_id];
+            const isSelected = selectedIds.has(c.card_id);
             return (
-              <div key={c.card_id} className="relative rounded-lg border border-gray-700 overflow-hidden bg-pokemon-card">
-                <button type="button" onClick={() => setSelected(c)} className="block w-full text-left" title={name}>
+              <div key={c.card_id} className={`relative rounded-lg border overflow-hidden bg-pokemon-card ${isSelected ? "border-pokemon-accent ring-2 ring-pokemon-accent" : "border-gray-700"}`}>
+                <button type="button"
+                  onClick={() => (selectMode ? toggleSelect(c.card_id) : setSelected(c))}
+                  className="block w-full text-left" title={name}>
                   <div className="aspect-[63/88] relative bg-gray-800">
                     {c.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -172,13 +260,21 @@ export default function CatalogPage() {
                     </div>
                   </div>
                 </button>
-                <button type="button"
-                  onClick={() => addWishlist(c)}
-                  title={t.catalog_add_wishlist}
-                  className={`absolute top-1 right-1 rounded-full p-1.5 ${isAdded ? "bg-pokemon-yellow text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
-                >
-                  <Star size={16} fill={isAdded ? "currentColor" : "none"} />
-                </button>
+                {selectMode ? (
+                  <div aria-hidden
+                    className={`absolute top-1 right-1 w-6 h-6 rounded-md flex items-center justify-center pointer-events-none ${isSelected ? "bg-pokemon-accent text-white" : "bg-black/60 text-white/70 border border-white/60"}`}
+                  >
+                    {isSelected && <Check size={16} />}
+                  </div>
+                ) : (
+                  <button type="button"
+                    onClick={() => addWishlist(c)}
+                    title={t.catalog_add_wishlist}
+                    className={`absolute top-1 right-1 rounded-full p-1.5 ${isAdded ? "bg-pokemon-yellow text-black" : "bg-black/60 text-white hover:bg-black/80"}`}
+                  >
+                    <Star size={16} fill={isAdded ? "currentColor" : "none"} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -189,6 +285,40 @@ export default function CatalogPage() {
 
       {selected && (
         <CatalogCardModal card={selected} collections={collections} onClose={() => setSelected(null)} />
+      )}
+
+      {/* Aktionsleiste bei Auswahl (Issue #23) — auf dem Handy über der Bottom-Nav */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed inset-x-0 z-40 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] md:bottom-0 bg-pokemon-dark/95 backdrop-blur border-t border-gray-800 p-3">
+          <div className="max-w-screen-2xl mx-auto flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-200 font-medium shrink-0">{t.catalog_bulk_selected(selectedIds.size)}</span>
+            <div className="flex items-center gap-2 flex-wrap justify-end flex-1 min-w-0">
+              <button type="button"
+                onClick={bulkWishlist}
+                disabled={bulkBusy}
+                className="bg-pokemon-yellow text-black text-sm font-medium rounded px-3 py-1.5 hover:opacity-90 disabled:opacity-50 flex items-center gap-1 whitespace-nowrap"
+              >
+                <Star size={15} /> {t.catalog_bulk_wishlist(selectedIds.size)}
+              </button>
+              <select
+                value={bulkCollId}
+                onChange={(e) => setBulkCollId(e.target.value)}
+                disabled={bulkBusy}
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm max-w-[40vw] md:max-w-none disabled:opacity-50"
+              >
+                <option value="">{t.catalog_add_collection} …</option>
+                {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button type="button"
+                onClick={bulkCollection}
+                disabled={bulkBusy || !bulkCollId}
+                className="bg-pokemon-accent text-white text-sm rounded px-3 py-1.5 hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {t.catalog_bulk_collection(selectedIds.size)}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

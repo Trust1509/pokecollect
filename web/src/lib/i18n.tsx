@@ -141,6 +141,17 @@ const DE = {
   catalog_all_illustrators: "Alle Illustratoren",
   catalog_add_collection: "Zu Sammlung hinzufügen",
   catalog_added_collection: "Zur Sammlung hinzugefügt",
+  // Katalog: Mehrfachauswahl + Bulk-Add (Issue #23)
+  catalog_select_mode: "Auswählen",
+  catalog_select_done: "Fertig",
+  catalog_select_all_page: "Alle auf dieser Seite",
+  catalog_select_none_page: "Auswahl aufheben",
+  catalog_bulk_selected: (n: number) => `${n} ausgewählt`,
+  catalog_bulk_wishlist: (n: number) => `${n} zur Wunschliste`,
+  catalog_bulk_collection: (n: number) => `${n} zu Sammlung`,
+  catalog_bulk_wishlist_done: (n: number) => `${n} zur Wunschliste hinzugefügt`,
+  catalog_bulk_collection_done: (n: number) => `${n} zur Sammlung hinzugefügt`,
+  catalog_bulk_partial: (ok: number, fail: number) => `${ok} hinzugefügt, ${fail} fehlgeschlagen`,
   detail_back_generic: "← Zurück",
 
   // Card form – wishlist
@@ -566,6 +577,17 @@ const EN: typeof DE = {
   catalog_all_illustrators: "All illustrators",
   catalog_add_collection: "Add to collection",
   catalog_added_collection: "Added to collection",
+  // Catalog: multi-select + bulk add (Issue #23)
+  catalog_select_mode: "Select",
+  catalog_select_done: "Done",
+  catalog_select_all_page: "All on this page",
+  catalog_select_none_page: "Clear selection",
+  catalog_bulk_selected: (n: number) => `${n} selected`,
+  catalog_bulk_wishlist: (n: number) => `${n} to wishlist`,
+  catalog_bulk_collection: (n: number) => `${n} to collection`,
+  catalog_bulk_wishlist_done: (n: number) => `${n} added to wishlist`,
+  catalog_bulk_collection_done: (n: number) => `${n} added to collection`,
+  catalog_bulk_partial: (ok: number, fail: number) => `${ok} added, ${fail} failed`,
   detail_back_generic: "← Back",
 
   form_wishlist: "Add to wishlist",
