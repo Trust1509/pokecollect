@@ -57,8 +57,11 @@ class ScanResponse(BaseModel):
     engine: str                            # "gemini" | "ocr"
     mode: ScanMode
     candidates: list[ScanCandidate]
-    limit_erreicht: bool = False           # Gemini-Tageslimit griff → OCR-Fallback
-    hinweis: Optional[str] = None          # menschenlesbarer Hinweis dazu
+    limit_erreicht: bool = False           # ein LIMIT (Tages- ODER Rate-Limit) griff → OCR-Fallback
+    hinweis: Optional[str] = None          # menschenlesbarer Hinweis (DE)
+    # Maschinenlesbare Fallback-Ursache (Issue #21): erlaubt dem UI, „Rate-Limit
+    # erreicht" von „Gemini-Key ungültig" zu unterscheiden. None = kein Hinweis.
+    hinweis_art: Optional[Literal["tageslimit", "rate_limit", "key_ungueltig", "gemini_fehler"]] = None
 
 
 # ── Commit (bestätigte Karten ablegen) ───────────────────────────────────────

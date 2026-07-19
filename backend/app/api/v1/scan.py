@@ -98,6 +98,15 @@ _GEMINI_FREE_LIMITS = {
     "pro": {"rpd": 50, "rpm": 2, "tpm": 2_000_000},
 }
 
+# Menschenlesbarer Hinweis je harter Gemini-Fehlerart (Issue #21). Das UI zeigt
+# per hinweis_art eigene, i18n-fähige Texte; dieser DE-Text dient Logs und
+# nicht-i18n-Konsumenten.
+_GEMINI_HINWEIS = {
+    gemini.FEHLER_RATE: "Gemini-Rate-Limit erreicht – Erkennung über lokale OCR.",
+    gemini.FEHLER_KEY: "Gemini-API-Key ungültig oder fehlt – Erkennung über lokale OCR.",
+    gemini.FEHLER_GEMINI: "Gemini nicht erreichbar – Erkennung über lokale OCR.",
+}
+
 
 @router.get("/usage")
 def scan_usage(db: Session = Depends(get_db)):
@@ -161,21 +170,31 @@ async def scan(
     engine = "none"
     reads = None
     hinweis: str | None = None
+    hinweis_art: str | None = None
     limit_erreicht = False
     # Hybrid: Gemini bevorzugt (stark bei Binder/Multi), sonst lokale OCR.
     gemini_key, gemini_model = _gemini_config(db)
     if gemini.is_enabled(gemini_key):
         if _gemini_limit_reached(db):
             limit_erreicht = True
+            hinweis_art = "tageslimit"
             hinweis = "Gemini-Tageslimit erreicht – Erkennung über lokale OCR."
             log.info("Gemini-Tageslimit erreicht – Scan fällt auf lokale OCR zurück.")
         else:
-            reads, gemini_tokens = await gemini.extract(
+            result = await gemini.extract(
                 data, api_key=gemini_key, model=gemini_model, mime_type=mime)
-            if gemini_tokens is not None:
-                _record_usage(db, gemini_tokens)
-            if reads is not None:
+            if result.tokens is not None:
+                _record_usage(db, result.tokens)
+            if result.reads is not None:
+                reads = result.reads
                 engine = "gemini"
+            elif result.fehler_art:
+                # Harter Gemini-Fehler → OCR-Fallback, Ursache nach außen melden.
+                hinweis_art = result.fehler_art
+                hinweis = _GEMINI_HINWEIS.get(result.fehler_art)
+                # Rate-Limit ist wie das Tageslimit ein erreichtes Kontingent →
+                # limit_erreicht (grobes Bool für Bestandskonsumenten).
+                limit_erreicht = result.fehler_art == gemini.FEHLER_RATE
     if reads is None:
         reads = ocr.extract(data, mode=mode, rows=rows, cols=cols)
         engine = "ocr"
@@ -191,7 +210,7 @@ async def scan(
     candidates = await resolve_reads(db, reads, default_lang=default_language)
     return ScanResponse(
         engine=engine, mode=mode, candidates=candidates,
-        limit_erreicht=limit_erreicht, hinweis=hinweis,
+        limit_erreicht=limit_erreicht, hinweis=hinweis, hinweis_art=hinweis_art,
     )
 
 

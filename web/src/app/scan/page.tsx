@@ -225,7 +225,15 @@ export default function ScanPage() {
         cropUrl: null,
         imPokedex: setPokedexRep,
       }));
-      if (res.data.limit_erreicht) {
+      const art = res.data.hinweis_art;
+      if (art) {
+        const msg =
+          art === "key_ungueltig" ? t.scan_fehler_key
+          : art === "rate_limit" ? t.scan_fehler_rate
+          : art === "gemini_fehler" ? t.scan_fehler_gemini
+          : t.scan_limit_fallback; // tageslimit
+        toast(msg, { icon: art === "key_ungueltig" ? "🔑" : "⚠️" });
+      } else if (res.data.limit_erreicht) {
         toast(t.scan_limit_fallback, { icon: "⚠️" });
       }
       if (!list.length) {

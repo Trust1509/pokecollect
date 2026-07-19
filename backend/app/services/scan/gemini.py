@@ -9,9 +9,11 @@ serverseitig im Resolver (eine Quelle für alle Clients).
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
+from dataclasses import dataclass
 from typing import Optional
 
 import httpx
@@ -45,6 +47,41 @@ Leere/keine Karte enthaltende Fächer NICHT ausgeben.
 Antworte AUSSCHLIESSLICH mit einem JSON-Array von Objekten, ohne Erklärungstext."""
 
 
+# ── Retry-/Fehler-Klassifikation (Issue #21) ─────────────────────────────────
+
+# Transiente HTTP-Status → erneut versuchen (Rate-Limit + Server-Fehler).
+_RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
+
+# Exponentieller Backoff: Wartezeit VOR jeder Wiederholung. Länge = maximale
+# Anzahl Wiederholungen (also bis zu len+1 Versuche insgesamt): 0.5s → 1s → 2s.
+_BACKOFF_SEKUNDEN: tuple[float, ...] = (0.5, 1.0, 2.0)
+
+# Nach außen unterscheidbare Fehlerarten. Dienen zugleich als `hinweis_art` in
+# der Scan-Response (schemas/scan.py), damit das UI „Rate-Limit erreicht" von
+# „Gemini-Key ungültig" trennen kann.
+FEHLER_KEY = "key_ungueltig"     # 401/403 – dauerhaft, KEIN Retry
+FEHLER_RATE = "rate_limit"       # 429 erschöpft – Limit erreicht
+FEHLER_GEMINI = "gemini_fehler"  # 5xx/Timeout/Netz/sonstiges erschöpft
+
+
+@dataclass
+class GeminiResult:
+    """
+    Ergebnis eines Gemini-Extraktionsversuchs.
+
+    - reads:      erkannte Karten; None = kein verwertbares Ergebnis
+                  (Aufrufer weicht auf lokale OCR aus).
+    - tokens:     Tokenverbrauch eines ZÄHLBAREN Calls; None = kein
+                  abrechenbarer Call (Fehler vor/ohne gültige Antwort) → der
+                  Aufrufer bucht die Nutzung dann nicht (Issue #9).
+    - fehler_art: None = ok bzw. kein harter Fehler; sonst FEHLER_* als
+                  maschinenlesbarer Fallback-Grund.
+    """
+    reads: Optional[list[ScanRawRead]]
+    tokens: Optional[int]
+    fehler_art: Optional[str] = None
+
+
 def is_enabled(api_key: Optional[str]) -> bool:
     return bool(api_key)
 
@@ -54,15 +91,19 @@ async def extract(
     api_key: str,
     model: Optional[str] = None,
     mime_type: str = "image/jpeg",
-) -> tuple[Optional[list[ScanRawRead]], Optional[int]]:
+    *,
+    sleep=asyncio.sleep,
+) -> GeminiResult:
     """
-    Schickt das Bild an Gemini und liefert (erkannte Karten, Token-Verbrauch).
-    Karten = None signalisiert einen harten Fehler (Aufrufer kann auf OCR
-    ausweichen). Tokens = None heißt: kein zählbarer API-Call (der Aufrufer
-    bucht die Nutzung — Session-Injection statt eigener Session, Issue #9).
+    Schickt das Bild an Gemini und liefert ein `GeminiResult`.
+
+    Transiente Fehler (429/5xx, httpx-Timeout/Netzfehler) werden mit
+    exponentiellem Backoff wiederholt (Issue #21); dauerhafte Fehler (401/403 =
+    ungültiger/fehlender Key) NICHT. `sleep` ist injizierbar, damit Tests den
+    Backoff ohne reales Warten durchlaufen.
     """
     if not api_key:
-        return None, None
+        return GeminiResult(None, None, None)
     model = model or DEFAULT_MODEL
 
     b64 = base64.b64encode(image_bytes).decode("ascii")
@@ -83,26 +124,75 @@ async def extract(
     }
     url = _ENDPOINT.format(model=model)
 
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                url,
-                params={"key": api_key},
-                json=payload,
-            )
-    except httpx.HTTPError as exc:
-        log.warning("Gemini-Request fehlgeschlagen: %s", exc)
-        return None, None
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        async def do_post():
+            return await client.post(url, params={"key": api_key}, json=payload)
 
-    if resp.status_code != 200:
-        log.warning("Gemini Status %s: %s", resp.status_code, resp.text[:300])
-        return None, None
+        resp = await _post_mit_retry(do_post, sleep=sleep)
 
+    return _klassifiziere(resp)
+
+
+async def _post_mit_retry(do_post, *, sleep, backoffs=_BACKOFF_SEKUNDEN):
+    """
+    Pure, testbare Retry-Schleife. Ruft `do_post()` auf und wiederholt bei
+    transienten Fehlern (Status in `_RETRY_STATUS` sowie httpx-Netz-/Timeout-
+    Fehlern) mit exponentiellem Backoff; dauerhafte Fehler (z. B. 401/403)
+    kehren sofort zurück (kein Retry).
+
+    - do_post: async Callable → Response-artiges Objekt (`.status_code`,
+      `.json()`, `.text`) ODER wirft `httpx.HTTPError`.
+    - sleep:   async Callable(seconds) — im Test mockbar (kein echtes Warten).
+
+    Rückgabe: die (letzte) Antwort, oder None bei erschöpften Netz-/Timeout-
+    Fehlern (kein HTTP-Status verfügbar).
+    """
+    for i in range(len(backoffs) + 1):
+        try:
+            resp = await do_post()
+        except httpx.HTTPError as exc:
+            if i < len(backoffs):
+                log.info("Gemini-Netzfehler (%s) – Retry in %ss", exc, backoffs[i])
+                await sleep(backoffs[i])
+                continue
+            log.warning("Gemini-Request nach %d Versuchen fehlgeschlagen: %s", i + 1, exc)
+            return None
+        if resp.status_code in _RETRY_STATUS and i < len(backoffs):
+            log.info("Gemini Status %s – Retry in %ss", resp.status_code, backoffs[i])
+            await sleep(backoffs[i])
+            continue
+        return resp
+    return None
+
+
+def _klassifiziere(resp) -> GeminiResult:
+    """Ordnet die (finale) HTTP-Antwort einer Fehlerart zu bzw. parst sie."""
+    if resp is None:
+        return GeminiResult(None, None, FEHLER_GEMINI)
+    sc = resp.status_code
+    if sc in (401, 403):
+        log.warning("Gemini-Key ungültig/fehlt (Status %s) – Fallback auf OCR.", sc)
+        return GeminiResult(None, None, FEHLER_KEY)
+    if sc == 429:
+        log.warning("Gemini-Rate-Limit erreicht (Status 429) – Fallback auf OCR.")
+        return GeminiResult(None, None, FEHLER_RATE)
+    if sc != 200:
+        log.warning("Gemini Status %s: %s", sc, (resp.text or "")[:300])
+        return GeminiResult(None, None, FEHLER_GEMINI)
+    return _parse_erfolg(resp)
+
+
+def _parse_erfolg(resp) -> GeminiResult:
+    """
+    Parst eine erfolgreiche (200) Antwort in Karten + Tokenzahl. Ein unlesbarer
+    Inhalt ist KEIN harter Fehler (fehler_art=None): der Call fand statt (Tokens
+    ggf. gebucht), es gab nur keine verwertbaren Karten → stiller OCR-Fallback.
+    """
     try:
         data = resp.json()
     except ValueError as exc:
         log.warning("Gemini-Antwort kein JSON: %s", exc)
-        return None, None
+        return GeminiResult(None, None, None)
 
     # Erfolgreicher (kontingentierter) Call → Tokens an den Aufrufer melden
     try:
@@ -115,12 +205,12 @@ async def extract(
         parsed = json.loads(text)
     except (KeyError, IndexError, ValueError, TypeError) as exc:
         log.warning("Gemini-Antwort nicht interpretierbar: %s", exc)
-        return None, tokens
+        return GeminiResult(None, tokens, None)
 
     if isinstance(parsed, dict):
         parsed = [parsed]
     if not isinstance(parsed, list):
-        return None, tokens
+        return GeminiResult(None, tokens, None)
 
     out: list[ScanRawRead] = []
     for idx, item in enumerate(parsed):
@@ -137,7 +227,7 @@ async def extract(
             quad=_quad(item),
         )
         out.append(read)
-    return out, tokens
+    return GeminiResult(out, tokens, None)
 
 
 def _str(v) -> Optional[str]:

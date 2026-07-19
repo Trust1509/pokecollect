@@ -356,12 +356,15 @@ export type ScanCandidate = {
   foil_options: string[];
 };
 
+export type GeminiHinweisArt = "tageslimit" | "rate_limit" | "key_ungueltig" | "gemini_fehler";
+
 export type ScanResponse = {
   engine: string;
   mode: ScanMode;
   candidates: ScanCandidate[];
-  limit_erreicht?: boolean;  // Gemini-Tageslimit griff → Server fiel auf OCR zurück
+  limit_erreicht?: boolean;  // ein Limit (Tages- oder Rate-Limit) griff → Server fiel auf OCR zurück
   hinweis?: string | null;
+  hinweis_art?: GeminiHinweisArt | null;  // maschinenlesbare Fallback-Ursache (Issue #21)
 };
 
 export type ScanStatus = { gemini: boolean; ocr: boolean; active: string };

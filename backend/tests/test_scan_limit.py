@@ -10,6 +10,7 @@ import pytest
 from app.database import SessionLocal
 from app.models.gemini_usage import GeminiUsage
 from app.services.scan import gemini
+from app.services.scan.gemini import GeminiResult
 
 
 def _today() -> str:
@@ -23,7 +24,7 @@ def gemini_calls(monkeypatch):
 
     async def fake_extract(data, api_key, model=None, mime_type="image/jpeg"):
         calls.append(mime_type)
-        return [], 7  # keine Karten erkannt, 7 Tokens verbraucht
+        return GeminiResult([], 7)  # keine Karten erkannt, 7 Tokens verbraucht
 
     monkeypatch.setattr(gemini, "is_enabled", lambda key: True)
     monkeypatch.setattr(gemini, "extract", fake_extract)
