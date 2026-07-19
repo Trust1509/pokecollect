@@ -392,8 +392,8 @@ export default function SettingsPage() {
               <div className="bg-gray-900 rounded p-2">
                 <div className="text-gray-500 text-xs">{t.settings_usage_per_scan}</div>
                 <div className="text-white">{t.settings_usage_tokens_per_scan(usage.avg_tokens_per_scan.toLocaleString(t.date_locale))}</div>
-                <div className="text-gray-400 text-xs mt-1">{t.settings_usage_rpm(usage.limits.rpm)}</div>
-                <div className="text-gray-400 text-xs">{t.settings_usage_tpm((usage.limits.tpm / 1_000_000).toLocaleString(t.date_locale))}</div>
+                <div className="text-gray-400 text-xs mt-1">{t.settings_usage_rpm(usage.rpm_used.toLocaleString(t.date_locale), usage.limits.rpm.toLocaleString(t.date_locale))}</div>
+                <div className="text-gray-400 text-xs">{t.settings_usage_tpm(usage.tpm_used.toLocaleString(t.date_locale), usage.limits.tpm.toLocaleString(t.date_locale))}</div>
                 <div className="text-gray-500 text-xs mt-1">{t.settings_usage_total(usage.total.requests)}</div>
               </div>
             </div>

@@ -27,6 +27,7 @@ from app.schemas.scan import (
 )
 from app.services.card_creation import create_owned_card
 from app.services.scan import gemini, ocr
+from app.services.scan.rate_window import gemini_rate
 from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
 
@@ -128,6 +129,9 @@ def scan_usage(db: Session = Depends(get_db)):
         limits["rpd"] = manual
 
     avg_tokens = round(total_tok / total_req) if total_req else 0
+    # Live-Verbrauch der letzten 60s (RPM/TPM) je Prozess (Issue #22); flüchtig,
+    # Reset bei Neustart – kein DB-Wert.
+    rpm_used, tpm_used = gemini_rate.snapshot()
     return {
         "today": {
             "day": today,
@@ -138,6 +142,8 @@ def scan_usage(db: Session = Depends(get_db)):
         "avg_tokens_per_scan": avg_tokens,
         "model": model,
         "limits": limits,
+        "rpm_used": rpm_used,
+        "tpm_used": tpm_used,
         "days": [{"day": r.day, "requests": r.requests, "tokens": r.tokens} for r in rows],
     }
 
@@ -185,6 +191,8 @@ async def scan(
                 data, api_key=gemini_key, model=gemini_model, mime_type=mime)
             if result.tokens is not None:
                 _record_usage(db, result.tokens)
+                # Live-Verbrauch (RPM/TPM) im 60s-Fenster mitzählen (Issue #22).
+                gemini_rate.record(requests=1, tokens=result.tokens)
             if result.reads is not None:
                 reads = result.reads
                 engine = "gemini"

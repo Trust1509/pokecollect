@@ -409,6 +409,8 @@ export type ScanUsage = {
   avg_tokens_per_scan: number;
   model: string;
   limits: { rpd: number; rpm: number; tpm: number };
+  rpm_used: number;  // Live-Verbrauch der letzten 60s (Issue #22)
+  tpm_used: number;
   days: { day: string; requests: number; tokens: number }[];
 };
 
