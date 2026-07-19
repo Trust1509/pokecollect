@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.3.0] – 2026-07-19 (Komfort-Welle: Bulk-Add, Detail-Navigation, robusterer Scan) — gefahrlos
+
+### Katalog & Detailseite
+- **Mehrfachauswahl im Katalog:** „Auswählen" aktivieren, mehrere Karten
+  antippen und in einem Schritt zur Wunschliste oder in eine Sammlung
+  übernehmen (#23).
+- **Kartendetail-Navigation:** mit Pfeilen (Desktop), Tastatur ←/→ oder
+  Wischen (Handy) zwischen den Karten der Liste blättern; Klick/Tap aufs
+  Kartenbild öffnet eine Vollbild-Ansicht (schließen per ESC / Hintergrund) (#24).
+
+### Scan robuster & transparenter
+- **Gemini-Retry mit Backoff:** transiente Fehler (Rate-Limit, Serverfehler,
+  Timeout) werden bis zu dreimal mit wachsender Wartezeit erneut versucht,
+  bevor der Scan auf die lokale OCR zurückfällt. Ein ungültiger API-Key wird
+  jetzt klar getrennt gemeldet („Key ungültig") statt als Limit (#21).
+- **Live-Nutzung:** die Gemini-Anzeige zeigt neben dem Tageslimit jetzt auch
+  den aktuellen Verbrauch pro Minute (RPM/TPM, gleitendes 60s-Fenster) (#22).
+
 ## [v1.2.0] – 2026-07-18 (Quick-Wins: Kurzcode-Suche, besserer Scan) — gefahrlos
 
 ### Suche & Scan
