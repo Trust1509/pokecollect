@@ -1,5 +1,36 @@
 # Changelog
 
+## [v1.5.0] – 2026-07-26 (First Edition, Kaufpreis, Planung, Katalog-Formular, Bugfixes) — ⚠️ enthält Migration
+
+### ⚠️ Deploy-Hinweis
+- **Additive Migration** (neue Spalten `erste_edition`, `kaufpreis_eur`,
+  `kaufdatum` an `pokemon_cards`) — läuft automatisch beim Start. Backup vorher
+  empfohlen (per Knopf in den Einstellungen → Daten).
+
+### Neu
+- **First Edition (#25):** Jede Karte kann als 1st Edition markiert werden —
+  Checkbox im Formular, eigener Filter „nur 1st Edition" und ein „1st Ed."-Badge
+  auf Kachel + Detailseite.
+- **Kaufpreis & Gewinn/Verlust (#26):** Optionaler Kaufpreis + Kaufdatum je
+  Karte; die Detailseite und die Statistik zeigen Einstand, aktuellen Wert und
+  den unrealisierten Gewinn/Verlust.
+- **Katalog-Hinzufügen mit Formular (#28):** Beim Übernehmen aus dem Katalog
+  lassen sich Zustand, Sprache, Folierung und 1st Edition vorab setzen —
+  vorbelegt mit deinen Standard-Einstellungen.
+- **Planung mit Wunschkarten (#29):** Nicht besessene Karten können in freie
+  Sammlungen/Binder gelegt werden und erscheinen als gedimmte „geplant"-Slots;
+  sobald du die Karte besitzt, wird der Slot automatisch echt.
+
+### Behoben
+- **Standard-Sprache/-Zustand greifen beim Katalog-Hinzufügen (#27)** — vorher
+  wurde immer „DE" gesetzt.
+- **Binder verschiebt keine Karten mehr (#30):** Neue Karten landen im nächsten
+  freien Slot, bestehende Positionen bleiben unverändert.
+- **Scan treffsicherer (#33):** Der Scan fokussiert die eine Karte im Bild
+  (ignoriert angeschnittene Nachbarn/Register-Labels) und löst über Set +
+  Kartennummer auf, statt am fehleranfälligen Namen zu scheitern. *(Reale
+  Verifikation mit Gemini-Key + Karten steht beim Owner aus.)*
+
 ## [v1.4.1] – 2026-07-19 (Korrektur: V-Stern ist weiß)
 
 - **V-Karten-Seltenheit korrekt weiß:** Der Stern für „Holo Rare V/VMAX/VSTAR"
