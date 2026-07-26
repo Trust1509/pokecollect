@@ -21,6 +21,9 @@ export default function StatsPage() {
   // Wertentwicklung (#26): nur zeigen, wenn Kaufpreise erfasst sind.
   const hasFinance = stats.gesamt_einstand_eur != null || stats.unrealisierter_gv_eur != null;
   const gv = stats.unrealisierter_gv_eur != null ? parseFloat(stats.unrealisierter_gv_eur) : null;
+  // Sealed-Produkte (#35): getrennt ausgewiesen + Karten+Sealed kombiniert
+  const hasSealed = stats.sealed_anzahl > 0;
+  const sealedGv = stats.sealed_unrealisierter_gv_eur != null ? parseFloat(stats.sealed_unrealisierter_gv_eur) : null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -69,6 +72,54 @@ export default function StatsPage() {
                 {gv == null ? "–" : `${gv > 0 ? "+" : ""}${formatEur(gv.toFixed(2))}`}
               </div>
               <div className="text-gray-500 text-xs mt-1">{t.stats_unrealized_gain_hint}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sealed-Produkte (#35): Sealed-Wert / Einstand / unrealisierter G/V */}
+      {hasSealed && (
+        <div>
+          <h2 className="text-gray-300 font-medium mb-3">
+            {t.stats_sealed_section} · {t.stats_sealed_products(stats.sealed_anzahl)}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_sealed_value}</div>
+              <div className="text-3xl font-bold text-yellow-400">{formatEur(stats.sealed_wert_eur)}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_cost_basis}</div>
+              <div className="text-3xl font-bold text-white">{formatEur(stats.sealed_einstand_eur)}</div>
+              <div className="text-gray-500 text-xs mt-1">{t.stats_cost_basis_hint}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_unrealized_gain}</div>
+              <div className={`text-3xl font-bold ${sealedGv == null ? "text-gray-500" : sealedGv >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {sealedGv == null ? "–" : `${sealedGv > 0 ? "+" : ""}${formatEur(sealedGv.toFixed(2))}`}
+              </div>
+              <div className="text-gray-500 text-xs mt-1">{t.stats_unrealized_gain_hint}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gesamt (Karten + Sealed): Karten-Wert / Sealed-Wert / Gesamt (#35) */}
+      {hasSealed && (
+        <div>
+          <h2 className="text-gray-300 font-medium mb-3">{t.stats_combined_section}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_cards_value}</div>
+              <div className="text-3xl font-bold text-yellow-400">{formatEur(stats.gesamtwert_eur)}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_sealed_value}</div>
+              <div className="text-3xl font-bold text-yellow-400">{formatEur(stats.sealed_wert_eur)}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_combined_total}</div>
+              <div className="text-3xl font-bold text-yellow-300">{formatEur(stats.kombiniert_wert_eur)}</div>
             </div>
           </div>
         </div>

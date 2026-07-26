@@ -92,6 +92,14 @@ export type StatsResponse = {
   gesamtwert_eur: string | null;
   gesamt_einstand_eur: string | null;
   unrealisierter_gv_eur: string | null;
+  // Sealed-Produkte (#35): getrennt + Karten+Sealed kombiniert
+  sealed_anzahl: number;
+  sealed_wert_eur: string | null;
+  sealed_einstand_eur: string | null;
+  sealed_unrealisierter_gv_eur: string | null;
+  kombiniert_wert_eur: string | null;
+  kombiniert_einstand_eur: string | null;
+  kombiniert_unrealisierter_gv_eur: string | null;
   sets: Record<string, number>;
   seltenheiten: Record<string, number>;
   sprachen: Record<string, number>;
@@ -106,6 +114,28 @@ export type Enums = {
   sprache: string[];
   zustand: string[];
   prioritaet: string[];
+};
+
+// Sealed-Produkt (#35) — eigene Entität, n:m-Set-Bezug, manueller Wert.
+export type SealedProduct = {
+  id: number;
+  name: string;
+  typ: string | null;
+  zustand: string | null;
+  kaufpreis_eur: string | null;
+  kaufdatum: string | null;
+  wert_eur: string | null;
+  notizen: string | null;
+  set_codes: string[];
+  bild_pfad: string | null;
+  bild_thumbnail_pfad: string | null;
+  hinzugefuegt_am: string | null;
+  unrealisierter_gv_eur: string | null;
+};
+
+export type SealedEnums = {
+  typ: string[];
+  zustand: string[];
 };
 
 export type CollectionProgress = {
@@ -296,6 +326,24 @@ export const collectionApi = {
   sollToWishlist: (id: number, sollId: number) =>
     api.post<{ card_id: number }>(`/collections/${id}/soll/${sollId}/wishlist`),
   progress: (id: number) => api.get<CollectionProgress>(`/collections/${id}/progress`),
+};
+
+// ── Sealed-Produkte (#35) ──────────────────────────────────────────────────
+export const sealedApi = {
+  list: (params: Record<string, unknown> = {}) =>
+    api.get<SealedProduct[]>("/sealed", { params }),
+  get: (id: number) => api.get<SealedProduct>(`/sealed/${id}`),
+  create: (data: Partial<SealedProduct>) => api.post<SealedProduct>("/sealed", data),
+  update: (id: number, data: Partial<SealedProduct>) =>
+    api.put<SealedProduct>(`/sealed/${id}`, data),
+  delete: (id: number) => api.delete(`/sealed/${id}`),
+  enums: () => api.get<SealedEnums>("/sealed/meta/enums"),
+  uploadImage: (id: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post<SealedProduct>(`/sealed/${id}/image`, form);
+  },
+  deleteImage: (id: number) => api.delete<SealedProduct>(`/sealed/${id}/image`),
 };
 
 export const settingsApi = {
