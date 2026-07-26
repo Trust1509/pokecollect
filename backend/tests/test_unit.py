@@ -27,6 +27,11 @@ from app.services.tcgdex import CardMarketPricing, local_id_from_card_nr
     ("Special Illustration Rare", "Special Illustration Rare"),
     ("ACE SPEC RARE", "ACE SPEC Rare"),
     ("Völlig Unbekannt", "Völlig Unbekannt"),  # unbekannt → Durchreichen
+    # Schwert & Schild V-Ära — beide Wortstellungen (Issue #32)
+    ("Rare Holo V", "Holo Rare V"),
+    ("Holo Rare V", "Holo Rare V"),
+    ("Rare Holo VMAX", "Holo Rare VMAX"),
+    ("Rare Holo VSTAR", "Holo Rare VSTAR"),
 ])
 def test_map_rarity(raw, expected):
     assert _map_rarity(raw) == expected

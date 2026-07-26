@@ -6,7 +6,10 @@ from pydantic import BaseModel
 
 
 SELTENHEIT_VALUES = [
-    "Common", "Uncommon", "Rare", "Double Rare",
+    "Common", "Uncommon", "Rare",
+    # Schwert & Schild V-Ära (eigener TCGdex-Seltenheitsgrad, gedruckt: schwarzer Stern)
+    "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR",
+    "Double Rare",
     "Ultra Rare", "Secret Rare",
     "Illustration Rare", "Special Illustration Rare",
     "Hyper Rare", "Mega Hyper Rare",

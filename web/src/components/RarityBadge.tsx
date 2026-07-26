@@ -50,6 +50,10 @@ export const RARITY_MAP: Record<string, RarityDef> = {
   "Promo":                     { symbol: "PROMO", cls: "",                                                                                   jpCode: "PROMO" },
   // Legacy-Werte (noch in der DB, nicht mehr im Dropdown)
   "Holo Rare":                 { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "R"     },
+  // Schwert & Schild V-Ära — gedruckt ein schwarzer Stern (wie „Rare Holo").
+  "Holo Rare V":               { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "V"     },
+  "Holo Rare VMAX":            { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "VMAX"  },
+  "Holo Rare VSTAR":           { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "VSTAR" },
   "Full Art":                  { symbol: "★★",   cls: "text-white bg-gray-900 rounded px-0.5 leading-none",                                  jpCode: "SR"    },
 };
 

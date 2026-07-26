@@ -95,6 +95,15 @@ _RARITY_MAP = {
     "uncommon": "Uncommon",
     "rare": "Rare",
     "rare holo": "Rare",
+    "holo rare": "Rare",
+    # Schwert & Schild V-Ära — beide Wortstellungen, die TCGdex je nach
+    # Locale/Feld liefert ("Rare Holo V" / "Holo Rare V").
+    "rare holo v": "Holo Rare V",
+    "holo rare v": "Holo Rare V",
+    "rare holo vmax": "Holo Rare VMAX",
+    "holo rare vmax": "Holo Rare VMAX",
+    "rare holo vstar": "Holo Rare VSTAR",
+    "holo rare vstar": "Holo Rare VSTAR",
     "double rare": "Double Rare",
     "ultra rare": "Ultra Rare",
     "secret rare": "Secret Rare",
