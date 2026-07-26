@@ -27,9 +27,9 @@ function NewCardForm() {
   });
   // Gemeinsame Formular-Logik (Lookup, Validierung, Set-Auswahl) — Issue #5
   const {
-    selectedSet, cardNrError, setCardNrError, nameLoading,
-    noteManualEdit, handlePokedexNr, validateCardNr, handleSetChange,
-  } = useCardForm(setForm);
+    selectedSet, cardNrError, setCardNrError, nameLoading, resolving,
+    noteManualEdit, handlePokedexNr, handleCardNr, validateCardNr, handleSetChange,
+  } = useCardForm(setForm, { resolve: true });
 
   // Standard-Sprache/-Zustand aus den (geteilten) Einstellungen vorbelegen
   // (nur solange der Nutzer die Felder noch nicht angefasst hat).
@@ -111,18 +111,19 @@ function NewCardForm() {
         {/* Set-Picker */}
         <SetPicker
           value={String(form.set_edition ?? "")}
-          onChange={handleSetChange}
+          onChange={(ed, s) => handleSetChange(ed, s, String(form.sprache ?? "DE"))}
           sets={sets}
           onSetAdded={() => { void refreshSets(); }}
         />
 
-        {/* Karten-Nr. mit Hinweis */}
+        {/* Karten-Nr. — Set + Nummer lösen Name/Pokédex/Seltenheit auf (Issue #31) */}
         <CardNrField
           value={form.karten_nr}
-          onChange={(v) => set("karten_nr", v)}
+          onChange={(v) => handleCardNr(v, String(form.sprache ?? "DE"))}
           validate={validateCardNr}
           selectedSet={selectedSet}
           error={cardNrError}
+          loading={resolving}
         />
         <div /> {/* spacer */}
 

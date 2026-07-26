@@ -124,19 +124,23 @@ export function PokedexNrField({ value, onChange, nameLoading, dense }: {
 }
 
 /** Karten-Nr. mit Format-Hinweis + Validierungsfehler aus useCardForm. */
-export function CardNrField({ value, onChange, validate, selectedSet, error, dense }: {
+export function CardNrField({ value, onChange, validate, selectedSet, error, dense, loading }: {
   value: unknown;
   onChange: (v: string) => void;
   validate: (v: string) => boolean;
   selectedSet: PokemonSet | null;
   error: string | null;
   dense?: boolean;
+  loading?: boolean;
 }) {
   const { t } = useI18n();
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className={labelCls(dense)}>{t.form_card_nr}</label>
+      <label htmlFor={id} className={labelCls(dense)}>
+        {t.form_card_nr}
+        {loading && <span className="ml-2 text-gray-500 animate-pulse">…</span>}
+      </label>
       <input
         id={id}
         type="text"
