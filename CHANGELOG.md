@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.4.0] – 2026-07-19 (Manuelles Anlegen wie Scan + Seltenheits-Symbole) — gefahrlos
+
+### Manuelles Anlegen füllt jetzt mit (#31)
+- Beim manuellen Hinzufügen genügt jetzt — wie beim Scan — **Set + Kartennummer**:
+  Name, englischer Name, Pokédex-Nr., Seltenheit und Folierung werden automatisch
+  vorbefüllt (über dieselbe TCGdex-Auflösung wie der Scan).
+- Die **volle „NNN/MAX"-Schreibweise wird nicht mehr erzwungen** — eine nackte
+  Nummer wie „125" genügt und wird automatisch zu „125/197" ergänzt.
+
+### Seltenheits-Symbole (#32)
+- **Schwert-&-Schild-V-Karten** (Mimigma V u. a.) haben jetzt ein Symbol:
+  „Holo Rare V/VMAX/VSTAR" werden mit dem schwarzen Stern angezeigt statt ohne
+  Symbol. (Die rosa/grünen Doppelsterne der Mega-ex-Karten sind die bekannten
+  Seltenheiten „Double Rare"/„Ultra Rare" ★★ — keine neue Seltenheit nötig.)
+
 ## [v1.3.0] – 2026-07-19 (Komfort-Welle: Bulk-Add, Detail-Navigation, robusterer Scan) — gefahrlos
 
 ### Katalog & Detailseite
