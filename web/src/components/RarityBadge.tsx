@@ -8,6 +8,11 @@ const EASTERN = new Set(["JP", "CN"]);
 const WHITE_OUTLINE: CSSProperties = {
   textShadow: "-1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white",
 };
+// Dunkler Rand für weiße Symbole (z.B. der weiße Stern der V-Karten, deren
+// Kartenrand unten dunkel ist → weißer Stern, damit er sichtbar bleibt).
+const DARK_OUTLINE: CSSProperties = {
+  textShadow: "-1px -1px 0 #334155, 1px -1px 0 #334155, -1px 1px 0 #334155, 1px 1px 0 #334155",
+};
 
 function PromoSymbol({ size = 16 }: { size?: number }) {
   const star = "M50,5 L61.8,33.8 L92.8,36.1 L69,56.2 L76.4,86.4 L50,70 L23.6,86.4 L31,56.2 L7.2,36.1 L38.2,33.8 Z";
@@ -50,10 +55,10 @@ export const RARITY_MAP: Record<string, RarityDef> = {
   "Promo":                     { symbol: "PROMO", cls: "",                                                                                   jpCode: "PROMO" },
   // Legacy-Werte (noch in der DB, nicht mehr im Dropdown)
   "Holo Rare":                 { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "R"     },
-  // Schwert & Schild V-Ära — gedruckt ein schwarzer Stern (wie „Rare Holo").
-  "Holo Rare V":               { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "V"     },
-  "Holo Rare VMAX":            { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "VMAX"  },
-  "Holo Rare VSTAR":           { symbol: "★",    cls: "text-black",     style: WHITE_OUTLINE,                                                jpCode: "VSTAR" },
+  // Schwert & Schild V-Ära — gedruckt ein WEISSER Stern (dunkler Kartenrand unten).
+  "Holo Rare V":               { symbol: "★",    cls: "text-white",     style: DARK_OUTLINE,                                                 jpCode: "V"     },
+  "Holo Rare VMAX":            { symbol: "★",    cls: "text-white",     style: DARK_OUTLINE,                                                 jpCode: "VMAX"  },
+  "Holo Rare VSTAR":           { symbol: "★",    cls: "text-white",     style: DARK_OUTLINE,                                                 jpCode: "VSTAR" },
   "Full Art":                  { symbol: "★★",   cls: "text-white bg-gray-900 rounded px-0.5 leading-none",                                  jpCode: "SR"    },
 };
 

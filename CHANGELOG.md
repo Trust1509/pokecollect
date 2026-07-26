@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.4.1] – 2026-07-19 (Korrektur: V-Stern ist weiß)
+
+- **V-Karten-Seltenheit korrekt weiß:** Der Stern für „Holo Rare V/VMAX/VSTAR"
+  wird jetzt als weißer Stern (mit dunklem Rand) angezeigt — so wie er auf den
+  Karten gedruckt ist (dunkler Kartenrand unten). In v1.4.0 war er
+  fälschlich schwarz.
+
 ## [v1.4.0] – 2026-07-19 (Manuelles Anlegen wie Scan + Seltenheits-Symbole) — gefahrlos
 
 ### Manuelles Anlegen füllt jetzt mit (#31)
