@@ -6,7 +6,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { API_BASE, Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
 import SortableCardGrid from "@/components/SortableCardGrid";
-import BinderView, { BinderItem, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
+import BinderView, { BinderItem, BinderGhost, ASSIGN_DRAG_TYPE } from "@/components/BinderView";
 import BinderEditor from "@/components/BinderEditor";
 import GoalProgress from "@/components/GoalProgress";
 import SollView from "@/components/SollView";
@@ -46,6 +46,8 @@ export default function CollectionDetailPage() {
 
   // Karten-Zuweisung (Suche)
   const [showAssign, setShowAssign] = useState(false);
+  // Planungs-Modus: statt besessener Karten die Wunschliste durchsuchen (#29)
+  const [assignPlanning, setAssignPlanning] = useState(false);
   const [query, setQuery] = useState("");
   // allSearchResults: aus API (nur bei Query-Änderung aktualisiert, kein Flicker bei cards-Änderung)
   const [allSearchResults, setAllSearchResults] = useState<Card[]>([]);
@@ -95,7 +97,10 @@ export default function CollectionDetailPage() {
     const handle = setTimeout(async () => {
       setSearching(true);
       try {
-        const p: Record<string, unknown> = { limit: 80, besessen: true };
+        // Planungs-Modus → Wunschliste (nicht-besessen) statt besessener Karten
+        const p: Record<string, unknown> = assignPlanning
+          ? { limit: 80, wunschliste: true }
+          : { limit: 80, besessen: true };
         const q = query.trim();
         if (q) p.search = q; // immer Text-Suche, keine exakte pokedex_nr-Suche
         const r = await cardApi.list(p);
@@ -105,7 +110,7 @@ export default function CollectionDetailPage() {
       }
     }, 350);
     return () => clearTimeout(handle);
-  }, [query, showAssign]);
+  }, [query, showAssign, assignPlanning]);
 
   const handleAdd = async (cardId: number) => {
     try {
@@ -202,10 +207,29 @@ export default function CollectionDetailPage() {
     }
   };
 
-  const binderItems: BinderItem[] = cards.map((c, idx) => ({
-    card: c,
-    position: c.position ?? idx,
-  }));
+  // Binder: besessene Karten sind echte Slots; nicht-besessene (Wunschliste/
+  // geplant) erscheinen als gedimmte Geister-Slots — dieselbe Optik wie die
+  // fehlenden Soll-Slots der Set-Sammlungen (#16, BinderGhost). Wird die Karte
+  // besessen, flippt derselbe Slot automatisch auf „echt" (keine Doppelanlage,
+  // #29). Die Seiten-Verwaltung (BinderEditor) sieht weiterhin ALLE Slots.
+  const allItems: BinderItem[] = cards.map((c, idx) => ({ card: c, position: c.position ?? idx }));
+  const binderItems: BinderItem[] = [];
+  const planningGhosts: BinderGhost[] = [];
+  cards.forEach((c, idx) => {
+    const position = c.position ?? idx;
+    if (c.besessen) {
+      binderItems.push({ card: c, position });
+    } else {
+      planningGhosts.push({
+        position,
+        imageUrl: cardImageSrc(c, API_BASE).src,
+        label: lang === "EN" && c.englischer_name ? c.englischer_name : c.kartenname,
+        sub: c.karten_nr,
+        badge: t.binder_planned,
+        href: `/cards/${c.id}`,
+      });
+    }
+  });
 
   // Set-Sammlung (Issue #16): Soll-Ansicht statt freier Karten-Zuweisung
   const isGoal = collection?.typ === "set_ziel";
@@ -269,6 +293,14 @@ export default function CollectionDetailPage() {
             placeholder={t.collection_search_placeholder}
             className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white text-sm mb-3"
           />
+          <label className="flex items-center gap-2 text-gray-400 text-xs mb-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={assignPlanning}
+              onChange={(e) => setAssignPlanning(e.target.checked)}
+            />
+            {t.collection_add_planning}
+          </label>
           {searching ? (
             <div className="text-gray-500 text-sm py-4 text-center">{t.detail_loading}</div>
           ) : results.length === 0 ? (
@@ -328,7 +360,7 @@ export default function CollectionDetailPage() {
           </div>
           {editingPages ? (
             <BinderEditor
-              items={binderItems}
+              items={allItems}
               apiBase={API_BASE}
               layout={layout}
               binderSlots={collection?.binder_slots ?? null}
@@ -337,6 +369,7 @@ export default function CollectionDetailPage() {
           ) : (
             <BinderView
               items={binderItems}
+              ghosts={planningGhosts}
               apiBase={API_BASE}
               layout={layout}
               onLayoutChange={handleLayoutChange}

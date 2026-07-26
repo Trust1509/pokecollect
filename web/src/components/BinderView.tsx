@@ -20,6 +20,10 @@ export type BinderGhost = {
   sub?: string | null;
   onWishlist?: () => void;
   wishlistTitle?: string;
+  /** Kleine Ecken-Markierung, z.B. „geplant" für Wunschlisten-Karten (Issue #29). */
+  badge?: string | null;
+  /** Optionaler Link zur Karte — der Geister-Slot wird anklickbar (Issue #29). */
+  href?: string | null;
 };
 
 type Props = {
@@ -221,26 +225,36 @@ export default function BinderView({
             if (!card) {
               const ghost = ghostMap.get(slot);
               if (ghost) {
+                const media = ghost.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ghost.imageUrl}
+                    alt={ghost.label}
+                    loading="lazy"
+                    className="w-full h-full object-cover opacity-30 grayscale"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-600 text-[10px] text-center p-1">
+                    {ghost.label}
+                  </div>
+                );
                 return (
                   <div
                     key={slot}
                     {...dropProps}
                     className="aspect-[63/88] rounded-lg overflow-hidden relative bg-gray-800/60 ring-1 ring-black/40"
                   >
-                    {ghost.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={ghost.imageUrl}
-                        alt={ghost.label}
-                        loading="lazy"
-                        className="w-full h-full object-cover opacity-30 grayscale"
-                      />
+                    {ghost.href ? (
+                      <Link href={ghost.href} className="block w-full h-full">{media}</Link>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-gray-600 text-[10px] text-center p-1">
-                        {ghost.label}
-                      </div>
+                      media
                     )}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1">
+                    {ghost.badge && (
+                      <span className="absolute top-1 left-1 bg-black/70 text-gray-300 text-[10px] px-1.5 py-0.5 rounded pointer-events-none">
+                        {ghost.badge}
+                      </span>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 flex items-center justify-between gap-1 pointer-events-none">
                       <span className="text-[10px] text-gray-500 truncate">{ghost.label}</span>
                       {ghost.sub && (
                         <span className="text-[10px] text-gray-600 font-mono shrink-0">{ghost.sub}</span>

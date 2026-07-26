@@ -65,6 +65,9 @@ const DE = {
   collection_remove_confirm: "Karte aus dieser Sammlung entfernen? Die Karte selbst bleibt erhalten.",
   collection_empty: "Diese Sammlung ist noch leer. Weise Karten zu oder lege neue an.",
   collection_remove: "Entfernen",
+  // Planung: nicht-besessene / Wunschlisten-Karten in freie Sammlungen (Issue #29)
+  collection_add_planning: "Geplante (Wunschliste) einbeziehen",
+  binder_planned: "geplant",
 
   // Set-Sammlungen / Sammelziele (Issue #16)
   collections_type_label: "Art der Sammlung",
@@ -526,6 +529,9 @@ const EN: typeof DE = {
   collection_remove_confirm: "Remove card from this collection? The card itself is kept.",
   collection_empty: "This collection is empty. Assign cards or create new ones.",
   collection_remove: "Remove",
+  // Planning: non-owned / wishlist cards in free collections (Issue #29)
+  collection_add_planning: "Include planned (wishlist)",
+  binder_planned: "planned",
 
   // Set collections / collection goals (Issue #16)
   collections_type_label: "Collection type",

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE, Card, cardApi } from "@/lib/api";
+import toast from "react-hot-toast";
+import { API_BASE, Card, Collection, cardApi, collectionApi } from "@/lib/api";
 import CardGrid from "@/components/CardGrid";
 import BinderView from "@/components/BinderView";
 import ViewToggle, { ViewMode } from "@/components/ViewToggle";
@@ -8,6 +9,55 @@ import { useEnums } from "@/lib/useEnums";
 import { useI18n } from "@/lib/i18n";
 
 const LAYOUT_KEY = "wishlist_binder_layout";
+
+// Wunschlisten-Karte planend einer freien Sammlung zuordnen (Issue #29):
+// kleines „+"-Overlay mit Auswahl der freien Sammlungen. Die Karte bleibt auf
+// der Wunschliste und erscheint in der Sammlung als geplanter Geister-Slot.
+function AddToCollectionOverlay({
+  card, collections, t,
+}: {
+  card: Card;
+  collections: Collection[];
+  t: ReturnType<typeof useI18n>["t"];
+}) {
+  const [open, setOpen] = useState(false);
+  if (!collections.length) return null;
+  const add = async (collectionId: number) => {
+    setOpen(false);
+    try {
+      await collectionApi.addCard(collectionId, card.id);
+      toast.success(t.collection_added);
+    } catch {
+      toast.error(t.collections_error);
+    }
+  };
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        title={t.catalog_add_collection}
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-full w-7 h-7 flex items-center justify-center bg-black/70 text-white hover:bg-pokemon-accent text-base leading-none shadow"
+      >
+        +
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-40 max-h-48 overflow-y-auto bg-pokemon-card border border-gray-700 rounded shadow-lg z-20">
+          {collections.map((c) => (
+            <button
+              type="button"
+              key={c.id}
+              onClick={() => add(c.id)}
+              className="block w-full text-left px-2 py-1.5 text-xs text-gray-200 hover:bg-pokemon-accent hover:text-white truncate"
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function WishlistPage() {
   const { t } = useI18n();
@@ -17,6 +67,15 @@ export default function WishlistPage() {
   const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(true);
+  // Freie Sammlungen für „zu Sammlung hinzufügen" (Set-Sammlungen bleiben außen
+  // vor — die verwalten ihre Karten über die Soll-Liste; Issue #29).
+  const [freeCollections, setFreeCollections] = useState<Collection[]>([]);
+
+  useEffect(() => {
+    collectionApi.list()
+      .then((r) => setFreeCollections(r.data.filter((c) => c.typ !== "set_ziel")))
+      .catch(() => setFreeCollections([]));
+  }, []);
 
   useEffect(() => {
     const s = sessionStorage.getItem("wishlist_view");
@@ -78,7 +137,13 @@ export default function WishlistPage() {
           onLayoutChange={handleLayoutChange}
         />
       ) : (
-        <CardGrid cards={cards} apiBase={API_BASE} />
+        <CardGrid
+          cards={cards}
+          apiBase={API_BASE}
+          renderOverlay={(card) => (
+            <AddToCollectionOverlay card={card} collections={freeCollections} t={t} />
+          )}
+        />
       )}
     </div>
   );

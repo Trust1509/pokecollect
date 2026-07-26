@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/lib/api";
@@ -12,6 +13,8 @@ type Props = {
   cards: Card[];
   apiBase: string;
   placeholderEnabled?: boolean;
+  /** Optionales Aktions-Overlay je Karte (z.B. „zu Sammlung hinzufügen", #29). */
+  renderOverlay?: (card: Card) => ReactNode;
 };
 
 const RARITY_BORDER: Record<string, string> = {
@@ -34,7 +37,7 @@ const RARITY_BORDER: Record<string, string> = {
   "Promo":                     "border-teal-400",
 };
 
-export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: Props) {
+export default function CardGrid({ cards, apiBase, placeholderEnabled = true, renderOverlay }: Props) {
   const { t, lang } = useI18n();
 
   if (!cards.length) {
@@ -59,8 +62,8 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
         const setCode = extractSetCode(card.set_edition) || "–";
 
         return (
+          <div key={card.id} className="relative">
           <Link
-            key={card.id}
             href={`/cards/${card.id}`}
             onClick={() => rememberCardOrder(cards.map((c) => c.id))}
           >
@@ -150,6 +153,10 @@ export default function CardGrid({ cards, apiBase, placeholderEnabled = true }: 
               </div>
             </div>
           </Link>
+          {renderOverlay && (
+            <div className="absolute top-1 right-1 z-10">{renderOverlay(card)}</div>
+          )}
+          </div>
         );
       })}
     </div>
