@@ -36,6 +36,48 @@ def strip_card_suffix(name: Optional[str]) -> Optional[str]:
     return stripped or name
 
 
+def _denominator(karten_nr: Optional[str]) -> Optional[int]:
+    """
+    Nenner der Sammelnummer = offizielle Set-Größe. „113/217" → 217,
+    „247/217" → 217 (Secret Rare über der offiziellen Zahl). Kein „/" oder
+    nicht-numerischer Nenner → None. Für die Nummer-nur-Auflösung (#33).
+    """
+    if not karten_nr or "/" not in karten_nr:
+        return None
+    part = karten_nr.split("/", 1)[1].strip()
+    return int(part) if part.isdigit() else None
+
+
+def _norm_name(name: Optional[str]) -> str:
+    """Kleinbuchstaben + nur a-z/0-9 — für einen toleranten Namensvergleich."""
+    if not name:
+        return ""
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _name_plausibel(raw: Optional[str], *aufgeloest: Optional[str]) -> bool:
+    """
+    Passt der roh gelesene Name zu mindestens einem aufgelösten Namen (DE/EN)?
+    Tolerant gegen Teilstrings und Karten-Suffixe (ex/GX/V…). Ohne rohen Namen
+    gibt es nichts zu widersprechen → True. Nützt der #33-Erkennung: wurde die
+    Karte über Set+Nummer aufgelöst, der Name passt aber gar nicht, war er
+    vermutlich Label-/Attackentext → als unsicher markieren.
+    """
+    r = _norm_name(raw)
+    if not r:
+        return True
+    rs = _norm_name(strip_card_suffix(raw))
+    for n in aufgeloest:
+        m = _norm_name(n)
+        if not m:
+            continue
+        if r == m or r in m or m in r:
+            return True
+        if rs and rs == _norm_name(strip_card_suffix(n)):
+            return True
+    return False
+
+
 def _set_by_code(db: Session, code: Optional[str]) -> Optional[PokemonSet]:
     if not code:
         return None
@@ -58,6 +100,39 @@ def _resolve_set_id(db: Session, code: Optional[str]) -> tuple[Optional[str], Op
         if mapped:
             return mapped, (row or _set_by_set_id(db, mapped))
     return (row.set_id if row else None), row
+
+
+def _sets_matching_count(db: Session, denom: Optional[int]) -> list[PokemonSet]:
+    """Lokale Sets, deren offizielle ODER Gesamt-Kartenzahl dem Nenner gleicht."""
+    if not denom:
+        return []
+    return list(db.scalars(select(PokemonSet).where(
+        (PokemonSet.card_count_official == denom)
+        | (PokemonSet.card_count_total == denom)
+    )).all())
+
+
+async def _resolve_by_number_only(
+    db: Session, local_id: Optional[str], denom: Optional[int], tcg_lang: str
+) -> tuple[Optional[object], Optional[PokemonSet]]:
+    """
+    Set unlesbar, aber Sammelnummer da (#33): über den Nenner (offizielle
+    Set-Größe) Kandidaten-Sets bestimmen und je Kandidat per Set+Nummer
+    verifizieren. Nur wenn GENAU EIN Set eine Karte mit dieser localId liefert,
+    gilt der Treffer als eindeutig; sonst (None, None) → bleibt unsicher.
+    """
+    if not local_id or not denom:
+        return None, None
+    hit: Optional[tuple] = None
+    for row in _sets_matching_count(db, denom):
+        if not row.set_id:
+            continue
+        card = await tcgdex.fetch_card_by_set_multilang(row.set_id, local_id, tcg_lang)
+        if card:
+            if hit is not None:
+                return None, None  # mehr als ein plausibles Set → nicht eindeutig
+            hit = (card, row)
+    return hit if hit else (None, None)
 
 
 def _foil_options(tc) -> list[str]:
@@ -188,14 +263,29 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     set_id, set_row = _resolve_set_id(db, read.set_code)
     local_id = tcgdex.local_id_from_card_nr(read.number)
 
+    # Priorität 1 — Set + Nummer sind der eindeutige Schlüssel; der (fehler-
+    # anfällige) Name ist nur Fallback. Sind beide lesbar, IMMER zuerst darüber.
     tc = None
+    via_number = False
     if set_id and local_id:
         tc = await tcgdex.fetch_card_by_set_multilang(set_id, local_id, tcg_lang)
+        if tc is not None:
+            via_number = True
 
-    # Fallback: Kartensuche per Name. Wenn die Nummer bekannt ist, über die
-    # localId eindeutig machen (robust gegen falsch erkannte Set-Kürzel).
+    # Priorität 2 — Set unlesbar, aber Nummer da: über den Nenner (offizielle
+    # Set-Größe) genau EIN Set bestimmen und per Set+Nummer verifizieren. So
+    # scheitert ein guter Nummern-Treffer nicht am unbrauchbaren Namen (#33).
+    if tc is None and local_id and not set_id:
+        tc, num_row = await _resolve_by_number_only(
+            db, local_id, _denominator(read.number), tcg_lang)
+        if tc is not None:
+            via_number = True
+            set_id = tc.set.id if (tc.set and tc.set.id) else set_id
+            set_row = num_row or set_row
+
+    # Priorität 3 — Fallback: Kartensuche per Name. Wenn die Nummer bekannt ist,
+    # über die localId eindeutig machen (robust gegen falsch erkannte Kürzel).
     via_search = False
-    via_number = False
     via_suffix = False
     results: list[dict] = []
     if tc is None and read.name:
@@ -256,6 +346,14 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         eng = en_card.name if (en_card and tcg_lang != "en") else None
         rarity_en = (en_card.rarity if en_card else None) or tc.rarity
         seltenheit = _map_rarity(rarity_en)
+
+        # Der roh gelesene Name passt NICHT zur über Nummer/Set aufgelösten Karte
+        # (typischer #33-Fehlerfall: Gemini las Label-/Attackentext als Namen) →
+        # „name" als unsicher markieren; die Karte selbst steht dennoch.
+        if read.name and "name" not in uncertain \
+                and not _name_plausibel(read.name, tc.name, eng):
+            uncertain.append("name")
+
         set_edition = _set_edition(db, set_id, read.set_code)
         knr = _karten_nr(tc.localId, official, read.number)
         foil_options = _foil_options(tc)

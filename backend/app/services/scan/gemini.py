@@ -27,23 +27,42 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 _PROMPT = """Du bist ein Experte für Pokémon-Sammelkarten (TCG).
-Analysiere das Bild. Es zeigt entweder EINE Karte oder MEHRERE Karten
-(z.B. eine ganze Binder-/Sammelmappen-Seite mit einem Raster aus Kartenfächern).
+Analysiere das Bild. Es zeigt entweder EINE Karte (ggf. mit angeschnittenen
+Nachbarkarten am Rand) oder MEHRERE Karten (z.B. eine ganze Binder-/
+Sammelmappen-Seite mit einem Raster aus Kartenfächern).
 
-Gib für JEDE eindeutig erkennbare Pokémon-Karte ein Objekt zurück mit:
-- "name": der auf der Karte gedruckte Kartenname (z.B. "Glurak ex", "Pikachu")
-- "set_code": das kleine aufgedruckte Set-Kürzel unten (z.B. "PAF", "OBF", "MEW", "151"); null wenn unlesbar
-- "number": die aufgedruckte Kartennummer wie sie dasteht (z.B. "007/091", "201/091"); null wenn unlesbar
+WICHTIG — welche Karten du auswertest:
+- Werte NUR vollständig (oder nahezu vollständig) sichtbare Karten aus. Ist eine
+  Karte klar der Bildmittelpunkt bzw. die deutlich größte, ist SIE die Zielkarte.
+- IGNORIERE nur teilweise sichtbare Nachbarkarten, die am oberen, unteren oder
+  seitlichen Bildrand angeschnitten sind — sie gehören NICHT zur Zielkarte.
+- IGNORIERE Register-, Trenn- und Beschriftungsstreifen (Tab-Labels) der
+  Sammelmappe; das sind KEINE Karten.
+
+Der ZUVERLÄSSIGE Schlüssel einer Karte ist die aufgedruckte Sammelnummer plus das
+Set-Kürzel/-Symbol — NICHT der Name. Lies daher Nummer und Set besonders sorgfältig.
+
+Gib für JEDE so ausgewählte Pokémon-Karte ein Objekt zurück mit:
+- "name": AUSSCHLIESSLICH der Kartenname aus der Titelzeile OBEN auf der Karte
+  (z.B. "Glurak ex", "Pikachu"). Übernimm NIEMALS Text aus Attacken, Fähigkeiten,
+  Evolutions-Hinweisen, Sammelmappen-Labels oder sonstigem Fließtext als Namen.
+  Wenn der Titel nicht sicher lesbar ist, setze null — rate NICHT.
+- "number": die aufgedruckte Sammelnummer GENAU wie sie (meist unten) auf der
+  Karte steht, im Format "NNN/NNN" (z.B. "113/217", "068/172") bzw. wie gedruckt;
+  null wenn unlesbar. Zusammen mit dem Set der eindeutige Schlüssel.
+- "set_code": das kleine aufgedruckte Set-Kürzel bzw. Set-Symbol unten (z.B.
+  "PAF", "OBF", "MEW", "151"); null wenn unlesbar. Ebenfalls Teil des Schlüssels.
 - "language": Sprache der Karte als Kürzel: "DE", "EN", "JP", "CN", "FR", "ES", "IT"; null wenn unklar
 - "position": die Position im Raster, von links nach rechts und oben nach unten gezählt, beginnend bei 0; bei Einzelkarte 0
-- "box_2d": die Bounding-Box der Karte als [ymin, xmin, ymax, xmax], jeweils
-  ganzzahlig von 0 bis 1000 (auf Bildhöhe/-breite normiert), möglichst eng um die Karte
+- "box_2d": die Bounding-Box NUR dieser einen Karte als [ymin, xmin, ymax, xmax],
+  jeweils ganzzahlig von 0 bis 1000 (auf Bildhöhe/-breite normiert), möglichst eng
+  um die Karte — OHNE angeschnittene Nachbarn oder Register-Labels
 - "corners": die VIER Eckpunkte der Karte als [[x,y],[x,y],[x,y],[x,y]] in der
   Reihenfolge oben-links, oben-rechts, unten-rechts, unten-links; x,y ganzzahlig
   0–1000. Für perspektivische Entzerrung – exakt an den Kartenecken, auch wenn die Karte schräg liegt.
-- "confidence": deine Sicherheit 0.0–1.0, wie zuverlässig du Name UND Nummer gelesen hast
+- "confidence": deine Sicherheit 0.0–1.0, wie zuverlässig du NUMMER UND Name gelesen hast
 
-Leere/keine Karte enthaltende Fächer NICHT ausgeben.
+Leere Fächer sowie angeschnittene Rand-Karten NICHT ausgeben.
 Antworte AUSSCHLIESSLICH mit einem JSON-Array von Objekten, ohne Erklärungstext."""
 
 
