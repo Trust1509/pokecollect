@@ -13,6 +13,12 @@ const DE = {
   nav_add_card: "+ Karte",
   nav_scan: "📷 Scannen",
   nav_scan_short: "Scan",
+  nav_catalog: "Katalog",
+  nav_sealed: "Sealed",
+  // Burger-Menü (☰)
+  nav_menu_title: "Navigation",
+  nav_menu_open: "Menü öffnen",
+  nav_menu_close: "Menü schließen",
 
   // View toggle
   view_grid: "Raster",
@@ -383,6 +389,10 @@ const DE = {
   settings_placeholder_images_hint: "Zeigt automatisch das offizielle Pokémon-Bild wenn kein eigenes Foto hinterlegt ist.",
   settings_cards_per_page: "Karten pro Seite",
   settings_default_sort: "Standard-Sortierung",
+  settings_section_nav: "Navigation",
+  settings_nav_hint: "Wähle, welche Ziele als Schnellzugriff unten in der Leiste erscheinen. Alle übrigen Seiten bleiben über das Menü (☰) oben links erreichbar.",
+  settings_nav_max: (n: number) => `Maximal ${n} Schnellzugriffe.`,
+  settings_nav_count: (n: number, max: number) => `${n} von ${max} gewählt`,
   settings_section_prices: "Preise",
   settings_price_update: "Automatische Preisaktualisierung",
   settings_price_update_hint: "Aktualisiert täglich die Cardmarket-Preise aller besessenen Karten.",
@@ -480,6 +490,12 @@ const EN: typeof DE = {
   nav_add_card: "+ Card",
   nav_scan: "📷 Scan",
   nav_scan_short: "Scan",
+  nav_catalog: "Catalog",
+  nav_sealed: "Sealed",
+  // Burger menu (☰)
+  nav_menu_title: "Navigation",
+  nav_menu_open: "Open menu",
+  nav_menu_close: "Close menu",
 
   view_grid: "Grid",
   view_binder: "Binder",
@@ -838,6 +854,10 @@ const EN: typeof DE = {
   settings_placeholder_images_hint: "Automatically shows the official Pokémon artwork when no own photo is set.",
   settings_cards_per_page: "Cards per page",
   settings_default_sort: "Default sort",
+  settings_section_nav: "Navigation",
+  settings_nav_hint: "Choose which destinations appear as quick links in the bottom bar. All other pages stay reachable via the menu (☰) at the top left.",
+  settings_nav_max: (n: number) => `Up to ${n} quick links.`,
+  settings_nav_count: (n: number, max: number) => `${n} of ${max} selected`,
   settings_section_prices: "Prices",
   settings_price_update: "Automatic price updates",
   settings_price_update_hint: "Updates the Cardmarket prices of all owned cards daily.",

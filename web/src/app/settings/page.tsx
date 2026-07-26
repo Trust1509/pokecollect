@@ -5,6 +5,7 @@ import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, dataApi, AppSetti
 import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
+import BottomNavSettings from "@/components/BottomNavSettings";
 
 const SECTION = "bg-pokemon-card rounded-lg p-5 space-y-4";
 const LABEL = "block text-gray-400 text-xs mb-1";
@@ -244,6 +245,11 @@ export default function SettingsPage() {
             {t.form_save}
           </button>
         </div>
+      </Section>
+
+      {/* Navigation: konfigurierbare BottomNav (Issue #34) */}
+      <Section title={`🧭 ${t.settings_section_nav}`}>
+        <BottomNavSettings />
       </Section>
 
       {/* Preise */}
