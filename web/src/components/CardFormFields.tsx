@@ -38,6 +38,54 @@ export function TextField({ label, value, onChange, type = "text", dense }: {
   );
 }
 
+/** Betrags-Feld (€) — hält den Rohstring, damit Cent-Nachkommastellen (12,50)
+ * beim Tippen nicht durch Number()-Rundung verlorengehen (#26). */
+export function CurrencyField({ label, value, onChange, dense }: {
+  label: string;
+  value: unknown;
+  onChange: (v: string | null) => void;
+  dense?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className={labelCls(dense)}>{label}</label>
+      <input
+        id={id}
+        type="number"
+        step="0.01"
+        min="0"
+        inputMode="decimal"
+        value={value == null ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
+        className={inputCls(dense)}
+      />
+    </div>
+  );
+}
+
+/** Datums-Feld (native Date-Picker) — speichert ISO „YYYY-MM-DD" oder null (#26). */
+export function DateField({ label, value, onChange, dense }: {
+  label: string;
+  value: unknown;
+  onChange: (v: string | null) => void;
+  dense?: boolean;
+}) {
+  const id = useId();
+  return (
+    <div>
+      <label htmlFor={id} className={labelCls(dense)}>{label}</label>
+      <input
+        id={id}
+        type="date"
+        value={value ? String(value).slice(0, 10) : ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className={inputCls(dense)}
+      />
+    </div>
+  );
+}
+
 export function SelectField({ fieldKey, label, value, onChange, options, language, dense }: {
   fieldKey: string;
   label: string;

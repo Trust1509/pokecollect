@@ -169,6 +169,9 @@ def _run_light_migrations():
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS bild_original_pfad TEXT",
         # First Edition — eigenes Ja/Nein je besessener Karte (#25)
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS erste_edition BOOLEAN NOT NULL DEFAULT FALSE",
+        # Persönlicher Einstand: Kaufpreis + Kaufdatum (#26)
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS kaufpreis_eur NUMERIC(8,2)",
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS kaufdatum DATE",
         # ── Set-Sammlungen / Sammelziele (Issue #16) ─────────────────────────
         # Die neue Tabelle collection_soll legt create_all an (models/collection.py);
         # hier nur die additiven Spalten auf der bestehenden collections-Tabelle.

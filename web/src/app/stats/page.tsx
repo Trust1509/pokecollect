@@ -18,6 +18,10 @@ export default function StatsPage() {
 
   const pct = stats.gesamt ? Math.round((stats.besessen / stats.gesamt) * 100) : 0;
 
+  // Wertentwicklung (#26): nur zeigen, wenn Kaufpreise erfasst sind.
+  const hasFinance = stats.gesamt_einstand_eur != null || stats.unrealisierter_gv_eur != null;
+  const gv = stats.unrealisierter_gv_eur != null ? parseFloat(stats.unrealisierter_gv_eur) : null;
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-white">{t.stats_title}</h1>
@@ -43,6 +47,32 @@ export default function StatsPage() {
           <div className="text-gray-500 text-xs mt-1">{t.stats_cardmarket_owned}</div>
         </div>
       </div>
+
+      {/* Wertentwicklung: Einstand vs. Gesamtwert vs. unrealisierter G/V (#26) */}
+      {hasFinance && (
+        <div>
+          <h2 className="text-gray-300 font-medium mb-3">{t.stats_performance}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_cost_basis}</div>
+              <div className="text-3xl font-bold text-white">{formatEur(stats.gesamt_einstand_eur)}</div>
+              <div className="text-gray-500 text-xs mt-1">{t.stats_cost_basis_hint}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_total_value}</div>
+              <div className="text-3xl font-bold text-yellow-400">{formatEur(stats.gesamtwert_eur)}</div>
+              <div className="text-gray-500 text-xs mt-1">{t.stats_cardmarket_owned}</div>
+            </div>
+            <div className="bg-pokemon-card rounded-lg p-4">
+              <div className="text-gray-400 text-sm">{t.stats_unrealized_gain}</div>
+              <div className={`text-3xl font-bold ${gv == null ? "text-gray-500" : gv >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {gv == null ? "–" : `${gv > 0 ? "+" : ""}${formatEur(gv.toFixed(2))}`}
+              </div>
+              <div className="text-gray-500 text-xs mt-1">{t.stats_unrealized_gain_hint}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Charts — mobil einspaltig (Mobile-First, #10) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

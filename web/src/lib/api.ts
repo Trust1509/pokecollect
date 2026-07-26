@@ -55,6 +55,8 @@ export type Card = {
   prioritaet: string | null;
   wert_eur: string | null;
   wert_aktualisiert: string | null;
+  kaufpreis_eur: string | null;
+  kaufdatum: string | null;
   notizen: string | null;
   zustand: string | null;
   bild_pokedex_url: string | null;
@@ -88,6 +90,8 @@ export type StatsResponse = {
   besessen: number;
   nicht_besessen: number;
   gesamtwert_eur: string | null;
+  gesamt_einstand_eur: string | null;
+  unrealisierter_gv_eur: string | null;
   sets: Record<string, number>;
   seltenheiten: Record<string, number>;
   sprachen: Record<string, number>;

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -51,6 +51,8 @@ class CardBase(BaseModel):
     im_pokedex: bool = False
     prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
+    kaufpreis_eur: Optional[Decimal] = None
+    kaufdatum: Optional[date] = None
     notizen: Optional[str] = None
     zustand: Optional[str] = None
     bild_pokedex_url: Optional[str] = None
@@ -76,6 +78,8 @@ class CardUpdate(BaseModel):
     im_pokedex: Optional[bool] = None
     prioritaet: Optional[str] = None
     wert_eur: Optional[Decimal] = None
+    kaufpreis_eur: Optional[Decimal] = None
+    kaufdatum: Optional[date] = None
     notizen: Optional[str] = None
     zustand: Optional[str] = None
     bild_pokedex_url: Optional[str] = None
@@ -126,6 +130,11 @@ class StatsResponse(BaseModel):
     besessen: int
     nicht_besessen: int
     gesamtwert_eur: Optional[Decimal] = None
+    # Persönlicher Einstand + unrealisierter G/V der besessenen Karten (#26).
+    # gesamt_einstand_eur = Σ kaufpreis_eur (besessen, Kaufpreis gesetzt);
+    # unrealisierter_gv_eur = Σ (wert_eur − kaufpreis_eur), nur wo BEIDE gesetzt.
+    gesamt_einstand_eur: Optional[Decimal] = None
+    unrealisierter_gv_eur: Optional[Decimal] = None
     sets: dict[str, int]
     seltenheiten: dict[str, int]
     sprachen: dict[str, int]

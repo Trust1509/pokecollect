@@ -5,7 +5,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { cardApi, collectionApi } from "@/lib/api";
 import SetPicker from "@/components/SetPicker";
-import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
+import { CardNrField, CurrencyField, DateField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
 import { useEnums } from "@/lib/useEnums";
 import { useSets } from "@/lib/useSets";
 import { useSettings } from "@/lib/useSettings";
@@ -160,6 +160,16 @@ function NewCardForm() {
           <label htmlFor="wunschliste" className="text-white text-sm">{t.form_wishlist}</label>
         </div>
         {Boolean(form.wunschliste) && sel("prioritaet", t.form_priority, enums?.prioritaet ?? [])}
+        <CurrencyField
+          label={t.form_purchase_price}
+          value={form.kaufpreis_eur}
+          onChange={(v) => set("kaufpreis_eur", v)}
+        />
+        <DateField
+          label={t.form_purchase_date}
+          value={form.kaufdatum}
+          onChange={(v) => set("kaufdatum", v)}
+        />
         <TextareaField
           label={t.form_notes}
           value={form.notizen}

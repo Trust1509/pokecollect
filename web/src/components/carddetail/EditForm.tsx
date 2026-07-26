@@ -5,7 +5,7 @@ import { Card, Enums, PokemonSet, cardApi } from "@/lib/api";
 import RarityBadge from "@/components/RarityBadge";
 import FirstEditionBadge from "@/components/FirstEditionBadge";
 import SetPicker from "@/components/SetPicker";
-import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
+import { CardNrField, CurrencyField, DateField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
 import { useCardForm } from "@/lib/useCardForm";
 import { formatEur } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -115,6 +115,12 @@ export default function EditForm({
     );
   };
 
+  // Unrealisierter G/V = aktueller Wert − Kaufpreis (nur wenn beide gesetzt), #26
+  const kp = card.kaufpreis_eur != null ? parseFloat(card.kaufpreis_eur) : null;
+  const wv = card.wert_eur != null ? parseFloat(card.wert_eur) : null;
+  const gv = kp != null && wv != null ? wv - kp : null;
+  const gvPct = gv != null && kp && kp !== 0 ? (gv / kp) * 100 : null;
+
   return (
     <div className="flex-1">
       <div className="flex items-start justify-between mb-4">
@@ -214,6 +220,26 @@ export default function EditForm({
         {field("zustand", t.field_condition, "select", enums?.zustand)}
         {field("besessen", t.field_owned, "boolean")}
         {field("erste_edition", t.first_edition_label, "boolean")}
+        {/* Kaufpreis + Kaufdatum nur im Edit-Modus; die Anzeige läuft über den
+            G/V-Kasten unten (Kaufpreis / aktueller Wert / G/V), Issue #26 */}
+        {editing && (
+          <CurrencyField
+            key="kaufpreis_eur"
+            label={t.form_purchase_price}
+            value={(form as Record<string, unknown>).kaufpreis_eur}
+            onChange={(v) => setForm((f) => ({ ...f, kaufpreis_eur: v }))}
+            dense
+          />
+        )}
+        {editing && (
+          <DateField
+            key="kaufdatum"
+            label={t.form_purchase_date}
+            value={(form as Record<string, unknown>).kaufdatum}
+            onChange={(v) => setForm((f) => ({ ...f, kaufdatum: v }))}
+            dense
+          />
+        )}
         {card.illustrator && (
           <div key="illustrator">
             <dt className="text-gray-500 text-xs">{t.field_illustrator}</dt>
@@ -223,13 +249,46 @@ export default function EditForm({
         {field("notizen", t.field_notes, "textarea")}
       </dl>
 
-      {card.wert_eur && (
-        <div className="mt-4 p-3 bg-pokemon-card rounded-lg">
-          <div className="text-gray-400 text-xs">{t.detail_value_label}</div>
-          <div className="text-yellow-400 text-xl font-bold">{formatEur(card.wert_eur)}</div>
-          {card.wert_aktualisiert && (
-            <div className="text-gray-500 text-xs mt-0.5">
-              {t.detail_value_updated}: {new Date(card.wert_aktualisiert).toLocaleDateString(t.date_locale)}
+      {(card.wert_eur != null || card.kaufpreis_eur != null) && (
+        <div className="mt-4 p-3 bg-pokemon-card rounded-lg space-y-1.5">
+          {card.kaufpreis_eur != null && (
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="text-gray-400">{t.detail_purchase_price}</span>
+              <span className="text-white">
+                {formatEur(card.kaufpreis_eur)}
+                {card.kaufdatum && (
+                  <span className="text-gray-500 text-xs ml-1">
+                    · {new Date(card.kaufdatum).toLocaleDateString(t.date_locale)}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {card.wert_eur != null && (
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="text-gray-400">{t.detail_current_value}</span>
+              <span className="text-yellow-400 font-bold">{formatEur(card.wert_eur)}</span>
+            </div>
+          )}
+          {gv != null && (
+            <div className="flex items-baseline justify-between text-sm border-t border-gray-700 pt-1.5">
+              <span className="text-gray-400">{t.detail_gain_loss}</span>
+              <span className={`font-bold ${gv >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {gv > 0 ? "+" : ""}{formatEur(gv.toFixed(2))}
+                {gvPct != null && (
+                  <span className="text-xs font-normal ml-1">
+                    ({gvPct > 0 ? "+" : ""}{gvPct.toFixed(0)}%)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {card.wert_eur != null && (
+            <div className="text-gray-500 text-xs pt-0.5">
+              {t.detail_value_label}
+              {card.wert_aktualisiert && (
+                <> · {t.detail_value_updated}: {new Date(card.wert_aktualisiert).toLocaleDateString(t.date_locale)}</>
+              )}
             </div>
           )}
         </div>

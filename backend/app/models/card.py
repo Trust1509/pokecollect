@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, Text, false, func
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, Text, false, func
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -28,6 +28,11 @@ class PokemonCard(Base):
     prioritaet = Column(Text, nullable=True)  # Chase, Hoch, Mittel, Niedrig
     wert_eur = Column(Numeric(8, 2), nullable=True)
     wert_aktualisiert = Column(DateTime, nullable=True)
+    # Persönlicher Einstand (#26): Kaufpreis + Kaufdatum, beide optional.
+    # Unrealisierter G/V = wert_eur − kaufpreis_eur (nur wenn beide gesetzt);
+    # es gibt bewusst KEIN Verkauf-/realisiert-Konzept.
+    kaufpreis_eur = Column(Numeric(8, 2), nullable=True)
+    kaufdatum = Column(Date, nullable=True)
     notizen = Column(Text, nullable=True)
     zustand = Column(Text, nullable=True)
     bild_pokedex_url = Column(Text, nullable=True)

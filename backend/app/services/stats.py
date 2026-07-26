@@ -22,6 +22,23 @@ def collect_stats(db: Session) -> StatsResponse:
     gesamtwert = db.scalar(
         select(func.sum(PokemonCard.wert_eur)).where(PokemonCard.besessen == True)
     )
+    # Persönlicher Einstand: Summe der Kaufpreise besessener Karten (#26).
+    einstand = db.scalar(
+        select(func.sum(PokemonCard.kaufpreis_eur)).where(
+            PokemonCard.besessen == True,
+            PokemonCard.kaufpreis_eur.isnot(None),
+        )
+    )
+    # Unrealisierter G/V: nur Karten, bei denen BEIDE Werte gesetzt sind —
+    # so bleibt die Aggregatzahl deckungsgleich mit der Karten-Definition
+    # (wert_eur − kaufpreis_eur). Kein Verkauf-/realisiert-Konzept.
+    unrealisierter_gv = db.scalar(
+        select(func.sum(PokemonCard.wert_eur - PokemonCard.kaufpreis_eur)).where(
+            PokemonCard.besessen == True,
+            PokemonCard.wert_eur.isnot(None),
+            PokemonCard.kaufpreis_eur.isnot(None),
+        )
+    )
 
     def _count_group(col):
         rows = db.execute(
@@ -50,6 +67,8 @@ def collect_stats(db: Session) -> StatsResponse:
         besessen=besessen_count,
         nicht_besessen=total - besessen_count,
         gesamtwert_eur=gesamtwert,
+        gesamt_einstand_eur=einstand,
+        unrealisierter_gv_eur=unrealisierter_gv,
         sets=_count_group(PokemonCard.set_edition),
         seltenheiten=_count_group(PokemonCard.seltenheit),
         sprachen=_count_group(PokemonCard.sprache),
