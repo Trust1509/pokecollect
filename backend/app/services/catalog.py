@@ -23,6 +23,7 @@ from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.services import tcgdex
 from app.services.card_creation import create_owned_card
+from app.services.collection_slots import next_free_position
 from app.services.scan.resolver import _map_rarity
 
 log = logging.getLogger(__name__)
@@ -217,7 +218,10 @@ async def add_to_collection(
         db, {**fields, "sprache": "DE"},
         background_tasks=background_tasks, commit=False,
     )
-    db.execute(collection_cards.insert().values(collection_id=collection_id, card_id=card.id, position=None))
+    # Echten freien Slot vergeben statt None — sonst würde die Binder-Anzeige
+    # beim nächsten Laden kompaktieren und bestehende Karten verschieben (#30).
+    position = next_free_position(db, collection_id)
+    db.execute(collection_cards.insert().values(collection_id=collection_id, card_id=card.id, position=position))
     db.commit()
     db.refresh(card)
     return card.id

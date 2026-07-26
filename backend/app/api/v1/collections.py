@@ -14,6 +14,7 @@ from app.schemas.collection import (
 )
 from app.services import catalog as catalog_svc
 from app.services import set_goal
+from app.services.collection_slots import next_free_position
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
@@ -138,11 +139,9 @@ def add_card_to_collection(collection_id: int, data: CollectionCardAdd, db: Sess
     if existing:
         position = existing[0]
     else:
-        max_pos = db.scalar(
-            select(func.max(collection_cards.c.position))
-            .where(collection_cards.c.collection_id == collection_id)
-        )
-        position = (max_pos + 1) if max_pos is not None else 0
+        # Nächster wirklich freier Slot — bestehende Karten bleiben unberührt,
+        # leere Slots bleiben leer (positionsbasiert, keine Kompaktierung; #30).
+        position = next_free_position(db, collection_id)
         db.execute(
             collection_cards.insert().values(
                 collection_id=collection_id, card_id=data.card_id, position=position,

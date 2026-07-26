@@ -57,10 +57,16 @@ export default function CollectionDetailPage() {
     if (!silent) setLoading(true);
     collectionApi.cards(id).then((r) => {
       const data = r.data;
-      // Alt-Daten ohne Position einmalig normalisieren
-      if (data.length && data.some((c) => c.position == null)) {
+      // Alt-Daten ohne Position normalisieren: NUR die positionslosen Karten
+      // an freie Slots hinten anhängen — bestehende Positionen bleiben, damit
+      // der Binder nicht kompaktiert und Karten verrutschen (Issue #30).
+      const missing = data.filter((c) => c.position == null);
+      if (missing.length) {
+        const used = data.map((c) => c.position).filter((p): p is number => p != null);
+        let next = used.length ? Math.max(...used) + 1 : 0;
+        const positions = missing.map((c) => ({ card_id: c.id, position: next++ }));
         collectionApi
-          .reorder(id, data.map((c) => c.id))
+          .setPositions(id, positions)
           .then(() => collectionApi.cards(id).then((r2) => setCards(r2.data)))
           .catch(() => setCards(data))
           .finally(() => { if (!silent) setLoading(false); });

@@ -26,6 +26,7 @@ from app.schemas.scan import (
     ScanRawRead, ScanResponse,
 )
 from app.services.card_creation import create_owned_card
+from app.services.collection_slots import next_free_position
 from app.services.scan import gemini, ocr
 from app.services.scan.rate_window import gemini_rate
 from app.services.scan.resolver import resolve_one, resolve_reads
@@ -277,13 +278,15 @@ def scan_commit(payload: ScanCommitRequest, background_tasks: BackgroundTasks, d
         else:
             card = create_owned_card(db, fields, background_tasks=background_tasks, commit=False)
 
-        # Sammlung + Binder-Slot
+        # Sammlung + Binder-Slot. Binder-Scan liefert den Slot mit; sonst den
+        # nächsten freien Slot vergeben (nie None → keine Kompaktierung, #30).
         if collection:
+            slot = item.position if item.position is not None else next_free_position(db, collection.id)
             db.execute(
                 collection_cards.insert().values(
                     collection_id=collection.id,
                     card_id=card.id,
-                    position=item.position,
+                    position=slot,
                 )
             )
 
