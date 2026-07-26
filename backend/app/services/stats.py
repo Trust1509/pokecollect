@@ -6,11 +6,24 @@ damit der Router nur HTTP-Belange behält. Nimmt eine offene Session entgegen
 (Kredo: Testbar by default).
 """
 
+from decimal import Decimal
+from typing import Optional
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.card import PokemonCard
+from app.models.sealed import SealedProduct
 from app.schemas.card import StatsResponse
+
+
+def _sum_or_none(*values: Optional[Decimal]) -> Optional[Decimal]:
+    """Summe mehrerer Beträge; None (kein Wert) zählt als 0. Sind ALLE None,
+    bleibt das Ergebnis None (dann gibt es schlicht nichts anzuzeigen)."""
+    present = [v for v in values if v is not None]
+    if not present:
+        return None
+    return sum(present, Decimal("0"))
 
 
 def collect_stats(db: Session) -> StatsResponse:
@@ -37,6 +50,24 @@ def collect_stats(db: Session) -> StatsResponse:
             PokemonCard.besessen == True,
             PokemonCard.wert_eur.isnot(None),
             PokemonCard.kaufpreis_eur.isnot(None),
+        )
+    )
+
+    # ── Sealed-Produkte (#35) ────────────────────────────────────────────────
+    # Analog zu Karten: Sealed-Wert (Σ wert_eur), Einstand (Σ kaufpreis_eur) und
+    # unrealisierter G/V (Σ wert − kaufpreis, nur wo BEIDE gesetzt). Getrennt
+    # ausgewiesen; kombiniert_* addiert Karten + Sealed.
+    sealed_anzahl = db.scalar(select(func.count(SealedProduct.id))) or 0
+    sealed_wert = db.scalar(select(func.sum(SealedProduct.wert_eur)))
+    sealed_einstand = db.scalar(
+        select(func.sum(SealedProduct.kaufpreis_eur)).where(
+            SealedProduct.kaufpreis_eur.isnot(None)
+        )
+    )
+    sealed_gv = db.scalar(
+        select(func.sum(SealedProduct.wert_eur - SealedProduct.kaufpreis_eur)).where(
+            SealedProduct.wert_eur.isnot(None),
+            SealedProduct.kaufpreis_eur.isnot(None),
         )
     )
 
@@ -69,6 +100,13 @@ def collect_stats(db: Session) -> StatsResponse:
         gesamtwert_eur=gesamtwert,
         gesamt_einstand_eur=einstand,
         unrealisierter_gv_eur=unrealisierter_gv,
+        sealed_anzahl=sealed_anzahl,
+        sealed_wert_eur=sealed_wert,
+        sealed_einstand_eur=sealed_einstand,
+        sealed_unrealisierter_gv_eur=sealed_gv,
+        kombiniert_wert_eur=_sum_or_none(gesamtwert, sealed_wert),
+        kombiniert_einstand_eur=_sum_or_none(einstand, sealed_einstand),
+        kombiniert_unrealisierter_gv_eur=_sum_or_none(unrealisierter_gv, sealed_gv),
         sets=_count_group(PokemonCard.set_edition),
         seltenheiten=_count_group(PokemonCard.seltenheit),
         sprachen=_count_group(PokemonCard.sprache),

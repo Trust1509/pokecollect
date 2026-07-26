@@ -135,6 +135,16 @@ class StatsResponse(BaseModel):
     # unrealisierter_gv_eur = Σ (wert_eur − kaufpreis_eur), nur wo BEIDE gesetzt.
     gesamt_einstand_eur: Optional[Decimal] = None
     unrealisierter_gv_eur: Optional[Decimal] = None
+    # ── Sealed-Produkte (#35): getrennt ausgewiesen + Karten+Sealed kombiniert ──
+    # Die obigen gesamt*/unrealisiert*-Felder beziehen sich weiter NUR auf Karten;
+    # sealed_* ist die Sealed-Summe, kombiniert_* = Karten + Sealed.
+    sealed_anzahl: int = 0
+    sealed_wert_eur: Optional[Decimal] = None
+    sealed_einstand_eur: Optional[Decimal] = None
+    sealed_unrealisierter_gv_eur: Optional[Decimal] = None
+    kombiniert_wert_eur: Optional[Decimal] = None
+    kombiniert_einstand_eur: Optional[Decimal] = None
+    kombiniert_unrealisierter_gv_eur: Optional[Decimal] = None
     sets: dict[str, int]
     seltenheiten: dict[str, int]
     sprachen: dict[str, int]
