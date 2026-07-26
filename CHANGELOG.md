@@ -1,5 +1,27 @@
 # Changelog
 
+## [v1.6.0] – 2026-07-26 (Sealed-Produkte + neue Navigation) — ⚠️ neue Tabellen
+
+### ⚠️ Deploy-Hinweis
+- **Neue Tabellen** (`sealed_products`, `sealed_product_sets`) werden beim Start
+  automatisch angelegt (additiv, kein manueller Schritt). Backup vorher empfohlen.
+
+### Sealed-Produkte (#35)
+- **Neue Seite „Sealed"** für versiegelte Produkte (Booster, Displays, ETBs,
+  Tins, Blister, Bundles): eigener Datensatz je Stück mit Typ, **mehreren Sets**,
+  Zustand (Versiegelt/Geöffnet/Beschädigt), Foto, Notizen.
+- **Kaufpreis + manueller aktueller Wert → Gewinn/Verlust** (TCGdex hat für
+  Sealed keine Preise). Filter nach Typ/Set/Zustand.
+- **Statistik** weist Karten-Wert, Sealed-Wert und Gesamt getrennt aus (je mit
+  Einstand + G/V). Sealed ist in Backup/Restore + Export enthalten.
+
+### Neue Navigation (#34)
+- **Burger-Menü (☰) oben links** mit der kompletten Navigation — behebt, dass
+  „Statistiken" (und jetzt „Sealed") im Handy-Hochformat nicht erreichbar waren.
+- **Konfigurierbare untere Leiste:** in den Einstellungen wählst du selbst,
+  welche Schnellzugriff-Icons unten erscheinen; der Rest ist über das
+  Burger-Menü erreichbar.
+
 ## [v1.5.0] – 2026-07-26 (First Edition, Kaufpreis, Planung, Katalog-Formular, Bugfixes) — ⚠️ enthält Migration
 
 ### ⚠️ Deploy-Hinweis
