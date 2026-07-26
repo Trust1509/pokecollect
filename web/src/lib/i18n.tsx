@@ -247,6 +247,11 @@ const DE = {
   filter_sort_value: "Wert",
   filter_sort_added: "Hinzugefügt",
   filter_reset: "Filter zurücksetzen",
+  filter_first_edition_only: "Nur 1st Edition",
+
+  // First Edition (#25)
+  first_edition_label: "1st Edition",
+  first_edition_badge: "1st Ed.",
 
   // CardForm (new + edit)
   form_new_card: "Neue Karte",
@@ -688,6 +693,11 @@ const EN: typeof DE = {
   filter_sort_value: "Value",
   filter_sort_added: "Date added",
   filter_reset: "Reset filters",
+  filter_first_edition_only: "1st Edition only",
+
+  // First Edition (#25)
+  first_edition_label: "1st Edition",
+  first_edition_badge: "1st Ed.",
 
   form_new_card: "New Card",
   form_card_name: "Card name",

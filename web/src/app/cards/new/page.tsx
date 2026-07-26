@@ -144,6 +144,15 @@ function NewCardForm() {
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
+            id="erste_edition"
+            checked={Boolean(form.erste_edition)}
+            onChange={(e) => set("erste_edition", e.target.checked)}
+          />
+          <label htmlFor="erste_edition" className="text-white text-sm">{t.first_edition_label}</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
             id="wunschliste"
             checked={Boolean(form.wunschliste)}
             onChange={(e) => set("wunschliste", e.target.checked)}

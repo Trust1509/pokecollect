@@ -12,6 +12,7 @@ export function seriesLabel(id?: string | null): string {
 
 export type FilterCriteria = {
   besessen?: boolean;
+  erste_edition?: boolean;
   generation?: number;
   set?: string;
   seltenheit?: string;
@@ -23,8 +24,8 @@ export type FilterCriteria = {
 
 export function hasActiveFilters(f: FilterCriteria): boolean {
   return Boolean(
-    f.besessen !== undefined || f.generation || f.set || f.seltenheit ||
-    f.sprache || f.illustrator || f.search || f.bild_status
+    f.besessen !== undefined || f.erste_edition !== undefined || f.generation ||
+    f.set || f.seltenheit || f.sprache || f.illustrator || f.search || f.bild_status
   );
 }
 
@@ -32,12 +33,14 @@ type MatchCard = {
   kartenname?: string | null; englischer_name?: string | null;
   pokedex_nr?: number | null; set_edition?: string | null;
   seltenheit?: string | null; sprache?: string | null; illustrator?: string | null;
-  besessen?: boolean; bild_karte_pfad?: string | null; bild_pokedex_url?: string | null;
+  besessen?: boolean; erste_edition?: boolean | null;
+  bild_karte_pfad?: string | null; bild_pokedex_url?: string | null;
 };
 
 /** Client-seitiger Filter-Abgleich (für Dimmen im Binder, gleiche Logik wie Backend). */
 export function cardMatchesFilters(card: MatchCard, f: FilterCriteria): boolean {
   if (f.besessen !== undefined && Boolean(card.besessen) !== f.besessen) return false;
+  if (f.erste_edition !== undefined && Boolean(card.erste_edition) !== f.erste_edition) return false;
   if (f.generation && generation(card.pokedex_nr ?? null) !== f.generation) return false;
   if (f.set && !(card.set_edition ?? "").toLowerCase().includes(f.set.toLowerCase())) return false;
   if (f.seltenheit && card.seltenheit !== f.seltenheit) return false;

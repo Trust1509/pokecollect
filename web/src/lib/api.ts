@@ -47,6 +47,7 @@ export type Card = {
   seltenheit: string | null;
   kartenversion: string | null;
   folierung: string | null;
+  erste_edition: boolean;
   sprache: string;
   besessen: boolean;
   wunschliste: boolean;

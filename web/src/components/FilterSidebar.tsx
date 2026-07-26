@@ -9,6 +9,7 @@ import { useSetOptions } from "@/lib/useSetOptions";
 
 export type Filters = {
   besessen?: boolean;
+  erste_edition?: boolean;
   generation?: number;
   set?: string;
   seltenheit?: string;
@@ -50,7 +51,7 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
   const update = (key: keyof Filters, value: unknown) =>
     onChange({ ...filters, [key]: value === "" ? undefined : value });
 
-  const activeCount = (["besessen", "generation", "set", "seltenheit", "sprache", "illustrator", "search", "bild_status"] as const)
+  const activeCount = (["besessen", "erste_edition", "generation", "set", "seltenheit", "sprache", "illustrator", "search", "bild_status"] as const)
     .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
 
   const illuOptions: SelectOption[] = useMemo(
@@ -93,6 +94,18 @@ export default function FilterSidebar({ filters, onChange, enums, sets, open, on
           <option value="">{t.filter_all_cards}</option>
           <option value="true">{t.filter_owned}</option>
           <option value="false">{t.filter_not_owned}</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-gray-400 mb-1">{t.first_edition_label}</label>
+        <select
+          value={filters.erste_edition === undefined ? "" : "true"}
+          onChange={(e) => update("erste_edition", e.target.value === "" ? undefined : true)}
+          className="w-full bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white"
+        >
+          <option value="">{t.filter_all}</option>
+          <option value="true">{t.filter_first_edition_only}</option>
         </select>
       </div>
 

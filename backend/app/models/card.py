@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, Text, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, Text, false, func
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -18,6 +18,9 @@ class PokemonCard(Base):
     seltenheit = Column(Text, nullable=True, index=True)
     kartenversion = Column(Text, nullable=True)
     folierung = Column(Text, nullable=True)
+    # „besitze diese Karte als 1st Edition" — eigenes Ja/Nein, unabhängig vom
+    # TCGdex-variants_firstedition (das nur sagt „gibt es als 1st Edition"), #25.
+    erste_edition = Column(Boolean, nullable=False, server_default=false(), default=False)
     sprache = Column(Text, nullable=True, default="DE", index=True)
     besessen = Column(Boolean, default=False, index=True)
     wunschliste = Column(Boolean, default=False, index=True)

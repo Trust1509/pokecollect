@@ -44,6 +44,7 @@ class CardBase(BaseModel):
     seltenheit: Optional[str] = None
     kartenversion: Optional[str] = None
     folierung: Optional[str] = None
+    erste_edition: bool = False
     sprache: Optional[str] = "DE"
     besessen: bool = False
     wunschliste: bool = False
@@ -68,6 +69,7 @@ class CardUpdate(BaseModel):
     seltenheit: Optional[str] = None
     kartenversion: Optional[str] = None
     folierung: Optional[str] = None
+    erste_edition: Optional[bool] = None
     sprache: Optional[str] = None
     besessen: Optional[bool] = None
     wunschliste: Optional[bool] = None

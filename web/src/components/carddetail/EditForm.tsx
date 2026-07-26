@@ -3,6 +3,7 @@ import { Dispatch, SetStateAction, useState } from "react";
 import toast from "react-hot-toast";
 import { Card, Enums, PokemonSet, cardApi } from "@/lib/api";
 import RarityBadge from "@/components/RarityBadge";
+import FirstEditionBadge from "@/components/FirstEditionBadge";
 import SetPicker from "@/components/SetPicker";
 import { CardNrField, PokedexNrField, SelectField, TextareaField, TextField } from "@/components/CardFormFields";
 import { useCardForm } from "@/lib/useCardForm";
@@ -118,7 +119,10 @@ export default function EditForm({
     <div className="flex-1">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">{card.kartenname}</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2 flex-wrap">
+            {card.kartenname}
+            {card.erste_edition && <FirstEditionBadge className="align-middle" />}
+          </h1>
           {card.pokedex_nr && (
             <p className="text-gray-400">#{String(card.pokedex_nr).padStart(4, "0")} · {card.englischer_name ?? ""}</p>
           )}
@@ -209,6 +213,7 @@ export default function EditForm({
         {field("sprache", t.field_language, "select", enums?.sprache)}
         {field("zustand", t.field_condition, "select", enums?.zustand)}
         {field("besessen", t.field_owned, "boolean")}
+        {field("erste_edition", t.first_edition_label, "boolean")}
         {card.illustrator && (
           <div key="illustrator">
             <dt className="text-gray-500 text-xs">{t.field_illustrator}</dt>
