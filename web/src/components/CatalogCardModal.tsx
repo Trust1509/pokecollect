@@ -1,31 +1,52 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { CatalogItem, Collection, catalogApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { useEnums } from "@/lib/useEnums";
+import { useSettings } from "@/lib/useSettings";
+import { SelectField } from "@/components/CardFormFields";
 
 type Props = {
   card: CatalogItem;
   collections: Collection[];
   onClose: () => void;
+  // Nach erfolgreicher Übernahme: Aufrufer schließt/aktualisiert (Fallback onClose).
+  onAdded?: () => void;
 };
 
-export default function CatalogCardModal({ card, collections, onClose }: Props) {
+export default function CatalogCardModal({ card, collections, onClose, onAdded }: Props) {
   const { t, lang } = useI18n();
+  const { enums } = useEnums();
+  const { settings } = useSettings();
   const [busy, setBusy] = useState(false);
   const [collId, setCollId] = useState("");
+  // Kleines Anlege-Formular (#28) — mit Einstellungs-Defaults vorbelegt (#27).
+  const [sprache, setSprache] = useState("DE");
+  const [zustand, setZustand] = useState<string | null>(null);
+  const [folierung, setFolierung] = useState<string | null>("Normal");
+  const [ersteEdition, setErsteEdition] = useState(false);
+
+  useEffect(() => {
+    if (!settings) return;
+    setSprache(settings.default_language || "DE");
+    setZustand(settings.default_condition || null);
+  }, [settings]);
+
   const name = lang === "EN" && card.name_en ? card.name_en : (card.name ?? card.name_en ?? card.card_id);
+  const done = onAdded ?? onClose;
+  const opts = () => ({ sprache, zustand, folierung, erste_edition: ersteEdition });
 
   const wish = async () => {
     setBusy(true);
-    try { await catalogApi.addWishlist(card.card_id); toast.success(t.catalog_added_wishlist); }
+    try { await catalogApi.addWishlist(card.card_id, opts()); toast.success(t.catalog_added_wishlist); done(); }
     catch { toast.error(t.collections_error); }
     finally { setBusy(false); }
   };
   const addColl = async () => {
     if (!collId) return;
     setBusy(true);
-    try { await catalogApi.addCollection(card.card_id, Number(collId)); toast.success(t.catalog_added_collection); }
+    try { await catalogApi.addCollection(card.card_id, Number(collId), opts()); toast.success(t.catalog_added_collection); done(); }
     catch { toast.error(t.collections_error); }
     finally { setBusy(false); }
   };
@@ -58,6 +79,21 @@ export default function CatalogCardModal({ card, collections, onClose }: Props) 
             {row(t.catalog_illustrator, card.illustrator)}
             {row(t.field_english_name, card.name_en)}
           </dl>
+        </div>
+
+        {/* Anlege-Formular (#28): Zustand/Sprache/Folierung/1st Edition, mit
+            Einstellungs-Defaults vorbelegt (#27). */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <SelectField fieldKey="zustand" label={t.form_condition} value={zustand}
+            onChange={setZustand} options={enums?.zustand ?? []} dense />
+          <SelectField fieldKey="sprache" label={t.form_language} value={sprache}
+            onChange={(v) => setSprache(v ?? "DE")} options={enums?.sprache ?? []} dense />
+          <SelectField fieldKey="folierung" label={t.form_foiling} value={folierung}
+            onChange={setFolierung} options={enums?.folierung ?? []} dense />
+          <label className="flex items-end gap-2 pb-1.5 text-white text-sm cursor-pointer select-none">
+            <input type="checkbox" checked={ersteEdition} onChange={(e) => setErsteEdition(e.target.checked)} />
+            {t.first_edition_label}
+          </label>
         </div>
 
         <div className="mt-4 space-y-2">

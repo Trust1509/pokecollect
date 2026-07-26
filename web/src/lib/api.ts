@@ -451,15 +451,38 @@ export type CatalogListResponse = {
   pages: number;
 };
 
+// Felder beim Übernehmen einer Katalog-Karte (#28). Nicht gesetzte Felder füllt
+// das Backend aus den Einstellungs-Defaults auf (#27).
+export type CatalogAddOpts = {
+  sprache?: string | null;
+  zustand?: string | null;
+  folierung?: string | null;
+  erste_edition?: boolean;
+  prioritaet?: string | null;
+};
+
+const catalogAddBody = (opts: CatalogAddOpts) => ({
+  sprache: opts.sprache ?? null,
+  zustand: opts.zustand ?? null,
+  folierung: opts.folierung ?? null,
+  erste_edition: opts.erste_edition ?? false,
+});
+
 export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
   meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
   sync: () => api.post<{ detail: string }>("/catalog/sync"),
   illustrators: () => api.get<string[]>("/catalog/illustrators"),
-  addWishlist: (cardId: string, prioritaet?: string | null) =>
-    api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, { prioritaet: prioritaet ?? null }),
-  addCollection: (cardId: string, collectionId: number) =>
-    api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/collection?collection_id=${collectionId}`),
+  addWishlist: (cardId: string, opts: CatalogAddOpts = {}) =>
+    api.post<{ card_id: number }>(`/catalog/${encodeURIComponent(cardId)}/wishlist`, {
+      ...catalogAddBody(opts),
+      prioritaet: opts.prioritaet ?? null,
+    }),
+  addCollection: (cardId: string, collectionId: number, opts: CatalogAddOpts = {}) =>
+    api.post<{ card_id: number }>(
+      `/catalog/${encodeURIComponent(cardId)}/collection?collection_id=${collectionId}`,
+      catalogAddBody(opts),
+    ),
 };
 
 export const scanApi = {

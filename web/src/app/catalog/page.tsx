@@ -284,7 +284,16 @@ export default function CatalogPage() {
       {data && <Pager page={page} pages={data.pages} onPage={setPage} size="lg" className="justify-center mt-4 pb-2" />}
 
       {selected && (
-        <CatalogCardModal card={selected} collections={collections} onClose={() => setSelected(null)} />
+        <CatalogCardModal
+          card={selected}
+          collections={collections}
+          onClose={() => setSelected(null)}
+          onAdded={() => {
+            setSelected(null);
+            catalogApi.meta().then((r) => setMeta(r.data)).catch(() => {});
+            load();
+          }}
+        />
       )}
 
       {/* Aktionsleiste bei Auswahl (Issue #23) — auf dem Handy über der Bottom-Nav */}

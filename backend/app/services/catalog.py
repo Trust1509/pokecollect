@@ -25,6 +25,7 @@ from app.services import tcgdex
 from app.services.card_creation import create_owned_card
 from app.services.collection_slots import next_free_position
 from app.services.scan.resolver import _map_rarity
+from app.services.settings import get_setting
 
 log = logging.getLogger(__name__)
 
@@ -188,12 +189,46 @@ async def _build_card_from_catalog(db: Session, row: TcgdexCatalog) -> dict:
     }
 
 
-async def add_to_wishlist(db: Session, card_id: str, prioritaet: Optional[str] = None) -> Optional[int]:
+def _resolve_card_attrs(
+    db: Session,
+    *,
+    sprache: Optional[str] = None,
+    zustand: Optional[str] = None,
+    folierung: Optional[str] = None,
+    erste_edition: Optional[bool] = None,
+) -> dict:
+    """Anlege-Attribute einer Katalog-Übernahme. Nicht mitgegebene Felder fallen
+    auf die Einstellungs-Defaults (default_language/default_condition) zurück
+    statt hart „DE" (#27). Folierung/1st Edition haben keine Einstellung — sie
+    kommen aus dem Formular (Default „Normal"/false), sonst leer."""
+    lang = sprache or get_setting(db, "default_language") or "DE"
+    cond = zustand if zustand not in (None, "") else get_setting(db, "default_condition")
+    return {
+        "sprache": lang,
+        "zustand": cond or None,
+        "folierung": folierung or None,
+        "erste_edition": bool(erste_edition),
+    }
+
+
+async def add_to_wishlist(
+    db: Session,
+    card_id: str,
+    prioritaet: Optional[str] = None,
+    *,
+    sprache: Optional[str] = None,
+    zustand: Optional[str] = None,
+    folierung: Optional[str] = None,
+    erste_edition: Optional[bool] = None,
+) -> Optional[int]:
     row = db.get(TcgdexCatalog, card_id)
     if not row:
         return None
     fields = await _build_card_from_catalog(db, row)
-    card = PokemonCard(**fields, sprache="DE", besessen=False, wunschliste=True, prioritaet=prioritaet)
+    attrs = _resolve_card_attrs(
+        db, sprache=sprache, zustand=zustand, folierung=folierung, erste_edition=erste_edition,
+    )
+    card = PokemonCard(**fields, **attrs, besessen=False, wunschliste=True, prioritaet=prioritaet)
     db.add(card)
     db.commit()
     db.refresh(card)
@@ -204,6 +239,11 @@ async def add_to_collection(
     db: Session,
     card_id: str,
     collection_id: int,
+    *,
+    sprache: Optional[str] = None,
+    zustand: Optional[str] = None,
+    folierung: Optional[str] = None,
+    erste_edition: Optional[bool] = None,
     background_tasks: Optional[BackgroundTasks] = None,
 ) -> Optional[int]:
     row = db.get(TcgdexCatalog, card_id)
@@ -213,9 +253,12 @@ async def add_to_collection(
     if not coll:
         return None
     fields = await _build_card_from_catalog(db, row)
+    attrs = _resolve_card_attrs(
+        db, sprache=sprache, zustand=zustand, folierung=folierung, erste_edition=erste_edition,
+    )
     # Domain-Service: Platzhalter-Adoption + Auto-im_pokedex + Bild-Fetch (Issue #4)
     card = create_owned_card(
-        db, {**fields, "sprache": "DE"},
+        db, {**fields, **attrs},
         background_tasks=background_tasks, commit=False,
     )
     # Echten freien Slot vergeben statt None — sonst würde die Binder-Anzeige

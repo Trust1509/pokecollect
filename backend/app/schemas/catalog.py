@@ -32,3 +32,14 @@ class CatalogListResponse(BaseModel):
     page: int
     limit: int
     pages: int
+
+
+class CatalogAddRequest(BaseModel):
+    """Optionale Felder beim Übernehmen einer Katalog-Karte (#28). Nicht
+    gesetzte Felder werden serverseitig aus den Einstellungs-Defaults
+    aufgefüllt (#27). `prioritaet` gilt nur für die Wunschliste."""
+    sprache: Optional[str] = None
+    zustand: Optional[str] = None
+    folierung: Optional[str] = None
+    erste_edition: Optional[bool] = None
+    prioritaet: Optional[str] = None

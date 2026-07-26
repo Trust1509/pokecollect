@@ -14,7 +14,7 @@ from app.domain.pokedex import GEN_RANGES
 from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
-from app.schemas.catalog import CatalogItem, CatalogListResponse
+from app.schemas.catalog import CatalogAddRequest, CatalogItem, CatalogListResponse
 from app.services import catalog as catalog_svc
 from app.services.set_sync import sync_sets
 
@@ -146,8 +146,16 @@ def list_illustrators(db: Session = Depends(get_db)):
 
 
 @router.post("/{card_id}/wishlist")
-async def catalog_to_wishlist(card_id: str, prioritaet: str | None = Body(None, embed=True), db: Session = Depends(get_db)):
-    new_id = await catalog_svc.add_to_wishlist(db, card_id, prioritaet)
+async def catalog_to_wishlist(
+    card_id: str,
+    payload: CatalogAddRequest | None = Body(None),
+    db: Session = Depends(get_db),
+):
+    p = payload or CatalogAddRequest()
+    new_id = await catalog_svc.add_to_wishlist(
+        db, card_id, p.prioritaet,
+        sprache=p.sprache, zustand=p.zustand, folierung=p.folierung, erste_edition=p.erste_edition,
+    )
     if not new_id:
         raise HTTPException(status_code=404, detail="Katalog-Karte nicht gefunden")
     return {"card_id": new_id}
@@ -158,9 +166,15 @@ async def catalog_to_collection(
     card_id: str,
     background_tasks: BackgroundTasks,
     collection_id: int = Query(...),
+    payload: CatalogAddRequest | None = Body(None),
     db: Session = Depends(get_db),
 ):
-    new_id = await catalog_svc.add_to_collection(db, card_id, collection_id, background_tasks=background_tasks)
+    p = payload or CatalogAddRequest()
+    new_id = await catalog_svc.add_to_collection(
+        db, card_id, collection_id,
+        sprache=p.sprache, zustand=p.zustand, folierung=p.folierung, erste_edition=p.erste_edition,
+        background_tasks=background_tasks,
+    )
     if not new_id:
         raise HTTPException(status_code=404, detail="Katalog-Karte oder Sammlung nicht gefunden")
     return {"card_id": new_id}
