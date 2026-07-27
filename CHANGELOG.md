@@ -1,5 +1,24 @@
 # Changelog
 
+## [v1.6.2] – 2026-07-27 (Security: Pfad-Traversal beim Bild-Löschen, #37)
+
+Sicherheits-Härtung, begleitet von einem Multi-Modell-Review-Panel. Keine
+sichtbare Funktionsänderung.
+
+### Sicherheit
+- **Pfad-Traversal beim Bild-Löschen geschlossen (#37):** Ein manipuliertes
+  Backup konnte in den Bildpfad-Feldern `../…`- oder absolute Pfade einschleusen;
+  ein späteres Löschen hätte damit beliebige (für den Prozess beschreibbare)
+  Serverdateien entfernen können. Neu prüft eine gemeinsame Routine
+  (`safe_media_path`) jeden Bildpfad — beim Wiederherstellen eines Backups
+  **und** vor jedem Löschen — und lässt nur Pfade *innerhalb* des Bildordners zu.
+  Praktisch relevant nur mit Login **und** Restore-Bestätigung (Ein-Personen-App),
+  aber sauber abgedichtet.
+
+### ⚠️ Deploy-Hinweis
+- **Rein additiv:** keine Migration, keine Datenänderung. Beim nächsten Restore
+  werden unsichere Alt-Bildpfade automatisch neutralisiert.
+
 ## [v1.6.1] – 2026-07-27 (Sealed-Härtung) — additiver Index, keine Datenänderung
 
 Interne Robustheits-Politur des in v1.6.0 neu eingeführten Sealed-Moduls
