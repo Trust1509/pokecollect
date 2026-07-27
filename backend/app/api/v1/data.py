@@ -32,6 +32,7 @@ from starlette.background import BackgroundTask
 from app.config import settings
 from app.database import Base, engine
 from app.models.card import PokemonCard
+from app.services.card_images import MEDIA_PATH_COLUMNS, safe_media_path
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +215,15 @@ def _restore_tables(payload: dict) -> dict[str, int]:
             # weg, fehlende werden NULL (executemany braucht homogene Dicts).
             col_names = [c.name for c in table.columns]
             prepared = [{c: row.get(c) for c in col_names} for row in rows]
+            # Traversal-Schutz (#37): Medienpfad-Spalten aus dem (potenziell
+            # manipulierten) Backup validieren. Ein `../…`- oder absoluter Pfad
+            # würde sonst als DB-Wert landen und ein späteres unlink könnte eine
+            # Datei ausserhalb des Bildordners treffen → hier auf NULL neutralisieren.
+            media_cols = MEDIA_PATH_COLUMNS & set(col_names)
+            for prow in prepared:
+                for mc in media_cols:
+                    if prow.get(mc) is not None and safe_media_path(prow[mc]) is None:
+                        prow[mc] = None
             if prepared:
                 conn.execute(table.insert(), prepared)
             counts[table.name] = len(prepared)

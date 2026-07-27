@@ -17,12 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.sealed import SealedProduct
-from app.services.card_images import _save_upright, _validated_suffix
-
-
-def _media_full_path(rel: str) -> Path:
-    """Relativen DB-Pfad ins Dateisystem auflösen (unterhalb images_dir.parent)."""
-    return Path(settings.images_dir).parent / rel
+from app.services.card_images import _save_upright, _validated_suffix, safe_media_path
 
 
 def store_sealed_image(db: Session, product: SealedProduct, file: UploadFile) -> SealedProduct:
@@ -72,9 +67,9 @@ def clear_sealed_image(product: SealedProduct) -> list[Path]:
     DB durabel, dann Datei entfernen — nie umgekehrt). Kein Commit, kein unlink."""
     paths: list[Path] = []
     for path_field in ("bild_pfad", "bild_thumbnail_pfad"):
-        p = getattr(product, path_field)
-        if p:
-            paths.append(_media_full_path(p))
+        full = safe_media_path(getattr(product, path_field))  # None bei unsicher (#37)
+        if full:
+            paths.append(full)
         setattr(product, path_field, None)
     return paths
 

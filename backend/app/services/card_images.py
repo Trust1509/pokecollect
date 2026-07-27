@@ -40,6 +40,45 @@ THUMB_SIZE = (200, 280)
 _ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 _MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB, analog Scan-Endpoint
 
+# Alle DB-Spalten, die einen lokalen (relativen) Medienpfad tragen — quer über
+# Karten UND Sealed. Werden beim Restore per safe_media_path validiert (#37).
+MEDIA_PATH_COLUMNS = frozenset(
+    {"bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad", "bild_pfad"}
+)
+
+
+def safe_media_path(rel: Optional[str]) -> Optional[Path]:
+    """
+    Relativen Medienpfad (aus der DB) sicher ins Dateisystem auflösen (#37).
+
+    Gibt den absoluten Pfad NUR zurück, wenn er (a) ein nicht-leerer String,
+    (b) nicht absolut ist und (c) nach Auflösung STRIKT UNTERHALB des Bildordners
+    liegt — sonst None (fail-closed). So kann ein manipuliertes Backup (`../…`
+    oder absoluter Pfad in bild_*) beim späteren unlink keine Datei ausserhalb
+    des Bildbaums treffen (`Path(base) / absoluter_pfad` ergäbe sonst den
+    absoluten Pfad selbst). Nicht-Strings und kaputte Pfade (z. B. eingebettetes
+    NUL-Byte) werden NULL statt einer Exception — ein Backup kann so den Restore
+    nicht per DoS abbrechen (#37, Panel).
+    """
+    if not isinstance(rel, str) or not rel:
+        return None
+    try:
+        p = Path(rel)
+        if p.is_absolute():
+            return None
+        # Join-Basis wie beim Speichern (bild_* ist relativ zu images_dir.parent),
+        # aber die Sicherheitsgrenze ist der Bildordner selbst.
+        base = Path(settings.images_dir).parent.resolve()
+        media_root = Path(settings.images_dir).resolve()
+        candidate = (base / p).resolve()
+    except (ValueError, OSError):
+        return None  # z. B. eingebettetes NUL-Byte → fail-closed
+    # Strikt UNTERHALB: der Bildordner selbst ist kein löschbares Medium
+    # (sonst später IsADirectoryError beim unlink).
+    if candidate == media_root or not candidate.is_relative_to(media_root):
+        return None
+    return candidate
+
 
 class ImageValidationError(ValueError):
     """Ungültiges Upload-Bild; status_code trennt 400 (Format) und 413 (Größe)."""
@@ -144,10 +183,13 @@ def remove_card_images(db: Session, card: PokemonCard) -> PokemonCard:
     """Löscht alle lokalen Bilddateien einer Karte und leert die Pfadfelder."""
     for path_field in ("bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad"):
         p = getattr(card, path_field)
-        if p:
-            full = Path(settings.images_dir).parent / p
-            if full.exists():
-                full.unlink()
+        full = safe_media_path(p)  # None bei leer/unsicher → kein unlink (#37)
+        if full:
+            try:
+                if full.is_file():  # nur echte Dateien, keine Verzeichnisse
+                    full.unlink()
+            except OSError:
+                pass  # best-effort — DB ist die Wahrheit, Datei-Leak tolerierbar
         setattr(card, path_field, None)
     db.commit()
     db.refresh(card)
