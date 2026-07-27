@@ -1,6 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, Table, Text
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    Table,
+    Text,
+    func,
+)
 
 from app.database import Base
 
@@ -19,6 +30,16 @@ sealed_product_sets = Table(
         primary_key=True,
     ),
     Column("set_code", Text, primary_key=True),
+)
+
+# Ausdrucks-Index für den Set-Filter (Härtung #38): der zusammengesetzte PK
+# beginnt mit sealed_product_id, taugt also nicht als Set-Lookup. Der Filter
+# vergleicht case-insensitiv über upper(set_code) (Altbestand kann gemischt
+# geschrieben sein) — ein Plain-Index auf set_code würde dafür NICHT greifen,
+# darum ein Ausdrucks-Index auf upper(set_code).
+Index(
+    "ix_sealed_product_sets_set_code_upper",
+    func.upper(sealed_product_sets.c.set_code),
 )
 
 

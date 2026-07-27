@@ -198,6 +198,13 @@ def _run_light_migrations():
             HAVING SUM(CASE WHEN im_pokedex = TRUE THEN 1 ELSE 0 END) = 0
         )
         """,
+        # Härtung #38: Ausdrucks-Index für den case-insensitiven Set-Filter
+        # (WHERE upper(set_code)=…). create_all legt ihn nur bei frischen Installs
+        # an — Bestands-DBs (Tabelle existiert seit v1.6.0) bekommen ihn hier
+        # idempotent nachgezogen. Ein Plain-Index auf set_code würde upper() nicht
+        # bedienen, darum der Ausdruck.
+        "CREATE INDEX IF NOT EXISTS ix_sealed_product_sets_set_code_upper "
+        "ON sealed_product_sets (upper(set_code))",
     ]
     with engine.begin() as conn:
         for stmt in stmts:

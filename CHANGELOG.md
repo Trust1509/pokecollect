@@ -1,5 +1,26 @@
 # Changelog
 
+## [v1.6.1] – 2026-07-27 (Sealed-Härtung) — additiver Index, keine Datenänderung
+
+Interne Robustheits-Politur des in v1.6.0 neu eingeführten Sealed-Moduls
+(#38), begleitet von einem Multi-Modell-Review-Panel. Kein sichtbarer
+Funktionsumfang neu — dafür weniger scharfe Kanten.
+
+### Robuster
+- **Atomare Bild-Löschung:** Bilddateien werden erst **nach** einem erfolgreichen
+  DB-Commit entfernt (auch beim Endungswechsel .png→.jpg). Ein abgebrochener
+  Commit kann so nie einen toten Bildverweis in der Datenbank hinterlassen.
+- **Strengere Eingabeprüfung:** Ungültige Typ-/Zustands-Werte, negative oder zu
+  große Beträge und leere Namen werden jetzt sauber mit 422 abgewiesen (statt
+  einen Serverfehler zu riskieren) — im Anlegen **und** Bearbeiten.
+- **Set-Kürzel** werden einheitlich groß geschrieben und dedupliziert; der
+  Set-Filter findet unabhängig von Groß-/Kleinschreibung.
+
+### ⚠️ Deploy-Hinweis
+- **Rein additiv:** ein zusätzlicher Index auf die Set-Zuordnung wird beim Start
+  idempotent angelegt (`CREATE INDEX IF NOT EXISTS`). Keine Datenänderung, keine
+  neue Tabelle, kein manueller Schritt.
+
 ## [v1.6.0] – 2026-07-26 (Sealed-Produkte + neue Navigation) — ⚠️ neue Tabellen
 
 ### ⚠️ Deploy-Hinweis

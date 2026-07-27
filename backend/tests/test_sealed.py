@@ -10,10 +10,30 @@ import io
 import json
 import zipfile
 from decimal import Decimal
+from pathlib import Path
+
+from app.config import settings
 
 
 def _dec(v) -> Decimal:
     return Decimal(str(v)) if v is not None else Decimal("0")
+
+
+def _jpeg_bytes() -> bytes:
+    """Kleines echtes JPEG (für den Endungswechsel-Test .png → .jpg)."""
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 14), color=(30, 30, 200)).save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _sealed_files(pid: int) -> list[str]:
+    """Alle Bilddateien eines Sealed-Produkts im Bildverzeichnis (Orphan-Check)."""
+    d = Path(settings.images_dir)
+    return sorted(p.name for p in d.glob(f"sealed_{pid}.*")) + sorted(
+        p.name for p in d.glob(f"sealed_{pid}_thumb.*")
+    )
 
 
 def _create(client, name="Display Obsidianflammen", **extra) -> dict:
@@ -244,5 +264,275 @@ def test_backup_restore_includes_sealed(client):
         assert body["name"] == "Backup-Display äöü"
         assert set(body["set_codes"]) == {"OBF", "PAF"}, "n:m-Set-Zuordnung nicht wiederhergestellt"
         assert _dec(body["unrealisierter_gv_eur"]) == Decimal("15.00")
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+# ── Härtung #38: Eingabevalidierung (Negativfälle) ────────────────────────────
+
+def test_sealed_create_rejects_invalid_enums(client):
+    assert client.post("/api/v1/sealed", json={"name": "X", "typ": "Quatsch"}).status_code == 422
+    assert client.post("/api/v1/sealed", json={"name": "X", "zustand": "Kaputt"}).status_code == 422
+
+
+def test_sealed_create_rejects_bad_money(client):
+    # Negativ (verfälscht Statistik) und über Numeric(8,2) hinaus → 422 statt 500.
+    assert client.post("/api/v1/sealed", json={"name": "X", "kaufpreis_eur": "-1"}).status_code == 422
+    assert client.post("/api/v1/sealed", json={"name": "X", "wert_eur": "-0.01"}).status_code == 422
+    assert client.post("/api/v1/sealed", json={"name": "X", "wert_eur": "12345678.90"}).status_code == 422
+
+
+def test_sealed_rejects_empty_or_whitespace_name(client):
+    # Anlegen: leer bzw. nur Leerzeichen → 422
+    assert client.post("/api/v1/sealed", json={"name": ""}).status_code == 422
+    assert client.post("/api/v1/sealed", json={"name": "   "}).status_code == 422
+    # Update: explizites null bzw. Whitespace → 422 (name ist NOT NULL)
+    p = _create(client, "Bearbeitbar")
+    pid = p["id"]
+    try:
+        assert client.put(f"/api/v1/sealed/{pid}", json={"name": None}).status_code == 422
+        assert client.put(f"/api/v1/sealed/{pid}", json={"name": "   "}).status_code == 422
+        # Der gültige Name blieb erhalten
+        assert client.get(f"/api/v1/sealed/{pid}").json()["name"] == "Bearbeitbar"
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+def test_sealed_rejects_too_many_and_too_long_sets(client):
+    assert client.post(
+        "/api/v1/sealed", json={"name": "X", "set_codes": ["A" * 33]}
+    ).status_code == 422
+    assert client.post(
+        "/api/v1/sealed", json={"name": "X", "set_codes": [f"S{i}" for i in range(51)]}
+    ).status_code == 422
+
+
+def test_sealed_set_codes_stored_uppercased(client):
+    # Kleinschreibung wird beim Anlegen normalisiert (Voraussetzung f. Filter).
+    p = _create(client, "Klein", set_codes=["obf", "paf"])
+    try:
+        assert set(p["set_codes"]) == {"OBF", "PAF"}
+    finally:
+        client.delete(f"/api/v1/sealed/{p['id']}")
+
+
+def test_sealed_filter_by_set_is_case_insensitive(client):
+    p = _create(client, "Case-Set", set_codes=["OBF"])
+    pid = p["id"]
+    try:
+        for q in ("obf", "OBF", " Obf "):
+            ids = {i["id"] for i in client.get("/api/v1/sealed", params={"set": q}).json()}
+            assert pid in ids, f"Set-Filter case-insensitiv erwartet für {q!r}"
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+# ── Härtung #38: 404 auf unbekannte Id (statt 500) ────────────────────────────
+
+def test_sealed_unknown_id_returns_404(client, png_bytes):
+    ghost = 99_000_123
+    assert client.get(f"/api/v1/sealed/{ghost}").status_code == 404
+    assert client.put(f"/api/v1/sealed/{ghost}", json={"name": "x"}).status_code == 404
+    assert client.delete(f"/api/v1/sealed/{ghost}").status_code == 404
+    assert client.delete(f"/api/v1/sealed/{ghost}/image").status_code == 404
+    r = client.post(
+        f"/api/v1/sealed/{ghost}/image",
+        files={"file": ("box.png", png_bytes, "image/png")},
+    )
+    assert r.status_code == 404
+
+
+# ── Härtung #38: Auth-Zwang auf ALLEN mutierenden Endpoints ────────────────────
+
+def test_sealed_mutations_require_auth(anon_client):
+    assert anon_client.put("/api/v1/sealed/1", json={"name": "x"}).status_code == 401
+    assert anon_client.delete("/api/v1/sealed/1").status_code == 401
+    # Datei mitschicken, damit 401 (Auth) eindeutig vor 422 (Body) greift
+    r = anon_client.post(
+        "/api/v1/sealed/1/image",
+        files={"file": ("x.png", b"\x89PNG\r\n", "image/png")},
+    )
+    assert r.status_code == 401
+    assert anon_client.delete("/api/v1/sealed/1/image").status_code == 401
+
+
+# ── Härtung #38: Löschen räumt Join-Zeilen (keine Waisen) ─────────────────────
+
+def test_delete_sealed_removes_join_rows(client):
+    p = _create(client, "Mit-Sets", set_codes=["OBF", "PAF"])
+    pid = p["id"]
+    client.delete(f"/api/v1/sealed/{pid}")
+    # Backup spiegelt die DB → keine sealed_product_sets-Zeile darf auf pid zeigen
+    payload = json.loads(
+        zipfile.ZipFile(io.BytesIO(client.get("/api/v1/data/backup").content)).read("data.json")
+    )
+    # Tabelle MUSS im Backup stehen — sonst würde .get(…, []) eine fehlende
+    # Tabelle fälschlich als „keine Waisen" durchwinken (Codex-Review).
+    assert "sealed_product_sets" in payload["tables"]
+    orphans = [
+        row for row in payload["tables"]["sealed_product_sets"]
+        if row["sealed_product_id"] == pid
+    ]
+    assert orphans == [], "Join-Zeilen nach Produkt-Löschung verwaist"
+
+
+# ── Härtung #38: Bild-Ablage lässt bei Endungswechsel keine Waisen ────────────
+
+def test_sealed_image_reupload_other_ext_leaves_no_orphan(client, png_bytes):
+    p = _create(client, "Bild-Wechsel")
+    pid = p["id"]
+    try:
+        r = client.post(
+            f"/api/v1/sealed/{pid}/image",
+            files={"file": ("box.png", png_bytes, "image/png")},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["bild_pfad"].endswith(".png")
+        assert _sealed_files(pid) == [f"sealed_{pid}.png", f"sealed_{pid}_thumb.png"]
+
+        # Re-Upload mit anderer Endung → alte .png-Dateien dürfen nicht bleiben
+        r = client.post(
+            f"/api/v1/sealed/{pid}/image",
+            files={"file": ("box.jpg", _jpeg_bytes(), "image/jpeg")},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["bild_pfad"].endswith(".jpg")
+        assert _sealed_files(pid) == [f"sealed_{pid}.jpg", f"sealed_{pid}_thumb.jpg"], (
+            "Endungswechsel hat Alt-Dateien verwaisen lassen"
+        )
+
+        # Löschen entfernt die Dateien wieder vollständig
+        assert client.delete(f"/api/v1/sealed/{pid}/image").status_code == 200
+        assert _sealed_files(pid) == []
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+# ── Härtung #38: Validierung greift auch im UPDATE-Pfad (nicht nur Create) ─────
+
+def test_sealed_update_rejects_invalid_values(client):
+    # SealedProductUpdate traegt dieselben Validatoren separat — hier explizit
+    # ueber PUT geprueft, sonst waere der Update-Pfad false-green (Claude-Review).
+    p = _create(client, "Update-Validierung")
+    pid = p["id"]
+    try:
+        assert client.put(f"/api/v1/sealed/{pid}", json={"typ": "Quatsch"}).status_code == 422
+        assert client.put(f"/api/v1/sealed/{pid}", json={"zustand": "Kaputt"}).status_code == 422
+        assert client.put(f"/api/v1/sealed/{pid}", json={"kaufpreis_eur": "-1"}).status_code == 422
+        assert client.put(f"/api/v1/sealed/{pid}", json={"wert_eur": "12345678.90"}).status_code == 422
+        assert client.put(
+            f"/api/v1/sealed/{pid}", json={"set_codes": ["A" * 33]}
+        ).status_code == 422
+        # Normalisierung (uppercase/dedup) gilt auch beim Update
+        r = client.put(f"/api/v1/sealed/{pid}", json={"set_codes": ["obf", "obf", " paf "]})
+        assert set(r.json()["set_codes"]) == {"OBF", "PAF"}
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+def test_sealed_rejects_huge_set_codes_list(client):
+    # Roh-Liste jenseits von MAX_SET_CODES_RAW (200) prallt auf FELDEBENE ab,
+    # bevor sie ueberhaupt dedupliziert/verarbeitet wird (Codex-Review C5).
+    assert client.post(
+        "/api/v1/sealed", json={"name": "X", "set_codes": ["A"] * 300}
+    ).status_code == 422
+
+
+def test_sealed_filter_matches_mixed_case_stored_code(client):
+    # Ehrlicher Case-insensitiv-Test: ein GEMISCHT geschriebener Code wird direkt
+    # (unter Umgehung der Upper-Normalisierung) in die Join-Tabelle gelegt, wie
+    # ihn Altbestand aus v1.6.0 haben koennte. Der Filter muss ihn per upper()
+    # trotzdem finden (Codex-Review C6). Ein Plain-Vergleich waere hier rot.
+    from app.database import SessionLocal
+    from app.models.sealed import sealed_product_sets
+
+    p = _create(client, "Legacy-Case")
+    pid = p["id"]
+    db = SessionLocal()
+    try:
+        db.execute(
+            sealed_product_sets.insert().values(sealed_product_id=pid, set_code="oBf")
+        )
+        db.commit()
+    finally:
+        db.close()
+    try:
+        for q in ("obf", "OBF", "oBf", " Obf "):
+            ids = {i["id"] for i in client.get("/api/v1/sealed", params={"set": q}).json()}
+            assert pid in ids, f"gemischt gespeicherter Code via {q!r} nicht gefunden"
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+# ── Härtung #38: Datei-Aufraeumen ist best-effort, DB ist die Wahrheit ─────────
+
+def test_delete_image_survives_unlink_failure(client, png_bytes, monkeypatch):
+    # Schlaegt das Loeschen der Bilddatei fehl (z. B. PermissionError), MUSS der
+    # Endpoint nach dem durablen Commit trotzdem 200 liefern und die DB-Felder
+    # geleert haben — ein Datei-Leak ist tolerierbar, ein 500 nach Commit nicht.
+    import pathlib
+
+    p = _create(client, "Unlink-Fehler")
+    pid = p["id"]
+    try:
+        client.post(
+            f"/api/v1/sealed/{pid}/image",
+            files={"file": ("b.png", png_bytes, "image/png")},
+        )
+
+        real_unlink = pathlib.Path.unlink
+
+        def boom(self, *a, **k):
+            raise OSError("simulierter Loeschfehler")
+
+        monkeypatch.setattr(pathlib.Path, "unlink", boom)
+        r = client.delete(f"/api/v1/sealed/{pid}/image")
+        monkeypatch.setattr(pathlib.Path, "unlink", real_unlink)
+
+        assert r.status_code == 200
+        assert r.json()["bild_pfad"] is None
+        # DB-Feld ist trotz Datei-Loeschfehler geleert (durabel committet)
+        assert client.get(f"/api/v1/sealed/{pid}").json()["bild_pfad"] is None
+    finally:
+        client.delete(f"/api/v1/sealed/{pid}")
+
+
+def test_upload_commit_failure_keeps_old_image(client, png_bytes, monkeypatch):
+    # Kern der #38-Haertung: schlaegt der Commit beim Re-Upload (Endungswechsel)
+    # fehl, darf die alte Datei NICHT geloescht sein und die DB muss weiter auf
+    # sie zeigen (Orphan-Clean laeuft erst NACH dem Commit). Panel-Blocker.
+    import sqlalchemy.orm
+
+    p = _create(client, "Commit-Fehler")
+    pid = p["id"]
+    try:
+        r = client.post(
+            f"/api/v1/sealed/{pid}/image",
+            files={"file": ("b.png", png_bytes, "image/png")},
+        )
+        assert r.status_code == 200
+        assert _sealed_files(pid) == [f"sealed_{pid}.png", f"sealed_{pid}_thumb.png"]
+
+        real_commit = sqlalchemy.orm.Session.commit
+
+        def boom(self):
+            raise RuntimeError("simulierter Commit-Fehler")
+
+        monkeypatch.setattr(sqlalchemy.orm.Session, "commit", boom)
+        try:
+            resp = client.post(
+                f"/api/v1/sealed/{pid}/image",
+                files={"file": ("b.jpg", _jpeg_bytes(), "image/jpeg")},
+            )
+            # Je nach TestClient-Konfig: 500-Antwort ODER durchgereichte Exception
+            assert resp.status_code == 500
+        except RuntimeError:
+            pass
+        finally:
+            monkeypatch.setattr(sqlalchemy.orm.Session, "commit", real_commit)
+
+        # Invariante: alte .png-Datei ueberlebt, DB zeigt weiter auf .png
+        assert f"sealed_{pid}.png" in _sealed_files(pid), "Alt-Datei vor dem Commit geloescht!"
+        assert client.get(f"/api/v1/sealed/{pid}").json()["bild_pfad"].endswith(".png")
     finally:
         client.delete(f"/api/v1/sealed/{pid}")

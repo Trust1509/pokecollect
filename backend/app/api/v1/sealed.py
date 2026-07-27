@@ -11,8 +11,8 @@ ADR-0003). Bild-Upload nutzt die bestehende Bild-Pipeline (services/card_images
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import delete, select
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -26,7 +26,12 @@ from app.schemas.sealed import (
     SealedProductUpdate,
 )
 from app.services.card_images import ImageValidationError
-from app.services.sealed_images import remove_sealed_image, store_sealed_image
+from app.services.sealed_images import (
+    cleanup_sealed_orphans,
+    clear_sealed_image,
+    store_sealed_image,
+    unlink_media_files,
+)
 
 router = APIRouter(prefix="/sealed", tags=["sealed"])
 
@@ -118,8 +123,10 @@ def list_sealed(
         q = q.where(SealedProduct.zustand == zustand)
     if set:
         # Set-Filter matcht, wenn das Set in der n:m-Zuordnung enthalten ist.
+        # Case-insensitiv (#38): Neuware wird upper gespeichert, Altbestand kann
+        # gemischt sein → beidseitig upper vergleichen, „obf" findet „OBF".
         sub = select(sealed_product_sets.c.sealed_product_id).where(
-            sealed_product_sets.c.set_code == set
+            func.upper(sealed_product_sets.c.set_code) == set.strip().upper()
         )
         q = q.where(SealedProduct.id.in_(sub))
     q = q.order_by(SealedProduct.hinzugefuegt_am.desc(), SealedProduct.id.desc())
@@ -154,6 +161,11 @@ def get_sealed(product_id: int, db: Session = Depends(get_db)):
 def update_sealed(product_id: int, data: SealedProductUpdate, db: Session = Depends(get_db)):
     product = _product_or_404(product_id, db)
     updated = data.model_dump(exclude_unset=True)
+    # Leer/Whitespace fängt bereits der Schema-Validator (_validate_name) ab.
+    # Bleibt der eine Fall, den ein Optional-Feld nicht ausdrücken kann:
+    # explizites {"name": null} → name ist NOT NULL, sonst IntegrityError/500. #38
+    if "name" in updated and updated["name"] is None:
+        raise HTTPException(status_code=422, detail="Name darf nicht leer sein")
     # set_codes getrennt behandeln: None = unverändert, [] = alle entfernen.
     new_sets = updated.pop("set_codes", None)
     for field, value in updated.items():
@@ -175,9 +187,11 @@ def delete_sealed(product_id: int, db: Session = Depends(get_db)):
             sealed_product_sets.c.sealed_product_id == product_id
         )
     )
-    remove_sealed_image(db, product)  # committet; leert Bildfelder + Dateien
+    # Atomar (#38): alles in EINEM Commit, Dateien erst NACH dem Commit löschen.
+    image_paths = clear_sealed_image(product)
     db.delete(product)
     db.commit()
+    unlink_media_files(image_paths)
 
 
 # ── Bild ──────────────────────────────────────────────────────────────────────
@@ -193,11 +207,21 @@ async def upload_image(
         product = store_sealed_image(db, product, file)
     except ImageValidationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+    # Service ist commit-frei (#38); Router steuert Atomarität: erst DB durabel,
+    # DANN Endungswechsel-Waisen entfernen (nie Datei vor DB löschen).
+    db.commit()
+    cleanup_sealed_orphans(product)
+    db.refresh(product)
     return _response(product, _sets_by_products(db, [product_id]).get(product_id, []))
 
 
 @router.delete("/{product_id}/image", response_model=SealedProductResponse)
 def delete_image(product_id: int, db: Session = Depends(get_db)):
     product = _product_or_404(product_id, db)
-    product = remove_sealed_image(db, product)
+    # Erst DB-Felder leeren + committen, dann die Dateien entfernen (#38).
+    # unlink VOR refresh — so läuft das Aufräumen auch, falls refresh scheitert.
+    image_paths = clear_sealed_image(product)
+    db.commit()
+    unlink_media_files(image_paths)
+    db.refresh(product)
     return _response(product, _sets_by_products(db, [product_id]).get(product_id, []))
