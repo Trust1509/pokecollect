@@ -6,6 +6,8 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 
 ---
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_me_a_coffee-support-FFDD00?logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/trust1509)
+
 ## Screenshots
 
 | Collection Grid | Card Detail |
@@ -127,3 +129,7 @@ Updates: `bash deploy.sh` (git pull → rebuild api+web → restart).
 ## License
 
 MIT
+
+## Support
+
+I build and maintain open-source tools for self-hosted software. If this project helps you, consider [buying me a coffee](https://buymeacoffee.com/trust1509) to support continued development and maintenance.
