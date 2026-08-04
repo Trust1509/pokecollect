@@ -33,6 +33,12 @@ services:
       # Login: admin / teststand (bcrypt-Hash; $ wegen Compose-Interpolation
       # als $$ escaped). Start-Guard verlangt ein Passwort (Issue #1).
       - APP_PASSWORD_HASH=$$2b$$12$$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G
+      # Gemini-Scan (#33-Verifikation): Key/Modell werden aus der HOST-Umgebung
+      # durchgereicht — KEIN Secret im Repo. Zum Aktivieren vor `teststand.sh up`:
+      #   export GEMINI_API_KEY="…"   (optional: export GEMINI_MODEL="…")
+      # Ohne gesetzten Key bleibt der Scan beim lokalen OCR-Fallback.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     volumes:
       - images-test:/app/images
     depends_on:

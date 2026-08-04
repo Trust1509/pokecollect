@@ -1,5 +1,27 @@
 # Changelog
 
+## [v1.6.3] – 2026-07-27 (Japanische Karten erkennen + Lupe, #33)
+
+### Scan & Sets
+- **Japanische Karten werden jetzt richtig erkannt (#33):** Vorher wurden JP-Karten
+  selbstsicher der falschen Karte zugeordnet (z. B. Vivillon → „Sizzlipede"), weil
+  die japanischen Sets in der App fehlten und der Nummern-Abgleich auf einem
+  West-Set hängenblieb. Jetzt:
+  - **Japanische Sets** (M3, M1S, M2, … – 170+ Sets) werden mitgeführt, sind im
+    **manuellen Zuordnen** über ihr Kürzel auffindbar und lösen beim Scan exakt
+    über Set + Nummer auf.
+  - Der Nummern-Abgleich nutzt nur noch die **offizielle** Set-Größe (der auf der
+    Karte gedruckte Nenner) → keine Zufallstreffer über Secret-Rare-Gesamtzahlen mehr.
+  - Der Aufbau ist **erweiterbar**: weitere Sprachen/Regionen (z. B. Koreanisch,
+    Chinesisch) lassen sich künftig mit einem Eintrag ergänzen.
+- **Manuelles Zuschneiden – Lupe:** Die Lupe zieht jetzt beim Reinzoomen mit und
+  vergrößert stärker, statt fix auf dem ganzen Foto zu bleiben – hilft besonders
+  bei Fotos mit mehreren Karten, die Ecken exakt zu treffen.
+
+### ⚠️ Deploy-Hinweis
+- **Rein additiv, keine Migration.** Die japanischen Sets werden beim nächsten
+  Set-Sync automatisch angelegt (Cron oder „Katalog aktualisieren").
+
 ## [v1.6.2] – 2026-07-27 (Security: Pfad-Traversal beim Bild-Löschen, #37)
 
 Sicherheits-Härtung, begleitet von einem Multi-Modell-Review-Panel. Keine

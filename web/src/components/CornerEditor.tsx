@@ -178,10 +178,14 @@ export default function CornerEditor({
   };
 
   // Lupe (oben, gegenüber dem aktiven Punkt; direkt aus dem Originalbild).
-  const LOUPE = 124, FRAC = 0.16;
+  // FRAC = Anteil der Bildbreite, den die Lupe bei Zoom 1 zeigt. AN DEN VIEWPORT-
+  // ZOOM GEKOPPELT (× zoom): beim Reinzoomen (Mehr-Karten-Fotos) zieht die Lupe
+  // mit und löst stets feiner auf als die Ansicht, statt fix auf dem ganzen Foto
+  // zu bleiben (#36). Kleineres FRAC = stärker vergrößert.
+  const LOUPE = 124, FRAC = 0.12;
   const ap = active != null ? quad[active] : null;
   const loupeOnRight = ap ? ap[0] < 0.5 : true;
-  const bgW = LOUPE / FRAC;
+  const bgW = (LOUPE / FRAC) * zoom;
   const bgH = bgW * aspect;
 
   return (

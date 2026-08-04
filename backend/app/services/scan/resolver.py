@@ -103,12 +103,18 @@ def _resolve_set_id(db: Session, code: Optional[str]) -> tuple[Optional[str], Op
 
 
 def _sets_matching_count(db: Session, denom: Optional[int]) -> list[PokemonSet]:
-    """Lokale Sets, deren offizielle ODER Gesamt-Kartenzahl dem Nenner gleicht."""
+    """
+    Lokale Sets, deren OFFIZIELLE Kartenzahl dem Nenner gleicht. Der auf einer
+    Karte gedruckte Nenner („009/080") ist immer die offizielle Set-Größe —
+    NICHT die Gesamtzahl inkl. Secret Rares. Früher matchte hier auch
+    `card_count_total`, wodurch eine JP-Karte 009/080 (M3, offiziell 80) am
+    West-Set „Weg des Champs" (CPA, offiziell 73 / total 80) hängenblieb und
+    selbstsicher falsch aufgelöst wurde (#33).
+    """
     if not denom:
         return []
     return list(db.scalars(select(PokemonSet).where(
-        (PokemonSet.card_count_official == denom)
-        | (PokemonSet.card_count_total == denom)
+        PokemonSet.card_count_official == denom
     )).all())
 
 
@@ -267,6 +273,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
     # anfällige) Name ist nur Fallback. Sind beide lesbar, IMMER zuerst darüber.
     tc = None
     via_number = False
+    via_number_only = False  # nur der geratene Nummer-nur-Pfad (Priorität 2)
     if set_id and local_id:
         tc = await tcgdex.fetch_card_by_set_multilang(set_id, local_id, tcg_lang)
         if tc is not None:
@@ -280,6 +287,7 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
             db, local_id, _denominator(read.number), tcg_lang)
         if tc is not None:
             via_number = True
+            via_number_only = True
             set_id = tc.set.id if (tc.set and tc.set.id) else set_id
             set_row = num_row or set_row
 
@@ -352,6 +360,16 @@ async def resolve_one(db: Session, read: ScanRawRead, default_lang: str = "DE") 
         # „name" als unsicher markieren; die Karte selbst steht dennoch.
         if read.name and "name" not in uncertain \
                 and not _name_plausibel(read.name, tc.name, eng):
+            uncertain.append("name")
+
+        # Nummer-nur-Heuristik (Set nur über den Nenner geraten) UND der roh
+        # gelesene Name ist nicht lateinisch vergleichbar (z. B. Katakana) → wir
+        # konnten ihn nicht gegen die Karte prüfen. Als unsicher markieren, damit
+        # ein zufälliger Nenner-Treffer nicht selbstsicher wirkt (#33). Trifft NUR
+        # den geratenen Pfad — Namenssuche-Treffer (Priorität 3) sind hiervon
+        # unberührt und bleiben sicher.
+        if via_number_only and read.name and "name" not in uncertain \
+                and not _norm_name(read.name):
             uncertain.append("name")
 
         set_edition = _set_edition(db, set_id, read.set_code)

@@ -27,6 +27,13 @@ log = logging.getLogger(__name__)
 
 _DETAIL_CONCURRENCY = 12
 
+# Nicht-westliche Regionen mit EIGENEN Sets/Nummernkreisen (JP ist die Master-
+# Region, erscheint zuerst). Der West-Sync unten deckt EN+DE (dieselben Sets)
+# ab; diese Regionen kommen additiv dazu. ERWEITERBAR: weitere Sprachen/Regionen
+# (z. B. "ko", "zh-tw", "zh-cn") einfach hier ergänzen — der Sync ist generisch,
+# es braucht keine weitere Codeänderung (#33).
+EXTRA_REGIONS: tuple[str, ...] = ("ja",)
+
 
 # ── PTCGO-Kürzel → TCGdex set.id ─────────────────────────────────────────────
 # Startwerte laut Vorgabe. MEG/PFL/ASC/WHT/BLK wurden nach dem ersten
@@ -117,14 +124,14 @@ def apply_bridge_to_seed() -> None:
         db.close()
 
 
-async def _fetch_all_details(set_ids: list[str]) -> dict[str, dict]:
+async def _fetch_all_details(set_ids: list[str], lang: str = "en") -> dict[str, dict]:
     """Holt Set-Details nebenläufig (begrenzt). Liefert {set_id: detail_json}."""
     sem = asyncio.Semaphore(_DETAIL_CONCURRENCY)
     out: dict[str, dict] = {}
 
     async def one(sid: str):
         async with sem:
-            d = await tcgdex.get_set(sid, "en")
+            d = await tcgdex.get_set(sid, lang)
         if isinstance(d, dict):
             out[sid] = d
 
@@ -132,11 +139,76 @@ async def _fetch_all_details(set_ids: list[str]) -> dict[str, dict]:
     return out
 
 
+async def _sync_region_sets(
+    db, region: str, by_setid: dict[str, PokemonSet], used_codes: set[str],
+) -> int:
+    """
+    Sets einer nicht-westlichen Region (eigene Nummernkreise) additiv anlegen.
+
+    Für diese Regionen führt TCGdex KEIN `abbreviation.official` — dafür IST die
+    stabile set.id zugleich der aufgedruckte Code (z. B. „M3", „M1S"). Nur Sets
+    mit noch unbekannter set.id (eine schon vorhandene set.id ist DASSELBE
+    Set — sprachübergreifend geteilt, z. B. die alten Neo-Sets — und wird bewusst
+    nicht dupliziert) und freiem Code werden angelegt.
+
+    Set-Details werden je Set geladen, weil die Set-LISTE für diese Regionen
+    weder Serie noch Logo führt: nur so lässt sich Pokémon TCG Pocket (Serie
+    `tcgp`, rein digital) verlässlich ausschließen und Serie/Symbol/Logo
+    anreichern. Generisch — dieselbe Routine trägt jede weitere Region
+    (#33, erweiterbar).
+    """
+    sets = await tcgdex.get_sets(region)
+    if not sets:
+        return 0
+    details = await _fetch_all_details([s.id for s in sets if s.id], region)
+    created = 0
+    for s in sets:
+        sid = s.id
+        if not sid or sid in by_setid:
+            continue
+        d = details.get(sid)
+        if not d:
+            # Details (transient) nicht geladen → das Set NICHT halb anlegen:
+            # sonst bliebe es dauerhaft ohne Serie/Assets und ein tcgp-Set würde
+            # ungefiltert importiert (wegen `sid in by_setid` fasst es kein
+            # späterer Sync mehr an). Fail-closed — der nächste Sync holt es nach.
+            log.warning("Region %s: keine Details für %r — übersprungen (Retry beim nächsten Sync).", region, sid)
+            continue
+        serie = d["serie"].get("id") if isinstance(d.get("serie"), dict) else None
+        if serie in tcgdex.EXCLUDED_SERIES:
+            continue  # Pokémon TCG Pocket nicht indizieren
+        code = sid  # aufgedruckter Code = TCGdex-set.id für diese Regionen
+        if code in used_codes:
+            log.warning("Region %s: Set-Code %r bereits belegt — übersprungen.", region, code)
+            continue
+        cc = d.get("cardCount") or {}
+        row = PokemonSet(code=code, name=(d.get("name") or s.name or sid), set_id=sid)
+        row.card_count_official = cc.get("official") or (s.cardCount.official if s.cardCount else None)
+        row.card_count_total = cc.get("total") or (s.cardCount.total if s.cardCount else None)
+        if serie:
+            row.series_id = serie
+        logo = d.get("logo") or s.logo
+        if logo and tcgdex.is_allowed_image_url(logo):
+            row.logo_url = f"{logo.rstrip('/')}.png"
+        symbol = d.get("symbol") or _symbol_url(serie, sid)
+        if symbol and tcgdex.is_allowed_image_url(symbol):
+            row.symbol_url = f"{symbol.rstrip('/')}.png"
+        db.add(row)
+        by_setid[sid] = row
+        used_codes.add(code)
+        created += 1
+    if created:
+        log.info("Region-Set-Sync %s: %d Sets neu angelegt.", region, created)
+    return created
+
+
 async def sync_sets() -> dict:
     """
     Holt /en/sets + /de/sets, löst set_id auf (Brücke + abbreviation.official aus
     den Set-Details) und reichert alle Zeilen an (Name EN/DE, Kartenzahlen, Logo,
-    Symbol, Serie). Merge ausschließlich über die stabile set.id.
+    Symbol, Serie). Zusätzlich werden nicht-westliche Regionen (EXTRA_REGIONS,
+    z. B. JP) mit ihren eigenen Sets additiv angelegt. Merge ausschließlich über
+    die stabile set.id.
 
     Liefert eine Zusammenfassung inkl. aufgelöster set_id-Werte (zur Verifikation).
     """
@@ -229,6 +301,10 @@ async def sync_sets() -> dict:
             by_setid[sid] = row
             _enrich(row, s, d, de_src)
             created += 1
+
+        # Nicht-westliche Regionen (JP …) additiv — eigene Sets/Nummernkreise.
+        for region in EXTRA_REGIONS:
+            created += await _sync_region_sets(db, region, by_setid, used_codes)
 
         db.commit()
     finally:
