@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class CatalogItem(BaseModel):
     card_id: str
+    region: Optional[str] = None   # "west" | "ja" | … (Regionsfilter)
     set_id: Optional[str] = None
     set_code: Optional[str] = None
     set_name: Optional[str] = None

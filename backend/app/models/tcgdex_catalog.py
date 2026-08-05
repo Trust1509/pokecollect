@@ -12,6 +12,10 @@ class TcgdexCatalog(Base):
     __tablename__ = "tcgdex_catalog"
 
     card_id = Column(Text, primary_key=True)            # "swsh3-136"
+    # Region der Karte: "west" (EN+DE, dieselbe Karte) oder eine asiatische
+    # Region wie "ja" (eigene Sets/Karten). Treibt den Katalog-Regionsfilter
+    # (#33-Folge, erweiterbar für "ko"/"zh"). Default „west" für Altbestand.
+    region = Column(Text, index=True, nullable=False, default="west", server_default="west")
     set_id = Column(Text, index=True)                   # "swsh3"
     set_code = Column(Text, index=True, nullable=True)  # PTCGO-Kürzel (aus pokemon_sets)
     set_name = Column(Text, nullable=True)              # deutscher Set-Name

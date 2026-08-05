@@ -113,6 +113,7 @@ async def sync_catalog(db: Session) -> dict:
                 created += 1
             else:
                 updated += 1
+            row.region = "west"      # EN+DE = dieselbe Karte
             row.set_id = sid
             row.set_code = code
             row.set_name = sname
@@ -125,28 +126,106 @@ async def sync_catalog(db: Session) -> dict:
                 row.image_url = tcgdex.image_url(image)
         db.commit()  # je Set committen (kleinere Transaktionen)
 
-    log.info("Katalog-Sync: %d neu, %d aktualisiert (%d Sets).", created, updated, len(set_ids))
+    # Nicht-westliche Regionen (JP …) additiv indizieren — eigene Karten.
+    from app.services.set_sync import EXTRA_REGIONS
+    for region in EXTRA_REGIONS:
+        rc, ru = await _index_region_cards(db, region, existing)
+        created += rc
+        updated += ru
+
+    log.info("Katalog-Sync: %d neu, %d aktualisiert (%d West-Sets + Regionen %s).",
+             created, updated, len(set_ids), ",".join(EXTRA_REGIONS))
     return {"created": created, "updated": updated, "sets": len(set_ids)}
 
 
+async def _index_region_cards(
+    db: Session, region: str, existing: dict[str, TcgdexCatalog]
+) -> tuple[int, int]:
+    """
+    Katalog-Basis einer nicht-westlichen Region (eigene Karten, z. B. JP)
+    indizieren. Der Name kommt in der Regionssprache; `region` wird getaggt.
+    dexId/Rarity/Varianten holt später enrich_catalog (regions-sprachig). Pocket
+    (Serie `tcgp`) wird über die Set-Details ausgeschlossen. Generisch (#33-Folge).
+    """
+    sets = await tcgdex.get_sets(region)
+    if not sets:
+        return 0, 0
+    set_meta = {r.set_id: (r.code, r.name) for r in db.scalars(select(PokemonSet)).all() if r.set_id}
+
+    sem = asyncio.Semaphore(_CONC)
+    details: dict[str, dict] = {}
+
+    async def one(sid: str):
+        async with sem:
+            d = await tcgdex.get_set(sid, region)
+        if isinstance(d, dict):
+            details[sid] = d
+
+    await asyncio.gather(*(one(s.id) for s in sets if s.id))
+
+    created = updated = 0
+    for s in sets:
+        sid = s.id
+        d = details.get(sid)
+        if not d:
+            continue  # fail-closed: ohne Details nicht halb indizieren
+        serie = d["serie"].get("id") if isinstance(d.get("serie"), dict) else None
+        if serie in tcgdex.EXCLUDED_SERIES:
+            continue
+        code, sname = set_meta.get(sid, (None, None))
+        for c in (d.get("cards") or []):
+            cid = c.get("id")
+            if not cid:
+                continue
+            local_id = c.get("localId")
+            image = c.get("image")
+            row = existing.get(cid)
+            if not row:
+                row = TcgdexCatalog(card_id=cid)
+                db.add(row)
+                existing[cid] = row
+                created += 1
+            else:
+                updated += 1
+            row.region = region
+            row.set_id = sid
+            row.set_code = code
+            row.set_name = sname
+            row.local_id = local_id
+            row.local_id_num = _num(local_id)
+            row.name = c.get("name")   # Regionssprache (z. B. JA)
+            if image:
+                row.image = image
+                row.image_url = tcgdex.image_url(image)
+        db.commit()
+    return created, updated
+
+
+def _catalog_lang(region: Optional[str]) -> str:
+    """Regionssprache für den TCGdex-Kartenabruf: west → „en", sonst die
+    Region selbst (z. B. „ja"). So werden JP-Karten korrekt japanisch geladen."""
+    return "en" if (region or "west") == "west" else region
+
+
 async def enrich_catalog(db: Session, limit: int = 500) -> dict:
-    """Holt Volldetails (Illustrator/Rarity/dexId/Varianten) für N noch nicht angereicherte Karten."""
-    ids = [r.card_id for r in db.scalars(
+    """Holt Volldetails (Illustrator/Rarity/dexId/Varianten) für N noch nicht
+    angereicherte Karten — je Karte in ihrer Regionssprache (#33-Folge)."""
+    rows = db.scalars(
         select(TcgdexCatalog).where(TcgdexCatalog.enriched == False).limit(limit)  # noqa: E712
-    ).all()]
-    if not ids:
+    ).all()
+    if not rows:
         return {"enriched": 0, "remaining": 0}
 
     sem = asyncio.Semaphore(_CONC)
     data: dict[str, object] = {}
 
-    async def one(cid: str):
+    async def one(cid: str, region: Optional[str]):
         async with sem:
-            tc = await tcgdex.get_card(cid, "en")
+            tc = await tcgdex.get_card(cid, _catalog_lang(region))
         if tc:
             data[cid] = tc
 
-    await asyncio.gather(*(one(c) for c in ids))
+    await asyncio.gather(*(one(r.card_id, r.region) for r in rows))
 
     n = 0
     for cid, tc in data.items():
@@ -165,7 +244,7 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
 async def _build_card_from_catalog(db: Session, row: TcgdexCatalog) -> dict:
     """Karten-Felder aus einem Katalog-Eintrag (lädt bei Bedarf Volldetails nach)."""
     if not row.enriched:
-        tc = await tcgdex.get_card(row.card_id, "en")
+        tc = await tcgdex.get_card(row.card_id, _catalog_lang(row.region))
         if tc:
             _apply_full(row, tc)
             db.commit()

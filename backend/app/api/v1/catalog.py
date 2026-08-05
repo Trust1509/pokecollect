@@ -27,6 +27,7 @@ def list_catalog(
     set_id: str | None = None,
     illustrator: str | None = None,
     generation: int | None = None,
+    region: str | None = None,   # "west" | "ja" | … (None = alle)
     sort: str = Query("set", pattern="^(set|name|dex)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(60, ge=1, le=500),
@@ -63,6 +64,8 @@ def list_catalog(
         query = query.where(TcgdexCatalog.set_code == set_code)
     if set_id:
         query = query.where(TcgdexCatalog.set_id == set_id)
+    if region:
+        query = query.where(TcgdexCatalog.region == region)
     if illustrator:
         query = query.where(TcgdexCatalog.illustrator.ilike(f"%{illustrator}%"))
     if generation and generation in GEN_RANGES:

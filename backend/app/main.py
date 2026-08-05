@@ -205,6 +205,10 @@ def _run_light_migrations():
         # bedienen, darum der Ausdruck.
         "CREATE INDEX IF NOT EXISTS ix_sealed_product_sets_set_code_upper "
         "ON sealed_product_sets (upper(set_code))",
+        # v1.6.4: Regionsfeld am Katalog (west/ja/…) für den Regionsfilter.
+        # Bestands-Katalogkarten sind westlich → Default „west".
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'west'",
+        "CREATE INDEX IF NOT EXISTS ix_tcgdex_catalog_region ON tcgdex_catalog (region)",
     ]
     with engine.begin() as conn:
         for stmt in stmts:
