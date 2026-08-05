@@ -37,6 +37,7 @@ export default function CatalogPage() {
   const [setCode, setSetCode] = useState("");
   const [illustrator, setIllustrator] = useState("");
   const [generation, setGeneration] = useState("");
+  const [region, setRegion] = useState("");
   const [sort, setSort] = useState<"set" | "name" | "dex">("set");
   const [page, setPage] = useState(1);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -64,15 +65,16 @@ export default function CatalogPage() {
       if (setCode) params.set_code = setCode;
       if (illustrator) params.illustrator = illustrator;
       if (generation) params.generation = Number(generation);
+      if (region) params.region = region;
       const r = await catalogApi.list(params);
       setData(r.data);
     } finally {
       setLoading(false);
     }
-  }, [q, setCode, illustrator, generation, sort, page]);
+  }, [q, setCode, illustrator, generation, region, sort, page]);
 
   useEffect(() => { const h = setTimeout(load, 300); return () => clearTimeout(h); }, [load]);
-  useEffect(() => { setPage(1); }, [q, setCode, illustrator, generation, sort]);
+  useEffect(() => { setPage(1); }, [q, setCode, illustrator, generation, region, sort]);
 
   const addWishlist = async (c: CatalogItem) => {
     try {
@@ -166,7 +168,7 @@ export default function CatalogPage() {
         <span>🔍 {t.filter_title}</span>
         <span className="text-gray-500">{filterOpen ? "▲" : "▼"}</span>
       </button>
-      <div className={`${filterOpen ? "grid" : "hidden"} grid-cols-2 md:grid-cols-5 gap-2 mb-4`}>
+      <div className={`${filterOpen ? "grid" : "hidden"} grid-cols-2 md:grid-cols-6 gap-2 mb-4`}>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -186,6 +188,12 @@ export default function CatalogPage() {
           <option value="">{t.filter_generation}: {t.filter_all}</option>
           {GENERATIONS.map((g) => <option key={g} value={g}>Gen {g}</option>)}
         </select>
+        <select value={region} onChange={(e) => setRegion(e.target.value)}
+          className="bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm">
+          <option value="">{t.catalog_region_all}</option>
+          <option value="west">{t.catalog_region_west}</option>
+          <option value="ja">{t.catalog_region_ja}</option>
+        </select>
         <select value={sort} onChange={(e) => setSort(e.target.value as "set" | "name" | "dex")}
           className="bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm">
           <option value="set">{t.catalog_sort_set}</option>
@@ -194,9 +202,9 @@ export default function CatalogPage() {
         </select>
       </div>
 
-      {(q || setCode || illustrator || generation || sort !== "set") && (
+      {(q || setCode || illustrator || generation || region || sort !== "set") && (
         <button type="button"
-          onClick={() => { setQ(""); setSetCode(""); setIllustrator(""); setGeneration(""); setSort("set"); }}
+          onClick={() => { setQ(""); setSetCode(""); setIllustrator(""); setGeneration(""); setRegion(""); setSort("set"); }}
           className="text-gray-400 hover:text-white text-xs underline"
         >
           {t.filter_reset}
@@ -241,6 +249,11 @@ export default function CatalogPage() {
                   onClick={() => (selectMode ? toggleSelect(c.card_id) : setSelected(c))}
                   className="block w-full text-left" title={name}>
                   <div className="aspect-[63/88] relative bg-gray-800">
+                    {c.region && c.region !== "west" && (
+                      <span className="absolute top-1 left-1 z-10 text-[9px] font-bold uppercase bg-black/70 text-white rounded px-1 py-0.5">
+                        {c.region}
+                      </span>
+                    )}
                     {c.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.image_url} alt={name} className="w-full h-full object-cover" loading="lazy" />

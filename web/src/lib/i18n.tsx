@@ -148,6 +148,9 @@ const DE = {
   catalog_tile_desc: "Gesamter TCGdex-Bestand zum Durchsuchen – zählt nicht zur Sammlung",
   catalog_illustrator: "Illustrator",
   catalog_all_illustrators: "Alle Illustratoren",
+  catalog_region_all: "Alle Regionen",
+  catalog_region_west: "Westlich (EN/DE)",
+  catalog_region_ja: "Japanisch",
   catalog_add_collection: "Zu Sammlung hinzufügen",
   catalog_added_collection: "Zur Sammlung hinzugefügt",
   // Katalog: Mehrfachauswahl + Bulk-Add (Issue #23)
@@ -651,6 +654,9 @@ const EN: typeof DE = {
   catalog_tile_desc: "Full TCGdex catalog to browse – not part of your collection",
   catalog_illustrator: "Illustrator",
   catalog_all_illustrators: "All illustrators",
+  catalog_region_all: "All regions",
+  catalog_region_west: "Western (EN/DE)",
+  catalog_region_ja: "Japanese",
   catalog_add_collection: "Add to collection",
   catalog_added_collection: "Added to collection",
   // Catalog: multi-select + bulk add (Issue #23)

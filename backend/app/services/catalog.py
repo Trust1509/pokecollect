@@ -180,6 +180,13 @@ async def _index_region_cards(
             local_id = c.get("localId")
             image = c.get("image")
             row = existing.get(cid)
+            if row is not None and row.region != region:
+                # Karte gehört bereits einer anderen Region — sprachübergreifend
+                # GETEILTES Set (gleiche card_id, z. B. die alten Neo-Sets, die
+                # West UND JP unter derselben set.id führen). NICHT überschreiben:
+                # sie bleibt „west" (EN/DE), sonst ginge die westliche Zuordnung
+                # verloren. JP-EXKLUSIVE Sets haben eigene card_ids → unberührt.
+                continue
             if not row:
                 row = TcgdexCatalog(card_id=cid)
                 db.add(row)

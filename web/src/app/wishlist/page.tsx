@@ -64,6 +64,7 @@ export default function WishlistPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const { enums } = useEnums();
   const [priority, setPriority] = useState<string>("");
+  const [sprache, setSprache] = useState<string>("");
   const [view, setView] = useState<ViewMode>("grid");
   const [layout, setLayout] = useState("3x3");
   const [loading, setLoading] = useState(true);
@@ -98,8 +99,9 @@ export default function WishlistPage() {
     setLoading(true);
     const params: Record<string, unknown> = { wunschliste: true, limit: 200 };
     if (priority) params.prioritaet = priority;
+    if (sprache) params.sprache = sprache;
     cardApi.list(params).then((r) => setCards(r.data.items)).finally(() => setLoading(false));
-  }, [priority]);
+  }, [priority, sprache]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -119,6 +121,16 @@ export default function WishlistPage() {
             <option value="">{t.wishlist_all_priorities}</option>
             {(enums?.prioritaet ?? []).map((p) => (
               <option key={p} value={p}>{p === "Chase" ? `🔥 ${p}` : p}</option>
+            ))}
+          </select>
+          <select
+            value={sprache}
+            onChange={(e) => setSprache(e.target.value)}
+            className="bg-pokemon-card border border-gray-700 rounded px-2 py-1.5 text-white text-sm"
+          >
+            <option value="">{t.filter_language}: {t.filter_all}</option>
+            {(enums?.sprache ?? []).map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
           </select>
           <ViewToggle value={view} onChange={setView} />

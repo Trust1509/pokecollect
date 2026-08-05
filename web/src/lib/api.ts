@@ -471,6 +471,7 @@ export type ScanUsage = {
 
 export type CatalogItem = {
   card_id: string;
+  region?: string | null;   // "west" | "ja" | … (Regionsfilter)
   set_id: string | null;
   set_code: string | null;
   set_name: string | null;

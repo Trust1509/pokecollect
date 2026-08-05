@@ -6,6 +6,8 @@ tcgdex.get_sets/get_set gemockt.
 
 import asyncio
 
+from sqlalchemy import select
+
 from app.database import SessionLocal
 from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
@@ -62,6 +64,44 @@ def test_index_region_cards_tags_region(client, monkeypatch):
         assert rc == 1
     finally:
         _cleanup(db, "ZZM3-9", set_codes=("ZZM3",))
+        db.close()
+
+
+def test_index_region_does_not_overwrite_shared_card(client, monkeypatch):
+    """Sprachübergreifend geteiltes Set (gleiche card_id in West + JP, z. B. Neo):
+    die bereits als „west" katalogisierte Karte darf beim JP-Index NICHT auf
+    „ja" umgeschrieben werden — sonst ginge Name/Region der Westkarte verloren."""
+    async def fake_get_sets(region):
+        return ([TcgdexSetBrief(id="ZZNEO", name="Shared Neo",
+                                cardCount=CardCount(official=10, total=10))]
+                if region == "ja" else [])
+
+    async def fake_get_set(sid, lang):
+        if sid == "ZZNEO":
+            return {"serie": {"id": "neo"},
+                    "cards": [{"id": "ZZNEO-1", "name": "JA Name", "localId": "1"}]}
+        return {}
+
+    monkeypatch.setattr(tcgdex, "get_sets", fake_get_sets)
+    monkeypatch.setattr(tcgdex, "get_set", fake_get_set)
+
+    db = SessionLocal()
+    try:
+        _cleanup(db, "ZZNEO-1", set_codes=("ZZNEO",))
+        db.add(TcgdexCatalog(card_id="ZZNEO-1", region="west",
+                             name="Western Original", set_id="ZZNEO"))
+        db.commit()
+
+        existing = {r.card_id: r for r in db.scalars(select(TcgdexCatalog)).all()}
+        rc, _ = asyncio.run(catalog_svc._index_region_cards(db, "ja", existing))
+        db.commit()
+
+        row = db.get(TcgdexCatalog, "ZZNEO-1")
+        assert row.region == "west", "geteilte Karte darf nicht auf ja überschrieben werden"
+        assert row.name == "Western Original"
+        assert rc == 0     # nichts neu angelegt
+    finally:
+        _cleanup(db, "ZZNEO-1", set_codes=("ZZNEO",))
         db.close()
 
 
