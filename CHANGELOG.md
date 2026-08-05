@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.6.4] – 2026-07-28 (Japanische Karten im Katalog + Sprachfilter)
+
+### Neu
+- **Japanische Karten im Katalog:** Der Katalog enthält jetzt auch die
+  japanischen Karten (über 8.000) — durchsuchbar und per Stern auf die
+  Wunschliste / in Sammlungen übernehmbar, genau wie die westlichen.
+- **Regionsfilter im Katalog:** Neuer Filter **Alle / Westlich (EN/DE) /
+  Japanisch**; japanische Karten tragen ein kleines „JA"-Abzeichen. Der Aufbau
+  ist erweiterbar — weitere Regionen (Koreanisch, Chinesisch …) lassen sich
+  künftig ergänzen.
+- **Sprachfilter in der Wunschliste:** nach der tatsächlichen Kartensprache
+  (DE/EN/JP …). Die Pokédex-Hauptansicht hatte den Sprachfilter bereits.
+
+### ⚠️ Deploy-Hinweis
+- **Additive Migration** (neue Spalte `region` an `tcgdex_catalog`, Default
+  „west") — läuft automatisch beim Start. Die japanischen Karten erscheinen
+  nach dem nächsten **Katalog-Sync** (Cron oder „Katalog aktualisieren").
+
 ## [v1.6.3] – 2026-07-27 (Japanische Karten erkennen + Lupe, #33)
 
 ### Scan & Sets
