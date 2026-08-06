@@ -1,0 +1,34 @@
+# Dependabot (CI-Härtung, Best-Practice-Abgleich 2026-08, Owner-Freigabe E1).
+# Die EINZIGE tolerierte Bot-PR-Quelle im sonst PR-losen Trunk-Workflow —
+# Merge nur nach grünen Gates auf dem PR.
+#
+# WICHTIG, Merge-Ritual:
+# * npm-PRs: package-lock.json wird NUR im Node-Container erzeugen/geprüft
+#   (CLAUDE.md „Kein Node/npm lokal auf diesem PC" — der lokale npm-Wrapper
+#   schreibt inkompatible Locks). Nach dem Merge zur Sicherheit einmal
+#   `docker run --rm -v "$PWD/web":/w -w /w node:20-alpine npm install
+#   --package-lock-only` laufen lassen, bevor der nächste Release-Build läuft.
+#   Deshalb npm nur MONATLICH und gruppiert — wenig PRs, ein Ritual-Lauf.
+# * pip-PRs: kein Lock-Mechanismus (backend/requirements.txt ist die einzige
+#   Quelle) — direkt mergen, `scripts/gates.sh` prüft den echten Installations-
+#   pfad gegen Postgres.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # SHA-gepinnte Actions: Dependabot aktualisiert Pin UND Versions-Kommentar.
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+    groups:
+      npm-monatlich:
+        patterns: ["*"]
+    open-pull-requests-limit: 3
