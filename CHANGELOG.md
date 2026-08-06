@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.6.6] – 2026-08-06 (Angereichertes Katalog-Detail: Preise, Pokédex-Nr., Details)
+
+### Neu
+- **Reicheres Karten-Popup im Katalog / „Alle Karten":** Beim Öffnen einer Karte
+  erscheinen jetzt Pokédex-Nummer, Seltenheit, Kategorie, Illustrator, Varianten
+  und **aktuelle Preise** — Cardmarket € (Durchschnitt + Trend) und, wo verfügbar,
+  TCGplayer $. Die Daten kommen live von TCGdex, sodass auch noch nicht
+  angereicherte (frisch synchronisierte) Karten sofort vollständig aussehen.
+- Grundstein für die Preis-Anzeige im Katalog (Epic #41).
+
+### Hinweis
+- Bei japanischen Karten fehlt oft der TCGplayer-$-Preis (US-Markt trackt alte
+  JP-Sets kaum) und ein DE/EN-Kartenname (TCGdex führt JP-Karten separat) — die
+  Pokédex-Nummer identifiziert die Karte dann.
+
 ## [v1.6.5] – 2026-07-28 (Japanische Kartenbilder aus TCGplayer, Epic #41 Slice 1)
 
 ### Neu

@@ -80,6 +80,10 @@ class CardMarketPricing(BaseModel):
 class Pricing(BaseModel):
     model_config = {"extra": "ignore"}
     cardmarket: Optional[CardMarketPricing] = None
+    # tcgplayer ist nach Variante verschachtelt ({unit, updated, normal:{marketPrice…},
+    # reverse-holofoil:{…}}) und für viele JP-Karten leer — als Rohdict führen und
+    # in catalog.catalog_prices robust auslesen (Epic #41, Preis-Anzeige im Katalog).
+    tcgplayer: Optional[dict] = None
 
 
 class Variants(BaseModel):

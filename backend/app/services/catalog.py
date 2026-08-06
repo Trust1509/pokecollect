@@ -56,6 +56,33 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
     row.enriched = True
 
 
+def catalog_prices(pricing) -> dict:
+    """Repräsentative Preise aus TCGdex-Pricing für die Katalog-Detailanzeige:
+    Cardmarket € (avg/low/trend) + TCGplayer $ (marketPrice der Normal-Variante,
+    sonst der ersten Variante mit Marktpreis). Fehlende Werte → None (für viele
+    JP-Karten ist $ leer). Rein, netzfrei (Epic #41 Preis-Anzeige)."""
+    out = {"eur": None, "eur_low": None, "eur_trend": None, "usd": None, "updated": None}
+    if not pricing:
+        return out
+    cm = getattr(pricing, "cardmarket", None)
+    if cm:
+        # Holo-only-Karten führen avg/low/trend nicht (nur avg-holo/…) → darauf
+        # zurückfallen, sonst zeigt eine Holo-Karte trotz Preis kein € (Panel-Fund).
+        out["eur"] = cm.avg if cm.avg is not None else cm.avg_holo
+        out["eur_low"] = cm.low if cm.low is not None else cm.low_holo
+        out["eur_trend"] = cm.trend if cm.trend is not None else cm.trend_holo
+        out["updated"] = cm.updated
+    tp = getattr(pricing, "tcgplayer", None)
+    if isinstance(tp, dict):
+        chosen = tp.get("normal") if isinstance(tp.get("normal"), dict) else None
+        if not (chosen and chosen.get("marketPrice") is not None):
+            chosen = next((v for v in tp.values()
+                           if isinstance(v, dict) and v.get("marketPrice") is not None), None)
+        if chosen:
+            out["usd"] = chosen.get("marketPrice")
+    return out
+
+
 async def sync_catalog(db: Session) -> dict:
     """Katalog-Basis aus allen Set-Details (DE + EN) aufbauen/aktualisieren."""
     en_sets = await tcgdex.get_sets("en")

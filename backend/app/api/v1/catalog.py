@@ -14,8 +14,8 @@ from app.domain.pokedex import GEN_RANGES
 from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
-from app.schemas.catalog import CatalogAddRequest, CatalogItem, CatalogListResponse
-from app.services import catalog as catalog_svc
+from app.schemas.catalog import CatalogAddRequest, CatalogDetail, CatalogItem, CatalogListResponse
+from app.services import catalog as catalog_svc, tcgdex
 from app.services.set_sync import sync_sets
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -146,6 +146,49 @@ def list_illustrators(db: Session = Depends(get_db)):
         .order_by(TcgdexCatalog.illustrator)
     ).all()
     return [r for r in rows if r]
+
+
+@router.get("/{card_id}/detail", response_model=CatalogDetail)
+async def catalog_card_detail(card_id: str, db: Session = Depends(get_db)):
+    """Angereichertes Katalog-Detail fürs Popup: die gespeicherte Zeile plus ein
+    LIVE-Abruf bei TCGdex (Regionssprache) — füllt fehlende Felder (dex/rarity/
+    illustrator/kategorie/varianten) noch nicht angereicherter Karten und liefert
+    aktuelle Preise (€ Cardmarket + $ TCGplayer). Read-only, fehlertolerant: bei
+    TCGdex-Ausfall kommen die gespeicherten Felder ohne Preise zurück."""
+    row = db.get(TcgdexCatalog, card_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Karte nicht im Katalog")
+
+    detail = CatalogDetail.model_validate(row)
+    detail.owned = bool(db.scalar(select(PokemonCard.id).where(
+        PokemonCard.tcgdex_card_id == card_id, PokemonCard.besessen == True).limit(1)))  # noqa: E712
+    detail.in_pokedex = bool(db.scalar(select(PokemonCard.id).where(
+        PokemonCard.tcgdex_card_id == card_id, PokemonCard.im_pokedex == True).limit(1)))  # noqa: E712
+
+    try:
+        tc = await tcgdex.get_card(card_id, catalog_svc._catalog_lang(row.region))
+    except Exception:
+        tc = None  # externe Quelle darf das Popup nicht kippen
+    if tc:
+        # Fehlende (noch nicht angereicherte) Felder aus dem Live-Abruf auffüllen.
+        if detail.dex_id is None:
+            detail.dex_id = tc.dex_id
+        detail.rarity = detail.rarity or tc.rarity
+        detail.illustrator = detail.illustrator or tc.illustrator
+        detail.category = detail.category or tc.category
+        if tc.variants:
+            if detail.variants_normal is None:
+                detail.variants_normal = tc.variants.normal
+            if detail.variants_reverse is None:
+                detail.variants_reverse = tc.variants.reverse
+            if detail.variants_holo is None:
+                detail.variants_holo = tc.variants.holo
+            if detail.variants_firstedition is None:
+                detail.variants_firstedition = tc.variants.firstEdition
+        pr = catalog_svc.catalog_prices(tc.pricing)
+        detail.price_eur, detail.price_eur_low, detail.price_eur_trend = pr["eur"], pr["eur_low"], pr["eur_trend"]
+        detail.price_usd, detail.price_updated = pr["usd"], pr["updated"]
+    return detail
 
 
 @router.post("/{card_id}/wishlist")

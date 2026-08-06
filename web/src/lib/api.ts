@@ -517,8 +517,18 @@ const catalogAddBody = (opts: CatalogAddOpts) => ({
   erste_edition: opts.erste_edition ?? false,
 });
 
+export type CatalogDetail = CatalogItem & {
+  price_eur: number | null;        // Cardmarket-Durchschnitt (€)
+  price_eur_low: number | null;
+  price_eur_trend: number | null;
+  price_usd: number | null;        // TCGplayer-Marktpreis ($), bei vielen JP-Karten null
+  price_updated: string | null;
+};
+
 export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
+  detail: (cardId: string, opts?: { signal?: AbortSignal }) =>
+    api.get<CatalogDetail>(`/catalog/${encodeURIComponent(cardId)}/detail`, opts),
   meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
   sync: () => api.post<{ detail: string }>("/catalog/sync"),
   illustrators: () => api.get<string[]>("/catalog/illustrators"),

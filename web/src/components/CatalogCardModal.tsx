@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { CatalogItem, Collection, catalogApi } from "@/lib/api";
+import { CatalogItem, CatalogDetail, Collection, catalogApi } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useEnums } from "@/lib/useEnums";
 import { useSettings } from "@/lib/useSettings";
@@ -26,6 +26,9 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
   const [zustand, setZustand] = useState<string | null>(null);
   const [folierung, setFolierung] = useState<string | null>("Normal");
   const [ersteEdition, setErsteEdition] = useState(false);
+  // Angereichertes Detail beim Öffnen live von TCGdex holen (dex/rarity/illustrator/
+  // kategorie/varianten fehlender Karten + Preise €/$). Fehlertolerant.
+  const [detail, setDetail] = useState<CatalogDetail | null>(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -33,9 +36,34 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
     setZustand(settings.default_condition || null);
   }, [settings]);
 
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setDetail(null);  // Kartenwechsel: kein stale Detail der Vorkarte zeigen
+    catalogApi.detail(card.card_id, { signal: ctrl.signal })
+      .then((r) => setDetail(r.data))
+      .catch(() => {});           // Abbruch/Fehler still schlucken
+    return () => ctrl.abort();    // bricht beim Schließen/Wechsel auch den TCGdex-Abruf ab
+  }, [card.card_id]);
+
   const name = lang === "EN" && card.name_en ? card.name_en : (card.name ?? card.name_en ?? card.card_id);
   const done = onAdded ?? onClose;
   const opts = () => ({ sprache, zustand, folierung, erste_edition: ersteEdition });
+
+  // Live-Detail ist reicher (dex/rarity/illustrator/kategorie/varianten); card ist der Sofort-Fallback.
+  const d = detail ?? card;
+  const fmtEur = (n?: number | null) => (n != null ? `${n.toFixed(2).replace(".", ",")} €` : null);
+  const fmtUsd = (n?: number | null) => (n != null ? `$ ${n.toFixed(2)}` : null);
+  const variantsStr =
+    [d.variants_normal ? "Normal" : null, d.variants_reverse ? "Reverse" : null,
+     d.variants_holo ? "Holo" : null, d.variants_firstedition ? "1st Ed." : null]
+      .filter(Boolean).join(", ") || null;
+  const eurMain = detail?.price_eur ?? detail?.price_eur_trend ?? null;
+  const eurNode = eurMain != null ? (
+    <span>{fmtEur(eurMain)}
+      {detail?.price_eur != null && detail?.price_eur_trend != null && (
+        <span className="text-gray-400"> · Trend {fmtEur(detail.price_eur_trend)}</span>)}
+    </span>
+  ) : null;
 
   const wish = async () => {
     setBusy(true);
@@ -72,12 +100,16 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
             )}
           </div>
           <dl className="flex-1 text-sm space-y-1 min-w-0">
-            {row(t.field_set, card.set_name ? `${card.set_name} (${card.set_code})` : card.set_code)}
-            {row(t.field_card_nr, card.local_id)}
-            {row(t.field_pokedex_nr, card.dex_id ? `#${card.dex_id}` : null)}
-            {row(t.field_rarity, card.rarity)}
-            {row(t.catalog_illustrator, card.illustrator)}
-            {row(t.field_english_name, card.name_en)}
+            {row(t.field_set, d.set_name ? `${d.set_name} (${d.set_code})` : d.set_code)}
+            {row(t.field_card_nr, d.local_id)}
+            {row(t.field_pokedex_nr, d.dex_id ? `#${d.dex_id}` : null)}
+            {row(t.field_rarity, d.rarity)}
+            {row(t.field_category, d.category)}
+            {row(t.catalog_illustrator, d.illustrator)}
+            {row(t.field_english_name, d.name_en)}
+            {row(t.catalog_variants, variantsStr)}
+            {row(t.catalog_price_eur, eurNode)}
+            {row(t.catalog_price_usd, fmtUsd(detail?.price_usd))}
           </dl>
         </div>
 

@@ -27,6 +27,18 @@ class CatalogItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CatalogDetail(CatalogItem):
+    """Katalog-Karte + live von TCGdex geholte Zusatzinfos für das angereicherte
+    Detail-Popup: fehlende Felder (dex/rarity/illustrator/kategorie/varianten)
+    werden aus dem Live-Abruf aufgefüllt, dazu aktuelle Preise (Cardmarket € +
+    TCGplayer $, letzteres bei vielen JP-Karten leer)."""
+    price_eur: Optional[float] = None        # Cardmarket-Durchschnitt
+    price_eur_low: Optional[float] = None
+    price_eur_trend: Optional[float] = None
+    price_usd: Optional[float] = None        # TCGplayer-Marktpreis (repräsentativ)
+    price_updated: Optional[str] = None
+
+
 class CatalogListResponse(BaseModel):
     items: list[CatalogItem]
     total: int
