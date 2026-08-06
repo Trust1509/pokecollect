@@ -16,6 +16,7 @@ on:
 
 jobs:
   pip-audit:
+    timeout-minutes: 15
     name: Backend (pip-audit gegen requirements.txt)
     runs-on: ubuntu-latest
     steps:
@@ -29,6 +30,7 @@ jobs:
           pip-audit -r backend/requirements.txt --strict
 
   npm-audit:
+    timeout-minutes: 15
     name: Web (npm audit, high+)
     runs-on: ubuntu-latest
     defaults:
@@ -41,3 +43,78 @@ jobs:
           node-version: 20
       - name: npm audit (ab Schweregrad high)
         run: npm audit --audit-level=high
+
+  schemathesis:
+    timeout-minutes: 30
+    # Welle-2-Abgleich A4 (Owner-Freigabe 2026-08-06): fuzzt die Endpunkte aus
+    # dem OpenAPI-Schema (Hypothesis-basiert) — fängt die 500-statt-422-Klasse
+    # maschinell (null/leere Strings/Steuerzeichen/negative Beträge), die
+    # Bau-Agenten übersehen. Wochen-Job, KEIN Push-Gate: neue Fuzz-Funde werden
+    # wie Panel-Funde triagiert, nicht der Trunk blockiert. Erstlauf per
+    # workflow_dispatch → Befund-Welle ist planmäßig.
+    #
+    # GEGEN ECHTES POSTGRES (nicht SQLite wie andernorts): die Light-Migrations
+    # in app/main.py sind PostgreSQL-spezifisch (ADD COLUMN IF NOT EXISTS).
+    # Ausgehende Netz-Endpunkte (Katalog-Sync, Preis-Refresh, Scan) sind
+    # ausgeschlossen — Fuzzing prüft die EIGENE Eingabevalidierung, nicht
+    # TCGdex/TCGplayer mit Müll zu bewerfen (flaky + unhöflich).
+    # Check-Name: not_a_server_error (Schemathesis 4.x; „server_error" ist 3.x
+    # und wirft in 4.x „invalid choice" — real verifiziert 2026-08-06).
+    name: API-Fuzzing (Schemathesis gegen OpenAPI)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pokecollect
+          POSTGRES_PASSWORD: pokecollect
+          POSTGRES_DB: pokecollect_fuzz
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U pokecollect"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://pokecollect:pokecollect@localhost:5432/pokecollect_fuzz
+      JWT_SECRET: fuzz-secret
+      # bcrypt("teststand") — Start-Guard (Issue #1) verlangt ein Passwort.
+      APP_PASSWORD_HASH: '$2b$12$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G'
+      IMAGES_DIR: /tmp/fuzz-images
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5 (SHA-gepinnt)
+        with:
+          python-version: "3.12"
+      - name: App-Abhängigkeiten installieren
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Schemathesis in eigenem venv (keine Dep-Kollision mit der App)
+        # Die App pinnt fastapi/pydantic/httpx hart (==) — Schemathesis 4.x
+        # daneben zu installieren würde sie verbiegen. Eigenes venv, HTTP-Zugriff.
+        run: |
+          python -m venv /tmp/stenv
+          /tmp/stenv/bin/pip install --quiet "schemathesis>=4,<5"
+      - name: App starten (echtes Postgres, Wegwerf)
+        working-directory: backend
+        run: |
+          mkdir -p /tmp/fuzz-images
+          nohup python -m uvicorn app.main:app --port 8000 > /tmp/app.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8000/health && break
+            sleep 1
+          done
+      - name: Token holen + Fuzzing (nur 5xx zählen — 4xx sind gewollte Ablehnungen)
+        run: |
+          TOKEN=$(curl -sf -X POST http://localhost:8000/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"teststand"}' \
+            | python -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+          test -n "$TOKEN"
+          /tmp/stenv/bin/schemathesis run http://localhost:8000/openapi.json \
+            --header "Authorization: Bearer $TOKEN" \
+            --checks not_a_server_error \
+            --exclude-path-regex '(/catalog/sync|/prices/refresh|/scan)' \
+            --max-examples 20 \
+            --max-failures 30
