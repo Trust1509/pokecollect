@@ -2,6 +2,11 @@
 # Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc + build.
 name: CI
 
+# CI-Härtung (Best-Practice-Abgleich 2026-08, E1): Least Privilege — die Gates
+# lesen nur den Code, nichts schreibt zurück.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -29,8 +34,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5 (SHA-gepinnt)
         with:
           python-version: "3.12"
           cache: pip
@@ -56,8 +61,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4 (SHA-gepinnt)
         with:
           node-version: 20
           cache: npm

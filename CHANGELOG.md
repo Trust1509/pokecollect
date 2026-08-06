@@ -1,5 +1,26 @@
 # Changelog
 
+## [v1.6.5] – 2026-07-28 (Japanische Kartenbilder aus TCGplayer, Epic #41 Slice 1)
+
+### Neu
+- **Bilder für neue japanische Karten:** Wo TCGdex (noch) kein offizielles
+  Kartenbild hat — v. a. die brandneuen JP-Sets (M-Serie: M1S/M2/M3 …) — wird
+  das Bild jetzt aus **TCGplayer** ergänzt (kostenlos über tcgcsv.com, Zuordnung
+  über Set-Code + Nummer). Damit zeigen auch deine frisch gescannten JP-Karten
+  im Katalog ein Bild. Läuft automatisch beim **Katalog-Sync**.
+- Grundstein fürs Multi-Quellen-Merge-Epic (#41): je Karte wird die **Bildquelle**
+  vermerkt (für die spätere Quellen-Kennzeichnung).
+
+### Robustheit (intern, Panel-Review)
+- Exakte Host-Prüfung der TCGplayer-Bild-URL (kein Substring — Look-alike-Hosts
+  werden abgewiesen); mehrdeutige Set-Codes ergänzen kein Bild (statt raten);
+  atomares Setzen nur bei leerem Bildfeld; robuste Nummern-/Namensnormalisierung.
+
+### ⚠️ Deploy-Hinweis
+- **Additive Migration** (neue Spalte `image_source`). Die JP-Bilder erscheinen
+  nach dem nächsten Katalog-Sync (Cron oder „Katalog aktualisieren"). Externe
+  Quelle (TCGplayer/tcgcsv) — der Sync bleibt bei deren Ausfall stabil.
+
 ## [v1.6.4] – 2026-07-28 (Japanische Karten im Katalog + Sprachfilter)
 
 ### Neu

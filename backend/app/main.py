@@ -209,6 +209,8 @@ def _run_light_migrations():
         # Bestands-Katalogkarten sind westlich → Default „west".
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT 'west'",
         "CREATE INDEX IF NOT EXISTS ix_tcgdex_catalog_region ON tcgdex_catalog (region)",
+        # Epic #41: Bildquelle je Katalogkarte (tcgdex/tcgplayer) für JP-Fallback + Provenienz.
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS image_source TEXT",
     ]
     with engine.begin() as conn:
         for stmt in stmts:

@@ -14,14 +14,14 @@ import logging
 from typing import Optional
 
 from fastapi import BackgroundTasks
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
-from app.services import tcgdex
+from app.services import tcgcsv, tcgdex
 from app.services.card_creation import create_owned_card
 from app.services.collection_slots import next_free_position
 from app.services.scan.resolver import _map_rarity
@@ -133,6 +133,15 @@ async def sync_catalog(db: Session) -> dict:
         created += rc
         updated += ru
 
+    # Fehlende Regions-Bilder über TCGplayer ergänzen (Epic #41, Slice 1).
+    # Externe Quelle → fehlertolerant: ein Ausfall darf den Katalog-Sync nicht kippen.
+    for region in EXTRA_REGIONS:
+        try:
+            await fill_region_image_fallback(db, region)
+        except Exception as exc:  # noqa: BLE001 — Sync soll robust bleiben
+            db.rollback()  # Session nach DB-Fehler nicht im aborted-Zustand lassen
+            log.warning("Bild-Fallback %s übersprungen: %s", region, exc)
+
     log.info("Katalog-Sync: %d neu, %d aktualisiert (%d West-Sets + Regionen %s).",
              created, updated, len(set_ids), ",".join(EXTRA_REGIONS))
     return {"created": created, "updated": updated, "sets": len(set_ids)}
@@ -206,6 +215,95 @@ async def _index_region_cards(
                 row.image_url = tcgdex.image_url(image)
         db.commit()
     return created, updated
+
+
+async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
+    """
+    Ergänzt fehlende Kartenbilder einer Region (z. B. JP) über TCGplayer/tcgcsv
+    (Kat. 85) — für neue Sets, die TCGdex noch kein Bild führt (Epic #41, Slice 1).
+
+    Match: unser Set-Code ↔ TCGplayer-Gruppe (Code aus dem Gruppennamen) und
+    Kartennummer. Setzt image_url auf die TCGplayer-CDN-URL + image_source
+    ="tcgplayer" NUR wo bisher KEIN Bild steht — vorhandene TCGdex-Bilder bleiben
+    unangetastet. Fehlertolerant vom Aufrufer zu umschließen (externe Quelle).
+    """
+    missing = db.scalars(
+        select(TcgdexCatalog).where(
+            TcgdexCatalog.region == region,
+            TcgdexCatalog.image_url.is_(None),
+        )
+    ).all()
+    if not missing:
+        return {"filled": 0, "sets": 0}
+
+    by_set: dict[str, list[TcgdexCatalog]] = {}
+    for row in missing:
+        if row.set_code:
+            by_set.setdefault(row.set_code.upper(), []).append(row)
+    if not by_set:
+        return {"filled": 0, "sets": 0}
+
+    # TCGplayer-Gruppen der JP-Kategorie → {Set-Code: groupId}. Mehrdeutige Codes
+    # (zwei Gruppen, gleicher Code) werden verworfen — lieber KEIN Bild als eins
+    # aus dem falschen Set (#41).
+    groups = await tcgcsv.get_groups(tcgcsv.CATEGORY_POKEMON_JP)
+    code_to_group: dict[str, int] = {}
+    ambiguous: set[str] = set()
+    for g in groups:
+        code = tcgcsv.set_code_from_group(g.get("name"))
+        gid = g.get("groupId")
+        if not code or gid is None:
+            continue
+        if code in code_to_group and code_to_group[code] != gid:
+            ambiguous.add(code)
+        else:
+            code_to_group[code] = gid
+    for code in ambiguous:
+        code_to_group.pop(code, None)
+
+    filled = sets_done = 0
+    for code, rows in by_set.items():
+        gid = code_to_group.get(code)
+        if gid is None:
+            continue  # kein passendes TCGplayer-Set
+        products = await tcgcsv.get_products(tcgcsv.CATEGORY_POKEMON_JP, gid)
+        num_to_img: dict[str, str] = {}
+        for p in products:
+            num = tcgcsv.product_number(p)
+            img = tcgcsv.hires_image_url(p)
+            if num and img:
+                num_to_img.setdefault(num, img)
+        touched = False
+        for row in rows:
+            lid = row.local_id or ""
+            # isascii() zusätzlich zu isdigit(): „²".isdigit() ist True, aber
+            # int(„²") wirft — nur echte ASCII-Ziffern normalisieren.
+            key = str(int(lid)) if (lid.isascii() and lid.isdigit()) else lid
+            img = num_to_img.get(key)
+            if not img:
+                continue
+            # Atomar nur setzen, wenn noch KEIN Bild da ist (WHERE image_url IS
+            # NULL) — verhindert, dass ein zwischenzeitlich geschriebenes
+            # TCGdex-Bild überschrieben wird (Race zwischen SELECT und COMMIT).
+            res = db.execute(
+                update(TcgdexCatalog)
+                .where(
+                    TcgdexCatalog.card_id == row.card_id,
+                    TcgdexCatalog.image_url.is_(None),
+                )
+                .values(image_url=img, image_source="tcgplayer")
+                .execution_options(synchronize_session=False)
+            )
+            if res.rowcount:
+                filled += 1
+                touched = True
+        if touched:
+            db.commit()
+            sets_done += 1
+
+    log.info("Bild-Fallback %s: %d Bilder aus TCGplayer ergänzt (%d Sets).",
+             region, filled, sets_done)
+    return {"filled": filled, "sets": sets_done}
 
 
 def _catalog_lang(region: Optional[str]) -> str:

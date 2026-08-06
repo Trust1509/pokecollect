@@ -12,6 +12,7 @@ from app.database import SessionLocal
 from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.services import catalog as catalog_svc
+from app.services import tcgcsv
 from app.services import tcgdex
 from app.services.tcgdex import CardCount, TcgdexSetBrief
 
@@ -102,6 +103,88 @@ def test_index_region_does_not_overwrite_shared_card(client, monkeypatch):
         assert rc == 0     # nichts neu angelegt
     finally:
         _cleanup(db, "ZZNEO-1", set_codes=("ZZNEO",))
+        db.close()
+
+
+def test_fill_region_image_fallback(client, monkeypatch):
+    """JP-Bild-Fallback (Epic #41, Slice 1): bildlose JP-Karte bekommt die
+    TCGplayer-CDN-URL + image_source; eine Karte MIT TCGdex-Bild bleibt
+    unangetastet."""
+    async def fake_groups(cat):
+        return ([{"groupId": 999, "name": "ZZM3: Test Nihil"}]
+                if cat == tcgcsv.CATEGORY_POKEMON_JP else [])
+
+    async def fake_products(cat, gid):
+        if gid == 999:
+            return [{
+                "productId": 111,
+                "extendedData": [{"name": "Number", "value": "009/080"}],
+                "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/111_200w.jpg",
+            }]
+        return []
+
+    monkeypatch.setattr(tcgcsv, "get_groups", fake_groups)
+    monkeypatch.setattr(tcgcsv, "get_products", fake_products)
+
+    db = SessionLocal()
+    try:
+        _cleanup(db, "ZZM3-9-nofb", "ZZM3-9-has")
+        db.add(TcgdexCatalog(card_id="ZZM3-9-nofb", region="ja", set_code="ZZM3",
+                             local_id="009", name="Ohne Bild", image_url=None))
+        db.add(TcgdexCatalog(card_id="ZZM3-9-has", region="ja", set_code="ZZM3",
+                             local_id="009", name="Mit TCGdex-Bild",
+                             image_url="https://assets.tcgdex.net/ja/M/M3/9/high.webp"))
+        db.commit()
+
+        res = asyncio.run(catalog_svc.fill_region_image_fallback(db, "ja"))
+        db.commit()
+
+        nofb = db.get(TcgdexCatalog, "ZZM3-9-nofb")
+        assert nofb.image_url == "https://tcgplayer-cdn.tcgplayer.com/product/111_in_1000x1000.jpg"
+        assert nofb.image_source == "tcgplayer"
+
+        has = db.get(TcgdexCatalog, "ZZM3-9-has")
+        assert "assets.tcgdex.net" in has.image_url   # TCGdex-Bild unberührt
+        assert has.image_source is None
+        assert res["filled"] >= 1
+    finally:
+        _cleanup(db, "ZZM3-9-nofb", "ZZM3-9-has")
+        db.close()
+
+
+def test_fill_region_image_fallback_ambiguous_code(client, monkeypatch):
+    """Zwei TCGplayer-Gruppen mit demselben Set-Code sind mehrdeutig → es darf
+    KEIN Bild gesetzt werden (lieber keins als eins aus dem falschen Set)."""
+    async def fake_groups(cat):
+        return ([{"groupId": 1, "name": "ZZDUP: Erste"},
+                 {"groupId": 2, "name": "ZZDUP: Zweite"}]
+                if cat == tcgcsv.CATEGORY_POKEMON_JP else [])
+
+    async def fake_products(cat, gid):
+        return [{
+            "extendedData": [{"name": "Number", "value": "009/080"}],
+            "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/1_200w.jpg",
+        }]
+
+    monkeypatch.setattr(tcgcsv, "get_groups", fake_groups)
+    monkeypatch.setattr(tcgcsv, "get_products", fake_products)
+
+    db = SessionLocal()
+    try:
+        _cleanup(db, "ZZDUP-9")
+        db.add(TcgdexCatalog(card_id="ZZDUP-9", region="ja", set_code="ZZDUP",
+                             local_id="009", name="Mehrdeutig", image_url=None))
+        db.commit()
+
+        res = asyncio.run(catalog_svc.fill_region_image_fallback(db, "ja"))
+        db.commit()
+
+        row = db.get(TcgdexCatalog, "ZZDUP-9")
+        assert row.image_url is None       # mehrdeutig → kein Bild
+        assert row.image_source is None
+        assert res["filled"] == 0
+    finally:
+        _cleanup(db, "ZZDUP-9")
         db.close()
 
 

@@ -29,6 +29,9 @@ class TcgdexCatalog(Base):
     category = Column(Text, nullable=True)
     image = Column(Text, nullable=True)                 # Basis-URL
     image_url = Column(Text, nullable=True)             # high.webp
+    # Woher das Bild stammt: "tcgdex" (Standard) oder "tcgplayer" (JP-Fallback,
+    # Epic #41). Für die Quellen-Kennzeichnung in der Detailansicht (Slice 6).
+    image_source = Column(Text, nullable=True)
     variants_normal = Column(Boolean, nullable=True)
     variants_reverse = Column(Boolean, nullable=True)
     variants_holo = Column(Boolean, nullable=True)
