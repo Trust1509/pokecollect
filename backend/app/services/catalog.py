@@ -52,6 +52,7 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
     if not row.image and tc.image:
         row.image = tc.image
         row.image_url = tcgdex.image_url(tc.image)
+        row.image_source = None  # TCGdex übernimmt → evtl. „tcgplayer"-Fallback-Label räumen (#41)
     row.enriched = True
 
 
@@ -124,6 +125,7 @@ async def sync_catalog(db: Session) -> dict:
             if image:
                 row.image = image
                 row.image_url = tcgdex.image_url(image)
+                row.image_source = None  # TCGdex übernimmt → „tcgplayer"-Fallback-Label räumen (#41)
         db.commit()  # je Set committen (kleinere Transaktionen)
 
     # Nicht-westliche Regionen (JP …) additiv indizieren — eigene Karten.
@@ -213,6 +215,7 @@ async def _index_region_cards(
             if image:
                 row.image = image
                 row.image_url = tcgdex.image_url(image)
+                row.image_source = None  # TCGdex übernimmt → „tcgplayer"-Fallback-Label räumen (#41)
         db.commit()
     return created, updated
 
@@ -227,6 +230,14 @@ async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
     ="tcgplayer" NUR wo bisher KEIN Bild steht — vorhandene TCGdex-Bilder bleiben
     unangetastet. Fehlertolerant vom Aufrufer zu umschließen (externe Quelle).
     """
+    # TCGplayer-Kategorie je Region. NUR Regionen mit Mapping bekommen einen
+    # Fallback — sonst würde eine künftige Region (z. B. „ko") gegen JAPANISCHE
+    # Gruppen gematcht (Erweiterbarkeit, #41).
+    region_category = {"ja": tcgcsv.CATEGORY_POKEMON_JP}
+    category = region_category.get(region)
+    if category is None:
+        return {"filled": 0, "sets": 0}
+
     missing = db.scalars(
         select(TcgdexCatalog).where(
             TcgdexCatalog.region == region,
@@ -246,7 +257,7 @@ async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
     # TCGplayer-Gruppen der JP-Kategorie → {Set-Code: groupId}. Mehrdeutige Codes
     # (zwei Gruppen, gleicher Code) werden verworfen — lieber KEIN Bild als eins
     # aus dem falschen Set (#41).
-    groups = await tcgcsv.get_groups(tcgcsv.CATEGORY_POKEMON_JP)
+    groups = await tcgcsv.get_groups(category)
     code_to_group: dict[str, int] = {}
     ambiguous: set[str] = set()
     for g in groups:
@@ -266,7 +277,7 @@ async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
         gid = code_to_group.get(code)
         if gid is None:
             continue  # kein passendes TCGplayer-Set
-        products = await tcgcsv.get_products(tcgcsv.CATEGORY_POKEMON_JP, gid)
+        products = await tcgcsv.get_products(category, gid)
         num_to_img: dict[str, str] = {}
         for p in products:
             num = tcgcsv.product_number(p)

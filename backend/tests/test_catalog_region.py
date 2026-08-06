@@ -188,6 +188,49 @@ def test_fill_region_image_fallback_ambiguous_code(client, monkeypatch):
         db.close()
 
 
+def test_index_region_clears_stale_tcgplayer_source(client, monkeypatch):
+    """Cross-Run (Panel-Fund Blind-Erststimme): Karte hatte einen TCGplayer-
+    Fallback (image_source='tcgplayer', TCGdex-Basisbild image=NULL). Liefert
+    TCGdex später ein Bild, wird image_url auf TCGdex umgestellt UND das stale
+    'tcgplayer'-Label geräumt — sonst zeigt die Provenienz (Slice 6) falsch."""
+    async def fake_get_sets(region):
+        return ([TcgdexSetBrief(id="ZZTP", name="TP Set",
+                                cardCount=CardCount(official=10, total=10))]
+                if region == "ja" else [])
+
+    async def fake_get_set(sid, lang):
+        if sid == "ZZTP":
+            return {"serie": {"id": "M"}, "cards": [
+                {"id": "ZZTP-9", "name": "JA Name", "localId": "009",
+                 "image": "https://assets.tcgdex.net/ja/M/ZZTP/9"},
+            ]}
+        return {}
+
+    monkeypatch.setattr(tcgdex, "get_sets", fake_get_sets)
+    monkeypatch.setattr(tcgdex, "get_set", fake_get_set)
+
+    db = SessionLocal()
+    try:
+        _cleanup(db, "ZZTP-9", set_codes=("ZZTP",))
+        db.add(PokemonSet(code="ZZTP", set_id="ZZTP", name="TP Set"))
+        db.add(TcgdexCatalog(
+            card_id="ZZTP-9", region="ja", set_id="ZZTP", image=None,
+            image_url="https://tcgplayer-cdn.tcgplayer.com/product/1_in_1000x1000.jpg",
+            image_source="tcgplayer"))
+        db.commit()
+
+        existing = {r.card_id: r for r in db.scalars(select(TcgdexCatalog)).all()}
+        asyncio.run(catalog_svc._index_region_cards(db, "ja", existing))
+        db.commit()
+
+        row = db.get(TcgdexCatalog, "ZZTP-9")
+        assert "assets.tcgdex.net" in row.image_url   # TCGdex übernimmt
+        assert row.image_source is None               # stale 'tcgplayer' geräumt
+    finally:
+        _cleanup(db, "ZZTP-9", set_codes=("ZZTP",))
+        db.close()
+
+
 def test_catalog_region_filter(client):
     db = SessionLocal()
     try:
