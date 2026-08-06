@@ -125,3 +125,23 @@ def hires_image_url(product: dict) -> Optional[str]:
 def is_card_product(product: dict) -> bool:
     """Kartenprodukt (hat eine Sammelnummer) vs. Sealed (keine)."""
     return product_number(product) is not None
+
+
+async def get_prices(category: int, group_id: int, *, sleep=asyncio.sleep) -> list[dict]:
+    """Preis-Sätze einer Gruppe: {productId, subTypeName, marketPrice, lowPrice, …}.
+    Ein Produkt kann mehrere Sätze haben (Normal / 1st Edition / Holofoil …)."""
+    return _results(await _get_json(f"{category}/{group_id}/prices", sleep=sleep))
+
+
+def market_usd_for(prices: list[dict], product_id: int) -> Optional[float]:
+    """Repräsentativer TCGplayer-Marktpreis ($) eines Produkts aus den Preissätzen
+    seiner Gruppe: bevorzugt „Normal", sonst der erste Satz mit marketPrice
+    (JP-Karten sind oft nur als „1st Edition" gelistet). None, wenn kein Preis."""
+    if product_id is None:
+        return None  # sonst würde ein Preissatz ohne productId (== None) matchen
+    rows = [p for p in prices
+            if p.get("productId") == product_id and p.get("marketPrice") is not None]
+    if not rows:
+        return None
+    norm = next((p for p in rows if p.get("subTypeName") == "Normal"), None)
+    return (norm or rows[0]).get("marketPrice")

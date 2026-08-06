@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useEnums } from "@/lib/useEnums";
 import { useSettings } from "@/lib/useSettings";
 import { SelectField } from "@/components/CardFormFields";
+import { fetchPokemonNames, PokemonNames } from "@/lib/pokedex";
 
 type Props = {
   card: CatalogItem;
@@ -29,6 +30,9 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
   // Angereichertes Detail beim Öffnen live von TCGdex holen (dex/rarity/illustrator/
   // kategorie/varianten fehlender Karten + Preise €/$). Fehlertolerant.
   const [detail, setDetail] = useState<CatalogDetail | null>(null);
+  // Pokémon-Artname (DE/EN) aus der Pokédex-Nr. — identifiziert auch JP-Karten,
+  // die keinen DE/EN-Kartennamen haben (PokéAPI, gecacht).
+  const [species, setSpecies] = useState<PokemonNames | null>(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -44,6 +48,14 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
       .catch(() => {});           // Abbruch/Fehler still schlucken
     return () => ctrl.abort();    // bricht beim Schließen/Wechsel auch den TCGdex-Abruf ab
   }, [card.card_id]);
+
+  useEffect(() => {
+    const dexId = detail?.dex_id ?? card.dex_id;
+    let alive = true;
+    setSpecies(null);
+    if (dexId) fetchPokemonNames(dexId).then((n) => { if (alive) setSpecies(n); });
+    return () => { alive = false; };
+  }, [detail?.dex_id, card.dex_id]);
 
   const name = lang === "EN" && card.name_en ? card.name_en : (card.name ?? card.name_en ?? card.card_id);
   const done = onAdded ?? onClose;
@@ -64,6 +76,18 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
         <span className="text-gray-400"> · Trend {fmtEur(detail.price_eur_trend)}</span>)}
     </span>
   ) : null;
+  const fmtDate = (iso?: string | null) => {
+    if (!iso) return null;
+    const dt = new Date(iso);
+    return isNaN(dt.getTime()) ? null : dt.toLocaleDateString(lang === "EN" ? "en-GB" : "de-DE");
+  };
+  const withStand = (val: React.ReactNode, iso?: string | null) => {
+    const s = fmtDate(iso);
+    return val != null
+      ? <span>{val}{s && <span className="text-gray-500 text-xs"> · {t.catalog_price_asof} {s}</span>}</span>
+      : null;
+  };
+  const speciesStr = species ? `${species.de} / ${species.en}` : null;
 
   const wish = async () => {
     setBusy(true);
@@ -103,13 +127,14 @@ export default function CatalogCardModal({ card, collections, onClose, onAdded }
             {row(t.field_set, d.set_name ? `${d.set_name} (${d.set_code})` : d.set_code)}
             {row(t.field_card_nr, d.local_id)}
             {row(t.field_pokedex_nr, d.dex_id ? `#${d.dex_id}` : null)}
+            {row(t.catalog_species, speciesStr)}
             {row(t.field_rarity, d.rarity)}
             {row(t.field_category, d.category)}
             {row(t.catalog_illustrator, d.illustrator)}
             {row(t.field_english_name, d.name_en)}
             {row(t.catalog_variants, variantsStr)}
-            {row(t.catalog_price_eur, eurNode)}
-            {row(t.catalog_price_usd, fmtUsd(detail?.price_usd))}
+            {row(t.catalog_price_eur, withStand(eurNode, detail?.price_eur_updated))}
+            {row(t.catalog_price_usd, withStand(fmtUsd(detail?.price_usd), detail?.price_usd_updated))}
           </dl>
         </div>
 

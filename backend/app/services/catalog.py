@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import BackgroundTasks
@@ -54,6 +55,16 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
         row.image_url = tcgdex.image_url(tc.image)
         row.image_source = None  # TCGdex übernimmt → evtl. „tcgplayer"-Fallback-Label räumen (#41)
     row.enriched = True
+    # Preise lokal cachen (Epic #41 #45): € Cardmarket (+ Holo-Fallback) für alle,
+    # $ TCGplayer für westliche Karten (bei JP ist tcgplayer leer → der aus TCGCSV
+    # gecachte $-Wert bleibt unangetastet). Zeitstempel je Währung.
+    pr = catalog_prices(tc.pricing)
+    if pr["eur"] is not None:
+        row.price_eur = pr["eur"]
+        row.price_eur_updated = pr["eur_updated"]
+    if pr["usd"] is not None:
+        row.price_usd = pr["usd"]
+        row.price_usd_updated = pr["usd_updated"]
 
 
 def catalog_prices(pricing) -> dict:
@@ -61,7 +72,8 @@ def catalog_prices(pricing) -> dict:
     Cardmarket € (avg/low/trend) + TCGplayer $ (marketPrice der Normal-Variante,
     sonst der ersten Variante mit Marktpreis). Fehlende Werte → None (für viele
     JP-Karten ist $ leer). Rein, netzfrei (Epic #41 Preis-Anzeige)."""
-    out = {"eur": None, "eur_low": None, "eur_trend": None, "usd": None, "updated": None}
+    out = {"eur": None, "eur_low": None, "eur_trend": None, "eur_updated": None,
+           "usd": None, "usd_updated": None}
     if not pricing:
         return out
     cm = getattr(pricing, "cardmarket", None)
@@ -71,7 +83,7 @@ def catalog_prices(pricing) -> dict:
         out["eur"] = cm.avg if cm.avg is not None else cm.avg_holo
         out["eur_low"] = cm.low if cm.low is not None else cm.low_holo
         out["eur_trend"] = cm.trend if cm.trend is not None else cm.trend_holo
-        out["updated"] = cm.updated
+        out["eur_updated"] = cm.updated
     tp = getattr(pricing, "tcgplayer", None)
     if isinstance(tp, dict):
         chosen = tp.get("normal") if isinstance(tp.get("normal"), dict) else None
@@ -80,6 +92,7 @@ def catalog_prices(pricing) -> dict:
                            if isinstance(v, dict) and v.get("marketPrice") is not None), None)
         if chosen:
             out["usd"] = chosen.get("marketPrice")
+            out["usd_updated"] = tp.get("updated")
     return out
 
 
@@ -166,7 +179,7 @@ async def sync_catalog(db: Session) -> dict:
     # Externe Quelle → fehlertolerant: ein Ausfall darf den Katalog-Sync nicht kippen.
     for region in EXTRA_REGIONS:
         try:
-            await fill_region_image_fallback(db, region)
+            await fill_region_from_tcgplayer(db, region)
         except Exception as exc:  # noqa: BLE001 — Sync soll robust bleiben
             db.rollback()  # Session nach DB-Fehler nicht im aborted-Zustand lassen
             log.warning("Bild-Fallback %s übersprungen: %s", region, exc)
@@ -247,43 +260,38 @@ async def _index_region_cards(
     return created, updated
 
 
-async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
+async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
     """
-    Ergänzt fehlende Kartenbilder einer Region (z. B. JP) über TCGplayer/tcgcsv
-    (Kat. 85) — für neue Sets, die TCGdex noch kein Bild führt (Epic #41, Slice 1).
-
-    Match: unser Set-Code ↔ TCGplayer-Gruppe (Code aus dem Gruppennamen) und
-    Kartennummer. Setzt image_url auf die TCGplayer-CDN-URL + image_source
-    ="tcgplayer" NUR wo bisher KEIN Bild steht — vorhandene TCGdex-Bilder bleiben
-    unangetastet. Fehlertolerant vom Aufrufer zu umschließen (externe Quelle).
+    Übernimmt für eine Region (z. B. JP) Daten aus TCGplayer/tcgcsv (Kat. 85):
+    fehlendes Kartenbild (nur wo keins steht), fehlenden englischen Namen
+    (TCGplayer benennt JP-Karten englisch) und den $-Marktpreis (täglich
+    aufgefrischt). Match: Set-Code ↔ TCGplayer-Gruppe + Kartennummer.
+    Fehlertolerant vom Aufrufer zu umschließen (externe Quelle).
+    (Epic #41: Slice 1 = Bilder, #45 = Preise/Namen.)
     """
-    # TCGplayer-Kategorie je Region. NUR Regionen mit Mapping bekommen einen
-    # Fallback — sonst würde eine künftige Region (z. B. „ko") gegen JAPANISCHE
-    # Gruppen gematcht (Erweiterbarkeit, #41).
+    # TCGplayer-Kategorie je Region. NUR Regionen mit Mapping werden verarbeitet —
+    # sonst würde eine künftige Region (z. B. „ko") gegen JAPANISCHE Gruppen
+    # gematcht (Erweiterbarkeit, #41).
     region_category = {"ja": tcgcsv.CATEGORY_POKEMON_JP}
     category = region_category.get(region)
     if category is None:
-        return {"filled": 0, "sets": 0}
+        return {"images": 0, "prices": 0, "sets": 0}
 
-    missing = db.scalars(
-        select(TcgdexCatalog).where(
-            TcgdexCatalog.region == region,
-            TcgdexCatalog.image_url.is_(None),
-        )
+    # ALLE Region-Karten (nicht nur bildlose): Preise frischen wir täglich auf,
+    # den EN-Namen füllen wir einmalig, das Bild nur wo keins steht.
+    rows_all = db.scalars(
+        select(TcgdexCatalog).where(TcgdexCatalog.region == region)
     ).all()
-    if not missing:
-        return {"filled": 0, "sets": 0}
-
     by_set: dict[str, list[TcgdexCatalog]] = {}
-    for row in missing:
+    for row in rows_all:
         if row.set_code:
             by_set.setdefault(row.set_code.upper(), []).append(row)
     if not by_set:
-        return {"filled": 0, "sets": 0}
+        return {"images": 0, "prices": 0, "sets": 0}
 
     # TCGplayer-Gruppen der JP-Kategorie → {Set-Code: groupId}. Mehrdeutige Codes
-    # (zwei Gruppen, gleicher Code) werden verworfen — lieber KEIN Bild als eins
-    # aus dem falschen Set (#41).
+    # (zwei Gruppen, gleicher Code) werden verworfen — lieber nichts als das
+    # falsche Set (#41).
     groups = await tcgcsv.get_groups(category)
     code_to_group: dict[str, int] = {}
     ambiguous: set[str] = set()
@@ -299,49 +307,71 @@ async def fill_region_image_fallback(db: Session, region: str = "ja") -> dict:
     for code in ambiguous:
         code_to_group.pop(code, None)
 
-    filled = sets_done = 0
+    # Timezone-aware UTC („+00:00") — sonst liest JS den Zeitstempel als Lokalzeit
+    # und der angezeigte „Stand" kann um einen Tag danebenliegen (Panel-Fund).
+    stamp = datetime.now(timezone.utc).isoformat()
+    images = prices = sets_done = 0
     for code, rows in by_set.items():
         gid = code_to_group.get(code)
         if gid is None:
             continue  # kein passendes TCGplayer-Set
         products = await tcgcsv.get_products(category, gid)
-        num_to_img: dict[str, str] = {}
+        num_to_product: dict[str, dict] = {}
         for p in products:
             num = tcgcsv.product_number(p)
-            img = tcgcsv.hires_image_url(p)
-            if num and img:
-                num_to_img.setdefault(num, img)
+            if num:
+                num_to_product.setdefault(num, p)
+        price_rows = await tcgcsv.get_prices(category, gid)
         touched = False
         for row in rows:
             lid = row.local_id or ""
             # isascii() zusätzlich zu isdigit(): „²".isdigit() ist True, aber
             # int(„²") wirft — nur echte ASCII-Ziffern normalisieren.
             key = str(int(lid)) if (lid.isascii() and lid.isdigit()) else lid
-            img = num_to_img.get(key)
-            if not img:
+            p = num_to_product.get(key)
+            if not p:
                 continue
-            # Atomar nur setzen, wenn noch KEIN Bild da ist (WHERE image_url IS
-            # NULL) — verhindert, dass ein zwischenzeitlich geschriebenes
-            # TCGdex-Bild überschrieben wird (Race zwischen SELECT und COMMIT).
-            res = db.execute(
-                update(TcgdexCatalog)
-                .where(
-                    TcgdexCatalog.card_id == row.card_id,
-                    TcgdexCatalog.image_url.is_(None),
+            # Bild: atomar NUR wo noch keins steht (Race-Schutz gegen ein
+            # zwischenzeitlich geschriebenes TCGdex-Bild, #41 Slice 1).
+            img = tcgcsv.hires_image_url(p)
+            if img:
+                res = db.execute(
+                    update(TcgdexCatalog)
+                    .where(TcgdexCatalog.card_id == row.card_id,
+                           TcgdexCatalog.image_url.is_(None))
+                    .values(image_url=img, image_source="tcgplayer")
+                    .execution_options(synchronize_session=False)
                 )
-                .values(image_url=img, image_source="tcgplayer")
-                .execution_options(synchronize_session=False)
-            )
-            if res.rowcount:
-                filled += 1
+                if res.rowcount:
+                    images += 1
+                    touched = True
+            # EN-Name (nur falls fehlend, via COALESCE) + $-Marktpreis (täglich
+            # auffrischen). Ein atomarer UPDATE je Karte.
+            usd = tcgcsv.market_usd_for(price_rows, p.get("productId"))
+            name = p.get("name")
+            vals: dict = {}
+            if isinstance(name, str) and name.strip():
+                vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name.strip())
+            if usd is not None:
+                vals["price_usd"] = usd
+                vals["price_usd_updated"] = stamp
+            if vals:
+                db.execute(
+                    update(TcgdexCatalog)
+                    .where(TcgdexCatalog.card_id == row.card_id)
+                    .values(**vals)
+                    .execution_options(synchronize_session=False)
+                )
+                if "price_usd" in vals:
+                    prices += 1
                 touched = True
         if touched:
             db.commit()
             sets_done += 1
 
-    log.info("Bild-Fallback %s: %d Bilder aus TCGplayer ergänzt (%d Sets).",
-             region, filled, sets_done)
-    return {"filled": filled, "sets": sets_done}
+    log.info("TCGplayer-Übernahme %s: %d Bilder, %d Preise (%d Sets).",
+             region, images, prices, sets_done)
+    return {"images": images, "prices": prices, "sets": sets_done}
 
 
 def _catalog_lang(region: Optional[str]) -> str:

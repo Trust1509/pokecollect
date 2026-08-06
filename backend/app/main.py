@@ -211,6 +211,11 @@ def _run_light_migrations():
         "CREATE INDEX IF NOT EXISTS ix_tcgdex_catalog_region ON tcgdex_catalog (region)",
         # Epic #41: Bildquelle je Katalogkarte (tcgdex/tcgplayer) für JP-Fallback + Provenienz.
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS image_source TEXT",
+        # Epic #41 #45: lokal gecachte Preise €/$ + Datenstand je Währung.
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur NUMERIC(10,2)",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd NUMERIC(10,2)",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur_updated TEXT",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_updated TEXT",
     ]
     with engine.begin() as conn:
         for stmt in stmts:

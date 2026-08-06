@@ -32,11 +32,12 @@ class CatalogDetail(CatalogItem):
     Detail-Popup: fehlende Felder (dex/rarity/illustrator/kategorie/varianten)
     werden aus dem Live-Abruf aufgefüllt, dazu aktuelle Preise (Cardmarket € +
     TCGplayer $, letzteres bei vielen JP-Karten leer)."""
-    price_eur: Optional[float] = None        # Cardmarket-Durchschnitt
-    price_eur_low: Optional[float] = None
-    price_eur_trend: Optional[float] = None
-    price_usd: Optional[float] = None        # TCGplayer-Marktpreis (repräsentativ)
-    price_updated: Optional[str] = None
+    price_eur: Optional[float] = None        # € Cardmarket — live oder gecacht
+    price_eur_low: Optional[float] = None    # nur aus Live-Abruf
+    price_eur_trend: Optional[float] = None  # nur aus Live-Abruf
+    price_eur_updated: Optional[str] = None  # Datenstand €
+    price_usd: Optional[float] = None        # $ TCGplayer — West live, JP gecacht (TCGCSV)
+    price_usd_updated: Optional[str] = None  # Datenstand $
 
 
 class CatalogListResponse(BaseModel):

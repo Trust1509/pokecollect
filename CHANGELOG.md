@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.6.7] – 2026-08-07 (JP-Daten vervollständigt: $-Preise, EN-Name, Artname + Datenstand)
+
+### Neu
+- **Zweite Quelle füllt die JP-Lücken:** Für japanische Karten, denen TCGdex
+  Preise/Namen schuldig bleibt, ziehen wir sie jetzt aus **TCGplayer/TCGCSV**:
+  - **$-Marktpreis** (TCGplayer) — bei JP-Karten führt TCGdex kein $, TCGCSV schon.
+  - **Englischer Kartenname** (TCGplayer benennt JP-Karten englisch).
+- **Pokémon-Artname (DE/EN) aus der Pokédex-Nr.** (über PokéAPI) — identifiziert
+  auch eine JP-Karte in deiner Sprache („Fiffyen / Poochyena"), wenn es keinen
+  DE/EN-*Karten*namen gibt.
+- **Preise lokal gecacht** (neue Katalog-Spalten, im täglichen Sync gefüllt: €
+  Cardmarket + $ TCGplayer/West aus TCGdex, $ JP aus TCGCSV) mit **Datenstand
+  („Stand: …")** je Währung. Das Popup zeigt gecachte Werte schnell; ein frischer
+  €-Live-Abruf überschreibt sie beim Öffnen.
+
+### Deploy-Hinweis
+- **Additive Migration** (neue Preis-Spalten). Preise/EN-Namen der JP-Karten
+  erscheinen nach dem nächsten **Katalog-Sync** (Cron 04:00 oder „Katalog jetzt
+  synchronisieren"); der Artname kommt sofort beim Öffnen (PokéAPI).
+
 ## [v1.6.6] – 2026-08-06 (Angereichertes Katalog-Detail: Preise, Pokédex-Nr., Details)
 
 ### Neu

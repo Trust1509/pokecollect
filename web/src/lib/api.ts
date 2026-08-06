@@ -518,11 +518,12 @@ const catalogAddBody = (opts: CatalogAddOpts) => ({
 });
 
 export type CatalogDetail = CatalogItem & {
-  price_eur: number | null;        // Cardmarket-Durchschnitt (€)
+  price_eur: number | null;        // € Cardmarket (live oder gecacht)
   price_eur_low: number | null;
   price_eur_trend: number | null;
-  price_usd: number | null;        // TCGplayer-Marktpreis ($), bei vielen JP-Karten null
-  price_updated: string | null;
+  price_eur_updated: string | null;  // Datenstand €
+  price_usd: number | null;        // $ TCGplayer (West live, JP gecacht via TCGCSV)
+  price_usd_updated: string | null;  // Datenstand $
 };
 
 export const catalogApi = {

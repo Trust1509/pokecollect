@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, Text
+from sqlalchemy import Boolean, Column, Integer, Numeric, Text
 
 from app.database import Base
 
@@ -32,6 +32,13 @@ class TcgdexCatalog(Base):
     # Woher das Bild stammt: "tcgdex" (Standard) oder "tcgplayer" (JP-Fallback,
     # Epic #41). Für die Quellen-Kennzeichnung in der Detailansicht (Slice 6).
     image_source = Column(Text, nullable=True)
+    # Lokal gecachte Preise (Epic #41 #45), im täglichen Sync gefüllt: € aus
+    # Cardmarket (TCGdex), $ aus TCGdex (West) bzw. TCGCSV/TCGplayer (JP). Der
+    # *_updated-Zeitstempel (ISO-String) zeigt den Datenstand je Währung.
+    price_eur = Column(Numeric(10, 2), nullable=True)
+    price_usd = Column(Numeric(10, 2), nullable=True)
+    price_eur_updated = Column(Text, nullable=True)
+    price_usd_updated = Column(Text, nullable=True)
     variants_normal = Column(Boolean, nullable=True)
     variants_reverse = Column(Boolean, nullable=True)
     variants_holo = Column(Boolean, nullable=True)

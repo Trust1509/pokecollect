@@ -185,9 +185,18 @@ async def catalog_card_detail(card_id: str, db: Session = Depends(get_db)):
                 detail.variants_holo = tc.variants.holo
             if detail.variants_firstedition is None:
                 detail.variants_firstedition = tc.variants.firstEdition
+        # „Beides": model_validate hat oben die GECACHTEN Preise + Zeitstempel
+        # gesetzt; ein frischer Live-€ überschreibt sie (mit low/trend). Für $ hat
+        # der Live-Abruf bei JP-Karten None → der aus TCGCSV gecachte $ bleibt.
         pr = catalog_svc.catalog_prices(tc.pricing)
-        detail.price_eur, detail.price_eur_low, detail.price_eur_trend = pr["eur"], pr["eur_low"], pr["eur_trend"]
-        detail.price_usd, detail.price_updated = pr["usd"], pr["updated"]
+        if pr["eur"] is not None:
+            detail.price_eur = pr["eur"]
+            detail.price_eur_low = pr["eur_low"]
+            detail.price_eur_trend = pr["eur_trend"]
+            detail.price_eur_updated = pr["eur_updated"]
+        if pr["usd"] is not None:
+            detail.price_usd = pr["usd"]
+            detail.price_usd_updated = pr["usd_updated"]
     return detail
 
 
