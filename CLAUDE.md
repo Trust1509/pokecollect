@@ -43,7 +43,19 @@ passende ADRs unter `docs/adr/`.
   (`docker-compose.test.yml`), Web http://localhost:3021, API http://localhost:3020.
   `scripts/teststand.sh up` — für Browser-Verifikation vor jedem Release.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) läuft bei jedem Push auf
-  main: Backend-pytest + Frontend tsc/build.
+  main: Backend-pytest + Frontend tsc/build. Actions sind SHA-gepinnt, jeder
+  Workflow hat einen `permissions:`-Block (Least Privilege), Dependabot
+  (`.github/dependabot.yml`) ist die einzige tolerierte Bot-PR-Quelle (Merge nur
+  nach grünen Gates; npm nur monatlich+gruppiert wegen des Lock-Rituals).
+- **Wöchentlicher Security-Scan** (`.github/workflows/security-scan.yml`, Montag +
+  `workflow_dispatch`, **kein** Push-Gate): `pip-audit` + `npm audit` +
+  **Schemathesis**-API-Fuzzing (nur 5xx zählen, Check `not_a_server_error` in
+  Schemathesis 4.x; ausgehende Netz-Endpunkte ausgeschlossen). Bewusst
+  nicht-blockierend: ein fremdes Upstream-CVE oder eine Fuzz-Welle darf den
+  Trunk nicht blocken → Funde triagieren wie Panel-Funde.
+- **Kein Alembic → kein `alembic heads`-Gate / Migrations-Roundtrip** (das
+  Wagner-Muster): Schema-Änderungen sind additive Light-Migrations (Fallstrick 5),
+  der Rückweg ist Backup + altes Image, Alt-Downgrades sind nie begangener Pfad.
 - **Android:** ausgemustert (ADR-0002) — keine native App mehr; `android-dev`
   bleibt als Archiv-Branch.
 
@@ -72,7 +84,13 @@ passende ADRs unter `docs/adr/`.
    Spaltenänderungen als idempotente Light-Migrations in
    `backend/app/main.py::_run_light_migrations`
    (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`, additiv, nie destruktiv ohne
-   Owner-OK).
+   Owner-OK). **Expand-Contract ist Pflicht für Schema-Semantik-Änderungen**
+   (Welle-2-Abgleich 2026-08): erst erweitern (neue Spalte/neuer Wertebereich,
+   beide Formen lesbar, Alt-Zeilen bekommen einen Default — vgl. `region`
+   DEFAULT 'west'), Konsumenten umstellen, erst in einem SPÄTEREN Release
+   verengen/entfernen — nie Expand und Contract im selben Release. Bei
+   Semantik-/Typwechsel eines bestehenden Feldes alle Konsumenten auf Alt-Werte
+   absichern, sonst Prod-Crash beim ersten unpassenden Bestandswert.
 6. **SECURITY (seit Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein
    JWT (`require_auth` via `include_router`-dependencies); auth-frei sind nur
    `/auth/login`, `/health` und der `/images`-Mount. `GET /settings` liefert
@@ -80,6 +98,45 @@ passende ADRs unter `docs/adr/`.
    startet die App nicht (kein Default-Passwort mehr). Neue Router IMMER
    unter den Auth-Zwang in `api/v1/__init__.py` hängen; Secrets nie im
    Klartext ausgeben.
+
+## Multi-LLM-Arbeitsmodus (Review-Panel)
+
+Werkzeuge + Fallstricke: `C:\Users\manue\.claude\Immich\model-panel\README.md`.
+Zweck ist **Diversität im Urteil**, nicht Token-Ersparnis.
+
+1. **Subagenten-Tiering:** Read-only-Scans/Mechanik → `model: haiku`, Bau-Slices →
+   `sonnet`, Review/Verifikation → `opus`; bei Unsicherheit erben lassen.
+2. **Review-Panel nach jedem nicht-trivialen Slice — DREI Stimmen:**
+   1. **Claude-Reviewer (opus, empirisch — darf Sonden/Tests ausführen).**
+      **Seit 2026-08-06 als BLINDE Erststimme** (Welle-2-Abgleich A5,
+      Studienbefund Kontext-Bias): ein FRISCHER Reviewer-Subagent, der nur
+      Diff + Repo bekommt — NICHT den Bau-Brief/Bauer-Bericht. Der Hauptagent,
+      der den Bau orchestriert hat, läse sonst die Absicht statt des Codes und
+      übersähe Silent Bugs. Der Hauptagent arbitriert DANACH mit vollem Kontext.
+   2. **GPT über Codex-CLI** (`model-panel/codex.sh exec --sandbox read-only -c
+      'model_reasoning_effort="high"' "…"`; Login im Volume `codex-home`;
+      Strenge-Bias — findet Echtes, braucht Arbitrierung). Der GitHub-Connector
+      liest aus dem privaten Repo — Quellcode ist ok (PokéCollect ist
+      Single-User ohne Kunden-PII; anders als bei Wagner keine PII-Sperre nötig).
+   3. **DeepSeek V4 Pro als günstige Drittstimme** (Diff per stdin an
+      `python model-panel/ask-api.py --model deepseek/deepseek-v4-pro
+      --max-tokens 32768 --stdin-anhang "<Prüfauftrag>"`; irrt nur
+      Richtung zu-streng). Braucht OpenRouter-Guthaben (`model-panel/.env`);
+      bei 402/leer Panel auf zwei Stimmen und den Owner informieren.
+   **Arbitrierung (die wichtigste Regel):** Der Hauptagent REPRODUZIERT jeden
+   Blocker am Code / an der laufenden App, bevor er ihn übernimmt oder verwirft —
+   Prüfer-Konvergenz ersetzt keine Reproduktion, Mehrheit entscheidet nie allein.
+   Sonden-Falle: Erwartungswerte VOR der Sonde fixieren (eine Sonde kann ihre
+   eigenen Befunde erzeugen).
+   **Bauauftrags-Checkliste:** In jeden Bau-Prompt gehört „Wer ruft den geänderten
+   Code auf?" — Konsumenten der berührten Stellen (Frontend-Bodies,
+   Service-Aufrufer) ins Material.
+3. **Trivial-Slices** (reine Test-Infra, Doku, Typisierung ohne
+   Verhaltensänderung) nur Arbiter-Review, kein volles Panel.
+4. **Kein PreToolUse-Guardrail-Hook nötig** (anders als Wagners
+   `wagner_prod_readonly.py`): PokéCollect hat keinen eigenen MCP-Server und
+   keine schreibenden Prod-Tools, die ein Agent erreichen könnte — Deploy läuft
+   owner-seitig, SSH zum Server ist für Agenten geblockt.
 
 ## Agent skills
 
