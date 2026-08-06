@@ -20,7 +20,7 @@ jobs:
     name: Backend (pip-audit gegen requirements.txt)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v4 (SHA-gepinnt)
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5 (SHA-gepinnt)
         with:
           python-version: "3.12"
@@ -37,7 +37,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v4 (SHA-gepinnt)
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4 (SHA-gepinnt)
         with:
           node-version: 20
@@ -83,7 +83,7 @@ jobs:
       APP_PASSWORD_HASH: '$2b$12$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G'
       IMAGES_DIR: /tmp/fuzz-images
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v4 (SHA-gepinnt)
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5 (SHA-gepinnt)
         with:
           python-version: "3.12"
