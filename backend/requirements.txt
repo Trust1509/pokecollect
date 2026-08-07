@@ -8,7 +8,7 @@ python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 # passlib 1.7.4 ist mit bcrypt>=4.1 inkompatibel (Login/Passwortwechsel → 500);
 # ohne Pin zog pip bcrypt 5.x. Beim Wechsel auf bcrypt 5 auch passlib ersetzen.
-bcrypt==4.0.1
+bcrypt==5.0.0
 python-multipart==0.0.32
 httpx==0.27.0
 # Cardmarket-OAuth (optionaler Preis-Fallback)
