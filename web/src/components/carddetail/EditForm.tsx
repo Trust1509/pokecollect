@@ -1,5 +1,5 @@
 "use client";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Card, Enums, PokemonSet, cardApi } from "@/lib/api";
 import RarityBadge from "@/components/RarityBadge";
@@ -9,6 +9,7 @@ import { CardNrField, CurrencyField, DateField, PokedexNrField, SelectField, Tex
 import { useCardForm } from "@/lib/useCardForm";
 import { formatEur } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { fetchPokemonNames, PokemonNames } from "@/lib/pokedex";
 
 // Detail-/Edit-Spalte der Kartendetailseite (Issue #14): Anzeige aller Felder,
 // Edit-Modus über die gemeinsame Formular-Logik (CardFormFields/useCardForm,
@@ -33,6 +34,15 @@ export default function EditForm({
 }: Props) {
   const { t } = useI18n();
   const [editing, setEditing] = useState(false);
+  // Pokémon-Artname (DE/EN) aus der Pokédex-Nr. (PokéAPI, gecacht) — gibt auch
+  // JP-Karten ohne DE/EN-Kartennamen einen Identifikator, konsistent zum Katalog.
+  const [species, setSpecies] = useState<PokemonNames | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setSpecies(null);
+    if (card.pokedex_nr) fetchPokemonNames(card.pokedex_nr).then((n) => { if (alive) setSpecies(n); });
+    return () => { alive = false; };
+  }, [card.pokedex_nr]);
   // Gemeinsame Formular-Logik (Lookup, Validierung, Set-Auswahl) — Issue #5
   const {
     selectedSet, cardNrError, setCardNrError, nameLoading,
@@ -130,7 +140,7 @@ export default function EditForm({
             {card.erste_edition && <FirstEditionBadge className="align-middle" />}
           </h1>
           {card.pokedex_nr && (
-            <p className="text-gray-400">#{String(card.pokedex_nr).padStart(4, "0")} · {card.englischer_name ?? ""}</p>
+            <p className="text-gray-400">#{String(card.pokedex_nr).padStart(4, "0")} · {card.englischer_name || species?.en || ""}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -166,6 +176,12 @@ export default function EditForm({
           </div>
         )}
         {field("englischer_name", t.field_english_name)}
+        {species && (
+          <div key="species">
+            <dt className="text-gray-500 text-xs">{t.catalog_species}</dt>
+            <dd className="text-white">{species.de} / {species.en}</dd>
+          </div>
+        )}
 
         {/* Set/Edition: im Edit-Modus SetPicker, sonst normales Feld */}
         {editing ? (

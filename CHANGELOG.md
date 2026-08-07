@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.6.8] – 2026-08-07 (Artname auch in der Karten-Detailansicht)
+
+### Neu
+- **Pokémon-Artname (DE/EN) jetzt auch in der Detailansicht besessener Karten**
+  (Pokédex), nicht nur im Katalog-Popup: aus der Pokédex-Nummer über PokéAPI —
+  gibt auch japanischen Karten ohne DE/EN-Kartennamen einen Identifikator
+  (z. B. „Voltenso / Manectric"). Der Kopf zeigt bei fehlendem englischen
+  Kartennamen ersatzweise den englischen Artnamen.
+
 ## [v1.6.7] – 2026-08-07 (JP-Daten vervollständigt: $-Preise, EN-Name, Artname + Datenstand)
 
 ### Neu
