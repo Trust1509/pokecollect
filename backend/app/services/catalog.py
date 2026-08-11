@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -175,14 +176,16 @@ async def sync_catalog(db: Session) -> dict:
         created += rc
         updated += ru
 
-    # Fehlende Regions-Bilder über TCGplayer ergänzen (Epic #41, Slice 1).
+    # TCGplayer-Übernahme (Epic #41): Regionen (JP: Bilder+EN-Namen+$) UND West
+    # ($-Tagesrefresh, #64 — sonst bliebe der West-$ auf dem Einmal-Enrich-Stand
+    # und fiele nach 30 Tagen aus dem $→€-Fallback der Preis-Kette).
     # Externe Quelle → fehlertolerant: ein Ausfall darf den Katalog-Sync nicht kippen.
-    for region in EXTRA_REGIONS:
+    for region in (*EXTRA_REGIONS, "west"):
         try:
             await fill_region_from_tcgplayer(db, region)
         except Exception as exc:  # noqa: BLE001 — Sync soll robust bleiben
             db.rollback()  # Session nach DB-Fehler nicht im aborted-Zustand lassen
-            log.warning("Bild-Fallback %s übersprungen: %s", region, exc)
+            log.warning("TCGplayer-Übernahme %s übersprungen: %s", region, exc)
 
     log.info("Katalog-Sync: %d neu, %d aktualisiert (%d West-Sets + Regionen %s).",
              created, updated, len(set_ids), ",".join(EXTRA_REGIONS))
@@ -262,115 +265,215 @@ async def _index_region_cards(
 
 async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
     """
-    Übernimmt für eine Region (z. B. JP) Daten aus TCGplayer/tcgcsv (Kat. 85):
-    fehlendes Kartenbild (nur wo keins steht), fehlenden englischen Namen
-    (TCGplayer benennt JP-Karten englisch) und den $-Marktpreis (täglich
-    aufgefrischt). Match: Set-Code ↔ TCGplayer-Gruppe + Kartennummer.
+    Übernimmt für eine Region Daten aus TCGplayer/tcgcsv: fehlendes Kartenbild
+    (nur wo keins steht), fehlenden englischen Namen und den $-Marktpreis
+    (täglich aufgefrischt). Match: Set-Code ↔ TCGplayer-Gruppe + Kartennummer.
+    - „ja"   (Kat. 85): Bilder + EN-Namen + $ — TCGdex lässt JP hier Lücken.
+    - „west" (Kat. 3, #64): faktisch nur der $-Tagesrefresh — Bild/EN-Name
+      existieren aus TCGdex und werden nicht überschrieben (IS NULL/COALESCE).
     Fehlertolerant vom Aufrufer zu umschließen (externe Quelle).
-    (Epic #41: Slice 1 = Bilder, #45 = Preise/Namen.)
+    (Epic #41: Slice 1 = Bilder, #45 = Preise/Namen, #64 = West-$.)
     """
     # TCGplayer-Kategorie je Region. NUR Regionen mit Mapping werden verarbeitet —
     # sonst würde eine künftige Region (z. B. „ko") gegen JAPANISCHE Gruppen
-    # gematcht (Erweiterbarkeit, #41).
-    region_category = {"ja": tcgcsv.CATEGORY_POKEMON_JP}
+    # gematcht (Erweiterbarkeit, #41). „west" = englische Kategorie 3 (#64:
+    # hält den West-$-Preis täglich frisch statt nur beim Einmal-Enrich).
+    region_category = {"ja": tcgcsv.CATEGORY_POKEMON_JP,
+                       "west": tcgcsv.CATEGORY_POKEMON}
     category = region_category.get(region)
     if category is None:
         return {"images": 0, "prices": 0, "sets": 0}
 
     # ALLE Region-Karten (nicht nur bildlose): Preise frischen wir täglich auf,
-    # den EN-Namen füllen wir einmalig, das Bild nur wo keins steht.
-    rows_all = db.scalars(
-        select(TcgdexCatalog).where(TcgdexCatalog.region == region)
+    # den EN-Namen füllen wir einmalig, das Bild nur wo keins steht. Bewusst
+    # TUPEL statt ORM-Objekte: nach jedem Set-Commit würden ~25k gemanagte
+    # Objekte expiren und jeder Attributzugriff ein Einzel-SELECT auslösen
+    # (Panel-Fund N+1); die Updates unten laufen ohnehin als atomare UPDATEs.
+    rows_all = db.execute(
+        select(TcgdexCatalog.card_id, TcgdexCatalog.set_code,
+               TcgdexCatalog.set_id, TcgdexCatalog.local_id)
+        .where(TcgdexCatalog.region == region)
     ).all()
-    by_set: dict[str, list[TcgdexCatalog]] = {}
-    for row in rows_all:
-        if row.set_code:
-            by_set.setdefault(row.set_code.upper(), []).append(row)
+    by_set: dict[tuple[Optional[str], Optional[str]], list[tuple[str, Optional[str]]]] = {}
+    for card_id, set_code, set_id, local_id in rows_all:
+        if not set_code and not set_id:
+            continue
+        key = (set_code.upper() if set_code else None,
+               set_id.upper() if set_id else None)
+        by_set.setdefault(key, []).append((card_id, local_id))
     if not by_set:
         return {"images": 0, "prices": 0, "sets": 0}
 
-    # TCGplayer-Gruppen der JP-Kategorie → {Set-Code: groupId}. Mehrdeutige Codes
-    # (zwei Gruppen, gleicher Code) werden verworfen — lieber nichts als das
-    # falsche Set (#41).
+    # TCGplayer-Gruppen → Schlüssel-Maps in GETRENNTEN Namensräumen (eine
+    # Namens-Präfix-Kollision wie „SWSH12:" von Hauptset UND Trainer Gallery
+    # darf den je Gruppe eindeutigen abbreviation-Schlüssel nicht auslöschen).
+    # Mehrdeutige Schlüssel werden je Namensraum verworfen — lieber nichts als
+    # das falsche Set (#41).
     groups = await tcgcsv.get_groups(category)
-    code_to_group: dict[str, int] = {}
-    ambiguous: set[str] = set()
+    abbr_map: dict[str, int] = {}
+    name_map: dict[str, int] = {}
+
+    def _add_key(mapping: dict[str, int], amb: set[str], code: Optional[str], gid: int) -> None:
+        if not code:
+            return
+        if code in mapping and mapping[code] != gid:
+            amb.add(code)
+        elif code not in mapping:
+            mapping[code] = gid
+
+    abbr_amb: set[str] = set()
+    name_amb: set[str] = set()
     for g in groups:
-        code = tcgcsv.set_code_from_group(g.get("name"))
         gid = g.get("groupId")
-        if not code or gid is None:
+        if gid is None:
             continue
-        if code in code_to_group and code_to_group[code] != gid:
-            ambiguous.add(code)
-        else:
-            code_to_group[code] = gid
-    for code in ambiguous:
-        code_to_group.pop(code, None)
+        abbr = g.get("abbreviation")
+        _add_key(abbr_map, abbr_amb,
+                 abbr.strip().upper() if isinstance(abbr, str) and abbr.strip() else None, gid)
+        _add_key(name_map, name_amb, tcgcsv.set_code_from_group(g.get("name")), gid)
+    for code in abbr_amb:
+        abbr_map.pop(code, None)
+    for code in name_amb:
+        name_map.pop(code, None)
+
+    # ── Zweistufiges Match (#64, Panel-BLOCKER empirisch verifiziert) ─────────
+    # VERTRAUT sind Treffer innerhalb derselben Vokabular-Familie:
+    #   - unsere set_id gegen beide Maps (TCGplayers eigenes Set-Schema
+    #     „SV04"/„SWSH05"/„M1S"; einstellig zusätzlich 0-gepolstert), und
+    #   - unser Set-Code gegen den NAMENS-Präfix (JP-Muster „M1S: …" — dort ist
+    #     der Präfix der gedruckte Code, dieselbe Familie).
+    # VERIFIKATIONSPFLICHTIG ist nur: unser PTCGO-Code gegen TCGplayers
+    #   `abbreviation` — das ist ein ANDERES Vokabular („TR" meint dort Team
+    #   Rocket 1999, bei uns Team Rocket Returns 2004; „BST" dort EX Battle
+    #   Stadium 2005, bei uns Battle Styles). Ein blinder Match schriebe die
+    #   Preise des falschen Sets bis in wert_eur. Solche Treffer werden erst
+    #   übernommen, wenn die NENNER der Produktnummern („004/082") mehrheitlich
+    #   unserer offiziellen Set-Größe entsprechen.
+    def _padded(sid: Optional[str]) -> Optional[str]:
+        if not sid:
+            return None
+        m = re.match(r"^([A-Z]+)(\d)((?:\.\d+)?)$", sid)
+        return f"{m.group(1)}0{m.group(2)}{m.group(3)}" if m else None
+
+    def _lookup(*codes: Optional[str]) -> Optional[int]:
+        for mapping in (abbr_map, name_map):
+            for code in codes:
+                if code and code in mapping:
+                    return mapping[code]
+        return None
+
+    # Offizielle Set-Größen (für die Stufe-2-Verifikation) aus pokemon_sets.
+    official_by_key: dict[str, int] = {}
+    for ps in db.scalars(select(PokemonSet)).all():
+        if ps.card_count_official:
+            if ps.code:
+                official_by_key[ps.code.upper()] = ps.card_count_official
+            if ps.set_id:
+                official_by_key[ps.set_id.upper()] = ps.card_count_official
+
+    def _denominators_plausibel(products: list[dict], official: Optional[int]) -> bool:
+        if not official:
+            return False  # ohne Vergleichsgröße keinen Fremd-Vokabular-Match riskieren
+        denoms = [d for d in (tcgcsv.product_denominator(p) for p in products) if d]
+        if len(denoms) < 3:
+            return False
+        hits = sum(1 for d in denoms if d == official)
+        return hits / len(denoms) >= 0.5
 
     # Timezone-aware UTC („+00:00") — sonst liest JS den Zeitstempel als Lokalzeit
     # und der angezeigte „Stand" kann um einen Tag danebenliegen (Panel-Fund).
     stamp = datetime.now(timezone.utc).isoformat()
-    images = prices = sets_done = 0
-    for code, rows in by_set.items():
-        gid = code_to_group.get(code)
-        if gid is None:
-            continue  # kein passendes TCGplayer-Set
-        products = await tcgcsv.get_products(category, gid)
-        num_to_product: dict[str, dict] = {}
-        for p in products:
-            num = tcgcsv.product_number(p)
-            if num:
-                num_to_product.setdefault(num, p)
-        price_rows = await tcgcsv.get_prices(category, gid)
-        touched = False
-        for row in rows:
-            lid = row.local_id or ""
-            # isascii() zusätzlich zu isdigit(): „²".isdigit() ist True, aber
-            # int(„²") wirft — nur echte ASCII-Ziffern normalisieren.
-            key = str(int(lid)) if (lid.isascii() and lid.isdigit()) else lid
-            p = num_to_product.get(key)
-            if not p:
+    images = prices = sets_done = rejected = 0
+    for (set_code, set_id), rows in by_set.items():
+        # Ein kaputtes Set (Netz/Datenmüll) darf die übrigen nicht abbrechen
+        # (Panel-Fund M3) — je Set isolieren, Zähler laufen weiter.
+        try:
+            gid = _lookup(set_id, _padded(set_id))
+            verified = gid is not None  # set_id-Familie: vertraut
+            if gid is None and set_code:
+                if set_code in name_map:
+                    gid = name_map[set_code]
+                    verified = True     # Namens-Präfix = gleiche Vokabular-Familie
+                elif set_code in abbr_map:
+                    gid = abbr_map[set_code]  # Fremd-Vokabular → verifizieren
+            if gid is None:
+                continue  # kein passendes TCGplayer-Set
+            products = await tcgcsv.get_products(category, gid)
+            if not verified and not _denominators_plausibel(
+                    products, official_by_key.get(set_code or "")):
+                rejected += 1
+                log.info("TCGplayer-Übernahme %s: Set %s/%s nicht plausibel "
+                         "(Fremd-Vokabular?) – übersprungen.", region, set_code, set_id)
                 continue
-            # Bild: atomar NUR wo noch keins steht (Race-Schutz gegen ein
-            # zwischenzeitlich geschriebenes TCGdex-Bild, #41 Slice 1).
-            img = tcgcsv.hires_image_url(p)
-            if img:
-                res = db.execute(
-                    update(TcgdexCatalog)
-                    .where(TcgdexCatalog.card_id == row.card_id,
-                           TcgdexCatalog.image_url.is_(None))
-                    .values(image_url=img, image_source="tcgplayer")
-                    .execution_options(synchronize_session=False)
-                )
-                if res.rowcount:
-                    images += 1
+            num_to_product: dict[str, dict] = {}
+            for p in products:
+                num = tcgcsv.product_number(p)
+                if not num:
+                    continue
+                prev = num_to_product.get(num)
+                # Bei Nummern-Dubletten (z. B. „Mew ex - 205/165 (151 Metal
+                # Card)") die Grundform ohne Klammerzusatz bevorzugen statt
+                # Reihenfolgezufall (Panel-Fund).
+                if prev is None or ("(" in str(prev.get("name") or "")
+                                    and "(" not in str(p.get("name") or "")):
+                    num_to_product[num] = p
+            price_rows = await tcgcsv.get_prices(category, gid)
+            touched = False
+            for card_id, local_id in rows:
+                lid = local_id or ""
+                # isascii() zusätzlich zu isdigit(): „²".isdigit() ist True, aber
+                # int(„²") wirft — nur echte ASCII-Ziffern normalisieren.
+                key = str(int(lid)) if (lid.isascii() and lid.isdigit()) else lid
+                p = num_to_product.get(key)
+                if not p:
+                    continue
+                # Bild: atomar NUR wo noch keins steht (Race-Schutz gegen ein
+                # zwischenzeitlich geschriebenes TCGdex-Bild, #41 Slice 1).
+                img = tcgcsv.hires_image_url(p)
+                if img:
+                    res = db.execute(
+                        update(TcgdexCatalog)
+                        .where(TcgdexCatalog.card_id == card_id,
+                               TcgdexCatalog.image_url.is_(None))
+                        .values(image_url=img, image_source="tcgplayer")
+                        .execution_options(synchronize_session=False)
+                    )
+                    if res.rowcount:
+                        images += 1
+                        touched = True
+                # EN-Name (nur falls fehlend, via COALESCE) + $-Marktpreis (täglich
+                # auffrischen). Ein atomarer UPDATE je Karte.
+                usd = tcgcsv.market_usd_for(price_rows, p.get("productId"))
+                name = p.get("name")
+                vals: dict = {}
+                if isinstance(name, str) and name.strip():
+                    vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name.strip())
+                if usd is not None:
+                    vals["price_usd"] = usd
+                    vals["price_usd_updated"] = stamp
+                if vals:
+                    db.execute(
+                        update(TcgdexCatalog)
+                        .where(TcgdexCatalog.card_id == card_id)
+                        .values(**vals)
+                        .execution_options(synchronize_session=False)
+                    )
+                    if "price_usd" in vals:
+                        prices += 1
                     touched = True
-            # EN-Name (nur falls fehlend, via COALESCE) + $-Marktpreis (täglich
-            # auffrischen). Ein atomarer UPDATE je Karte.
-            usd = tcgcsv.market_usd_for(price_rows, p.get("productId"))
-            name = p.get("name")
-            vals: dict = {}
-            if isinstance(name, str) and name.strip():
-                vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name.strip())
-            if usd is not None:
-                vals["price_usd"] = usd
-                vals["price_usd_updated"] = stamp
-            if vals:
-                db.execute(
-                    update(TcgdexCatalog)
-                    .where(TcgdexCatalog.card_id == row.card_id)
-                    .values(**vals)
-                    .execution_options(synchronize_session=False)
-                )
-                if "price_usd" in vals:
-                    prices += 1
-                touched = True
-        if touched:
-            db.commit()
-            sets_done += 1
+            if touched:
+                db.commit()
+                sets_done += 1
+        except Exception as exc:  # noqa: BLE001 — ein Set darf den Lauf nicht kippen
+            db.rollback()
+            log.warning("TCGplayer-Übernahme %s: Set %s/%s fehlgeschlagen: %s",
+                        region, set_code, set_id, exc)
 
-    log.info("TCGplayer-Übernahme %s: %d Bilder, %d Preise (%d Sets).",
-             region, images, prices, sets_done)
+    # Abdeckung sichtbar machen (Panel-Fund M1): ungematchte Sets sind sonst
+    # eine unsichtbare Lücke.
+    log.info("TCGplayer-Übernahme %s: %d Bilder, %d Preise — %d/%d Sets gematcht, "
+             "%d als unplausibel verworfen.",
+             region, images, prices, sets_done, len(by_set), rejected)
     return {"images": images, "prices": prices, "sets": sets_done}
 
 

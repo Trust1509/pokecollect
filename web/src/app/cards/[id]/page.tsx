@@ -331,7 +331,7 @@ export default function CardDetailPage() {
 
       <div className="mt-4 bg-pokemon-card rounded-lg p-4">
         <h2 className="text-gray-300 font-medium mb-3">{t.detail_price_history}</h2>
-        <PriceChart history={history as { erfasst_am: string; wert_eur: string | null }[]} />
+        <PriceChart history={history as { erfasst_am: string; wert_eur: string | null; quelle?: string | null }[]} />
       </div>
 
       {/* Pokédex-Ersetzungs-Dialog */}

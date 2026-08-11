@@ -23,6 +23,10 @@ class CatalogItem(BaseModel):
     enriched: Optional[bool] = None
     owned: bool = False
     in_pokedex: bool = False
+    # Gecachte Preise (Epic #41 Slice 4): auch in LISTEN anzeigen — kommen
+    # direkt aus der Katalogzeile (kein Live-Fetch), können also None sein.
+    price_eur: Optional[float] = None        # € Cardmarket (Cache)
+    price_usd: Optional[float] = None        # $ TCGplayer (Cache; JP via TCGCSV)
 
     model_config = {"from_attributes": True}
 
@@ -32,11 +36,9 @@ class CatalogDetail(CatalogItem):
     Detail-Popup: fehlende Felder (dex/rarity/illustrator/kategorie/varianten)
     werden aus dem Live-Abruf aufgefüllt, dazu aktuelle Preise (Cardmarket € +
     TCGplayer $, letzteres bei vielen JP-Karten leer)."""
-    price_eur: Optional[float] = None        # € Cardmarket — live oder gecacht
     price_eur_low: Optional[float] = None    # nur aus Live-Abruf
     price_eur_trend: Optional[float] = None  # nur aus Live-Abruf
     price_eur_updated: Optional[str] = None  # Datenstand €
-    price_usd: Optional[float] = None        # $ TCGplayer — West live, JP gecacht (TCGCSV)
     price_usd_updated: Optional[str] = None  # Datenstand $
 
 

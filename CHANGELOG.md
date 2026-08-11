@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.7.2] – 2026-08-11 (Preis-Welle: Preise im Katalog-Grid, Quellen im Verlauf, West-$ täglich)
+
+### Neu
+- **Preise direkt im Katalog** (#45): Jede Kachel im Katalog/„Alle Karten" zeigt
+  jetzt den gecachten Preis — € (Cardmarket) bevorzugt, sonst $ (TCGplayer,
+  typisch japanische Karten). Reine Cache-Anzeige, kein zusätzlicher Abruf.
+- **Preisverlauf zeigt die Preisbasis** (#65): Wechselt die Quelle (z. B.
+  Cardmarket-€ → TCGplayer-$-Umrechnung), sind die Punkte farblich markiert
+  (gelb = Cardmarket, blau = TCGplayer) mit Legende und Quelle im Tooltip —
+  ein Basiswechsel sieht nicht mehr wie eine echte Preisbewegung aus.
+  Erscheint nur, wenn wirklich mehrere Quellen vorkommen.
+- **West-$-Preise täglich frisch** (#64): Der tägliche Katalog-Sync frischt nun
+  auch die $-Preise der West-Karten über TCGCSV (Kategorie 3, Match über das
+  TCGplayer-`abbreviation`-Kürzel) auf — bisher entstanden sie nur einmalig beim
+  Enrich und fielen so nach 30 Tagen aus dem $→€-Fallback von v1.7.1.
+
+### Hinweise
+- Keine Migration; Bilder/EN-Namen der West-Karten bleiben unangetastet
+  (TCGdex bleibt führend, TCGCSV füllt nur Preise bzw. echte Lücken).
+
 ## [v1.7.1] – 2026-08-11 (Japanische Karten bekommen Preise: $ → € mit EZB-Tageskurs)
 
 ### Neu

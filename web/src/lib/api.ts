@@ -513,6 +513,9 @@ export type CatalogItem = {
   enriched: boolean | null;
   owned: boolean;
   in_pokedex: boolean;
+  // Gecachte Preise (Epic #41 Slice 4) — auch in Listen, können null sein
+  price_eur?: number | null;
+  price_usd?: number | null;
 };
 
 export type CatalogListResponse = {

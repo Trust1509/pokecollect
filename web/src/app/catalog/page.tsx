@@ -271,6 +271,15 @@ export default function CatalogPage() {
                       <span className="font-mono">{c.set_code ?? c.set_id}</span>
                       <span>{c.local_id ?? ""}</span>
                     </div>
+                    {/* Gecachte Preise (#45): € bevorzugt, sonst $ (typisch JP);
+                        Format identisch zum Katalog-Popup (fmtEur/fmtUsd) */}
+                    {(c.price_eur != null || c.price_usd != null) && (
+                      <div className="text-[10px] text-pokemon-yellow font-medium">
+                        {c.price_eur != null
+                          ? `${c.price_eur.toFixed(2).replace(".", ",")} €`
+                          : `$ ${c.price_usd!.toFixed(2)}`}
+                      </div>
+                    )}
                   </div>
                 </button>
                 {selectMode ? (

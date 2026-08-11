@@ -103,6 +103,21 @@ def product_number(product: dict) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def product_denominator(product: dict) -> Optional[int]:
+    """
+    Nenner der aufgedruckten Nummer („009/080" → 80) = offizielle Set-Größe.
+    Dient der Set-Plausibilitätsprüfung beim PTCGO-Code-Match (#64): Produkte
+    eines FALSCHEN Sets tragen (fast immer) einen anderen Nenner. None ohne
+    numerischen Nenner (Promos, Sealed).
+    """
+    raw = _ext(product, "Number")
+    if not raw or "/" not in raw:
+        return None
+    tail = raw.split("/", 1)[1].strip()
+    m = re.match(r"^0*(\d+)$", tail)
+    return int(m.group(1)) if m else None
+
+
 def hires_image_url(product: dict) -> Optional[str]:
     """
     Hochauflösende Bild-URL eines Produkts (`_200w` → `_in_1000x1000`). Nur wenn
@@ -135,13 +150,18 @@ async def get_prices(category: int, group_id: int, *, sleep=asyncio.sleep) -> li
 
 def market_usd_for(prices: list[dict], product_id: int) -> Optional[float]:
     """Repräsentativer TCGplayer-Marktpreis ($) eines Produkts aus den Preissätzen
-    seiner Gruppe: bevorzugt „Normal", sonst der erste Satz mit marketPrice
-    (JP-Karten sind oft nur als „1st Edition" gelistet). None, wenn kein Preis."""
+    seiner Gruppe: bevorzugt „Normal", dann „Unlimited" (alte WotC-Sets führen
+    Unlimited/1st-Edition getrennt — Unlimited ist die Normalform), sonst der
+    erste Satz mit marketPrice (JP-Karten sind oft nur als „1st Edition"
+    gelistet). None, wenn kein Preis."""
     if product_id is None:
         return None  # sonst würde ein Preissatz ohne productId (== None) matchen
     rows = [p for p in prices
             if p.get("productId") == product_id and p.get("marketPrice") is not None]
     if not rows:
         return None
-    norm = next((p for p in rows if p.get("subTypeName") == "Normal"), None)
-    return (norm or rows[0]).get("marketPrice")
+    for prefer in ("Normal", "Unlimited"):
+        hit = next((p for p in rows if p.get("subTypeName") == prefer), None)
+        if hit is not None:
+            return hit.get("marketPrice")
+    return rows[0].get("marketPrice")
