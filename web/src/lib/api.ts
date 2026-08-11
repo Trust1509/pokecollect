@@ -265,6 +265,14 @@ export type AppSettings = {
   gemini_api_key_masked: string;
   gemini_model: string;
   gemini_daily_limit: number;
+  // Scan-Stufe B (Issue #57): pluggbares Lese-Modell
+  scan_reader_provider: string;
+  openai_api_key_set: boolean;
+  openai_api_key_masked: string;
+  openai_model: string;
+  openrouter_api_key_set: boolean;
+  openrouter_api_key_masked: string;
+  openrouter_model: string;
 };
 
 export type AppSettingsUpdate = Partial<{
@@ -283,6 +291,12 @@ export type AppSettingsUpdate = Partial<{
   gemini_api_key: string;
   gemini_model: string;
   gemini_daily_limit: number;
+  // Scan-Stufe B (Issue #57)
+  scan_reader_provider: string;
+  openai_api_key: string;
+  openai_model: string;
+  openrouter_api_key: string;
+  openrouter_model: string;
 }>;
 
 export const collectionApi = {
@@ -409,7 +423,7 @@ export type ScanCandidate = {
   foil_options: string[];
 };
 
-export type GeminiHinweisArt = "tageslimit" | "rate_limit" | "key_ungueltig" | "gemini_fehler";
+export type GeminiHinweisArt = "tageslimit" | "rate_limit" | "key_ungueltig" | "gemini_fehler" | "reader_fehler";
 
 export type ScanResponse = {
   engine: string;
@@ -420,7 +434,13 @@ export type ScanResponse = {
   hinweis_art?: GeminiHinweisArt | null;  // maschinenlesbare Fallback-Ursache (Issue #21)
 };
 
-export type ScanStatus = { gemini: boolean; ocr: boolean; active: string };
+export type ScanStatus = {
+  gemini: boolean;
+  ocr: boolean;
+  active: string;
+  provider?: string;   // Scan-Stufe B (Issue #57): gewähltes Lese-Modell
+  model?: string;
+};
 
 export type ScanCommitItem = {
   kartenname: string;

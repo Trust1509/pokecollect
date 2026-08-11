@@ -18,6 +18,13 @@ DEFAULTS: dict[str, str] = {
     "gemini_api_key": "",
     "gemini_model": "gemini-2.5-flash",
     "gemini_daily_limit": "0",   # 0 = unbekannt/kein Limit anzeigen
+    # Scan-Stufe B (Issue #57): pluggbares Lese-Modell. "gemini" (Default,
+    # rückwärtskompatibel) | "openai" | "openrouter" | "ocr" (nur lokal).
+    "scan_reader_provider": "gemini",
+    "openai_api_key": "",
+    "openai_model": "gpt-4o-mini",
+    "openrouter_api_key": "",
+    "openrouter_model": "google/gemini-2.5-flash",
 }
 
 # Secrets verlassen das Backend nie im Klartext (Issue #1): die Response
@@ -29,6 +36,8 @@ SECRET_KEYS: tuple[str, ...] = (
     "cardmarket_access_token",
     "cardmarket_access_secret",
     "gemini_api_key",
+    "openai_api_key",
+    "openrouter_api_key",
 )
 
 
@@ -53,6 +62,14 @@ class SettingsResponse(BaseModel):
     gemini_api_key_masked: str
     gemini_model: str
     gemini_daily_limit: int
+    # Scan-Stufe B (Issue #57)
+    scan_reader_provider: str
+    openai_api_key_set: bool
+    openai_api_key_masked: str
+    openai_model: str
+    openrouter_api_key_set: bool
+    openrouter_api_key_masked: str
+    openrouter_model: str
 
 
 class SettingsUpdate(BaseModel):
@@ -71,6 +88,12 @@ class SettingsUpdate(BaseModel):
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
     gemini_daily_limit: Optional[int] = None
+    # Scan-Stufe B (Issue #57)
+    scan_reader_provider: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    openai_model: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openrouter_model: Optional[str] = None
 
 
 class PasswordChange(BaseModel):

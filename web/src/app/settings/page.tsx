@@ -54,8 +54,14 @@ const EMPTY_SECRETS = {
   cardmarket_access_token: "",
   cardmarket_access_secret: "",
   gemini_api_key: "",
+  openai_api_key: "",
+  openrouter_api_key: "",
 };
 type SecretKey = keyof typeof EMPTY_SECRETS;
+
+// Keys, die im Scan-Abschnitt gespeichert werden (Issue #57) – der
+// Cardmarket-Speicherknopf lässt sie deshalb aus.
+const SCAN_SECRET_KEYS: SecretKey[] = ["gemini_api_key", "openai_api_key", "openrouter_api_key"];
 
 export default function SettingsPage() {
   const { t } = useI18n();
@@ -115,6 +121,29 @@ export default function SettingsPage() {
   // Placeholder für Secret-Felder: zeigt den maskierten Bestand ("gesetzt: •••• XXXX")
   const secretPlaceholder = (isSet: boolean, masked: string) =>
     isSet ? t.settings_secret_set_placeholder(masked) : undefined;
+
+  // Scan-Stufe B (Issue #57): Provider + nur die Felder des aktiven Providers
+  // speichern; Key nur mitschicken, wenn eingegeben (leer = Bestand behalten).
+  const saveScan = () => {
+    if (!s) return;
+    const patch: AppSettingsUpdate = { scan_reader_provider: s.scan_reader_provider };
+    const clear: SecretKey[] = [];
+    const withKey = (key: SecretKey) => {
+      if (secrets[key] !== "") { patch[key] = secrets[key]; clear.push(key); }
+    };
+    if (s.scan_reader_provider === "gemini") {
+      patch.gemini_model = s.gemini_model;
+      patch.gemini_daily_limit = s.gemini_daily_limit;
+      withKey("gemini_api_key");
+    } else if (s.scan_reader_provider === "openai") {
+      patch.openai_model = s.openai_model;
+      withKey("openai_api_key");
+    } else if (s.scan_reader_provider === "openrouter") {
+      patch.openrouter_model = s.openrouter_model;
+      withKey("openrouter_api_key");
+    }
+    save(patch, clear);
+  };
 
   const handlePriceRefresh = async () => {
     setRefreshingPrices(true);
@@ -330,13 +359,13 @@ export default function SettingsPage() {
             onClick={() => {
               // Nur ausgefüllte Felder PUTen — leer heißt: Bestand behalten.
               const entered = (Object.keys(EMPTY_SECRETS) as SecretKey[])
-                .filter((k) => k !== "gemini_api_key" && secrets[k] !== "");
+                .filter((k) => !SCAN_SECRET_KEYS.includes(k) && secrets[k] !== "");
               if (!entered.length) return;
               const patch: AppSettingsUpdate = {};
               entered.forEach((k) => { patch[k] = secrets[k]; });
               save(patch, entered);
             }}
-            disabled={saving || (Object.keys(EMPTY_SECRETS) as SecretKey[]).every((k) => k === "gemini_api_key" || secrets[k] === "")}
+            disabled={saving || (Object.keys(EMPTY_SECRETS) as SecretKey[]).every((k) => SCAN_SECRET_KEYS.includes(k) || secrets[k] === "")}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
             {t.settings_save_api_keys}
@@ -344,40 +373,74 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      {/* Scan / Gemini */}
+      {/* Scan: pluggbares Lese-Modell (Issue #57) */}
       <Section title={`📷 ${t.settings_section_scan}`}>
-        <p className="text-gray-400 text-xs">
-          {t.settings_gemini_hint}{" "}
-          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com/apikey</a>
-        </p>
-        <Field label="Gemini API Key" hint={t.settings_secret_keep_hint}>
-          <input type="password" value={secrets.gemini_api_key} onChange={(e) => setSecret("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.gemini_api_key_set, s.gemini_api_key_masked) ?? "AIza…"} />
+        <Field label={t.settings_scan_provider} hint={t.settings_scan_provider_hint}>
+          <select value={s.scan_reader_provider} onChange={(e) => set("scan_reader_provider", e.target.value)} className={INPUT}>
+            <option value="gemini">{t.settings_scan_provider_gemini}</option>
+            <option value="openai">{t.settings_scan_provider_openai}</option>
+            <option value="openrouter">{t.settings_scan_provider_openrouter}</option>
+            <option value="ocr">{t.settings_scan_provider_ocr}</option>
+          </select>
         </Field>
-        <Field label={t.settings_gemini_model} hint={t.settings_gemini_model_hint}>
-          <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
-        </Field>
-        <Field label={t.settings_gemini_daily_limit} hint={t.settings_gemini_daily_limit_hint}>
-          <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
-        </Field>
+
+        {s.scan_reader_provider === "gemini" && (
+          <>
+            <p className="text-gray-400 text-xs">
+              {t.settings_gemini_hint}{" "}
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">aistudio.google.com/apikey</a>
+            </p>
+            <Field label="Gemini API Key" hint={t.settings_secret_keep_hint}>
+              <input type="password" value={secrets.gemini_api_key} onChange={(e) => setSecret("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.gemini_api_key_set, s.gemini_api_key_masked) ?? "AIza…"} />
+            </Field>
+            <Field label={t.settings_gemini_model} hint={t.settings_gemini_model_hint}>
+              <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
+            </Field>
+            <Field label={t.settings_gemini_daily_limit} hint={t.settings_gemini_daily_limit_hint}>
+              <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
+            </Field>
+          </>
+        )}
+
+        {s.scan_reader_provider === "openai" && (
+          <>
+            <p className="text-gray-400 text-xs">
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">platform.openai.com/api-keys</a>
+            </p>
+            <Field label="OpenAI API Key" hint={t.settings_secret_keep_hint}>
+              <input type="password" value={secrets.openai_api_key} onChange={(e) => setSecret("openai_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.openai_api_key_set, s.openai_api_key_masked) ?? "sk-…"} />
+            </Field>
+            <Field label={t.settings_openai_model} hint={t.settings_openai_model_hint}>
+              <input type="text" value={s.openai_model} onChange={(e) => set("openai_model", e.target.value)} className={INPUT} placeholder="gpt-4o-mini" />
+            </Field>
+          </>
+        )}
+
+        {s.scan_reader_provider === "openrouter" && (
+          <>
+            <p className="text-gray-400 text-xs">
+              <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">openrouter.ai/keys</a>
+            </p>
+            <Field label="OpenRouter API Key" hint={t.settings_secret_keep_hint}>
+              <input type="password" value={secrets.openrouter_api_key} onChange={(e) => setSecret("openrouter_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.openrouter_api_key_set, s.openrouter_api_key_masked) ?? "sk-or-…"} />
+            </Field>
+            <Field label={t.settings_openrouter_model} hint={t.settings_openrouter_model_hint}>
+              <input type="text" value={s.openrouter_model} onChange={(e) => set("openrouter_model", e.target.value)} className={INPUT} placeholder="google/gemini-2.5-flash" />
+            </Field>
+          </>
+        )}
+
         <div className="pt-1">
           <button
             type="button"
-            onClick={() => save(
-              {
-                gemini_model: s.gemini_model,
-                gemini_daily_limit: s.gemini_daily_limit,
-                // Key nur mitschicken, wenn eingegeben — leer = Bestand behalten
-                ...(secrets.gemini_api_key !== "" ? { gemini_api_key: secrets.gemini_api_key } : {}),
-              },
-              secrets.gemini_api_key !== "" ? ["gemini_api_key"] : [],
-            )}
+            onClick={saveScan}
             disabled={saving}
             className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
           >
             {t.settings_save_scan}
           </button>
         </div>
-        {usage && (
+        {s.scan_reader_provider === "gemini" && usage && (
           <div className="mt-3 border-t border-gray-700 pt-3 text-sm">
             <p className="text-gray-400 text-xs mb-2">{t.settings_gemini_usage(usage.model)}</p>
             <div className="grid grid-cols-2 gap-3">

@@ -231,6 +231,7 @@ export default function ScanPage() {
           art === "key_ungueltig" ? t.scan_fehler_key
           : art === "rate_limit" ? t.scan_fehler_rate
           : art === "gemini_fehler" ? t.scan_fehler_gemini
+          : art === "reader_fehler" ? t.scan_fehler_reader
           : t.scan_limit_fallback; // tageslimit
         toast(msg, { icon: art === "key_ungueltig" ? "🔑" : "⚠️" });
       } else if (res.data.limit_erreicht) {

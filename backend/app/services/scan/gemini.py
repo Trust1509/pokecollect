@@ -1,24 +1,28 @@
 """
 Scan-Variante B: Bilderkennung über Google Gemini (REST, kein SDK nötig).
 
-Nur aktiv, wenn GEMINI_API_KEY gesetzt ist. Gemini liest aus einem Foto
+Nur aktiv, wenn ein Gemini-Key gesetzt ist. Gemini liest aus einem Foto
 (Einzelkarte ODER ganze Binderseite) die wesentlichen Felder pro Karte aus
 und liefert sie als JSON-Liste. Die Auflösung gegen TCGdex passiert danach
 serverseitig im Resolver (eine Quelle für alle Clients).
+
+Prompt, JSON→Karten-Parsing und die Retry-Schleife sind provider-neutral und
+liegen in `vlm.py` (DRY, seit Issue #57 von OpenAI/OpenRouter mitbenutzt); hier
+bleibt nur das Gemini-spezifische: generateContent-Payload, `?key=`-Auth und die
+Klassifikation der Gemini-Antwortform (candidates/usageMetadata).
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import logging
-from dataclasses import dataclass
 from typing import Optional
 
 import httpx
 
-from app.schemas.scan import ScanRawRead
+from app.services.scan import vlm
+from app.services.scan.vlm import ReaderResult as GeminiResult  # geteilte Ergebnisform
 
 log = logging.getLogger(__name__)
 
@@ -26,79 +30,19 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
-_PROMPT = """Du bist ein Experte für Pokémon-Sammelkarten (TCG).
-Analysiere das Bild. Es zeigt entweder EINE Karte (ggf. mit angeschnittenen
-Nachbarkarten am Rand) oder MEHRERE Karten (z.B. eine ganze Binder-/
-Sammelmappen-Seite mit einem Raster aus Kartenfächern).
-
-WICHTIG — welche Karten du auswertest:
-- Werte NUR vollständig (oder nahezu vollständig) sichtbare Karten aus. Ist eine
-  Karte klar der Bildmittelpunkt bzw. die deutlich größte, ist SIE die Zielkarte.
-- IGNORIERE nur teilweise sichtbare Nachbarkarten, die am oberen, unteren oder
-  seitlichen Bildrand angeschnitten sind — sie gehören NICHT zur Zielkarte.
-- IGNORIERE Register-, Trenn- und Beschriftungsstreifen (Tab-Labels) der
-  Sammelmappe; das sind KEINE Karten.
-
-Der ZUVERLÄSSIGE Schlüssel einer Karte ist die aufgedruckte Sammelnummer plus das
-Set-Kürzel/-Symbol — NICHT der Name. Lies daher Nummer und Set besonders sorgfältig.
-
-Gib für JEDE so ausgewählte Pokémon-Karte ein Objekt zurück mit:
-- "name": AUSSCHLIESSLICH der Kartenname aus der Titelzeile OBEN auf der Karte
-  (z.B. "Glurak ex", "Pikachu"). Übernimm NIEMALS Text aus Attacken, Fähigkeiten,
-  Evolutions-Hinweisen, Sammelmappen-Labels oder sonstigem Fließtext als Namen.
-  Wenn der Titel nicht sicher lesbar ist, setze null — rate NICHT.
-- "number": die aufgedruckte Sammelnummer GENAU wie sie (meist unten) auf der
-  Karte steht, im Format "NNN/NNN" (z.B. "113/217", "068/172") bzw. wie gedruckt;
-  null wenn unlesbar. Zusammen mit dem Set der eindeutige Schlüssel.
-- "set_code": das kleine aufgedruckte Set-Kürzel bzw. Set-Symbol unten (z.B.
-  "PAF", "OBF", "MEW", "151"); null wenn unlesbar. Ebenfalls Teil des Schlüssels.
-- "language": Sprache der Karte als Kürzel: "DE", "EN", "JP", "CN", "FR", "ES", "IT"; null wenn unklar
-- "position": die Position im Raster, von links nach rechts und oben nach unten gezählt, beginnend bei 0; bei Einzelkarte 0
-- "box_2d": die Bounding-Box NUR dieser einen Karte als [ymin, xmin, ymax, xmax],
-  jeweils ganzzahlig von 0 bis 1000 (auf Bildhöhe/-breite normiert), möglichst eng
-  um die Karte — OHNE angeschnittene Nachbarn oder Register-Labels
-- "corners": die VIER Eckpunkte der Karte als [[x,y],[x,y],[x,y],[x,y]] in der
-  Reihenfolge oben-links, oben-rechts, unten-rechts, unten-links; x,y ganzzahlig
-  0–1000. Für perspektivische Entzerrung – exakt an den Kartenecken, auch wenn die Karte schräg liegt.
-- "confidence": deine Sicherheit 0.0–1.0, wie zuverlässig du NUMMER UND Name gelesen hast
-
-Leere Fächer sowie angeschnittene Rand-Karten NICHT ausgeben.
-Antworte AUSSCHLIESSLICH mit einem JSON-Array von Objekten, ohne Erklärungstext."""
-
-
-# ── Retry-/Fehler-Klassifikation (Issue #21) ─────────────────────────────────
-
-# Transiente HTTP-Status → erneut versuchen (Rate-Limit + Server-Fehler).
-_RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
-
-# Exponentieller Backoff: Wartezeit VOR jeder Wiederholung. Länge = maximale
-# Anzahl Wiederholungen (also bis zu len+1 Versuche insgesamt): 0.5s → 1s → 2s.
-_BACKOFF_SEKUNDEN: tuple[float, ...] = (0.5, 1.0, 2.0)
+# Prompt + Backoff/Retry-Status stammen aus dem gemeinsamen Kern.
+_PROMPT = vlm.PROMPT
+_RETRY_STATUS = vlm.RETRY_STATUS
+_BACKOFF_SEKUNDEN = vlm.BACKOFF
+_post_mit_retry = vlm.post_with_retry
 
 # Nach außen unterscheidbare Fehlerarten. Dienen zugleich als `hinweis_art` in
-# der Scan-Response (schemas/scan.py), damit das UI „Rate-Limit erreicht" von
-# „Gemini-Key ungültig" trennen kann.
-FEHLER_KEY = "key_ungueltig"     # 401/403 – dauerhaft, KEIN Retry
-FEHLER_RATE = "rate_limit"       # 429 erschöpft – Limit erreicht
-FEHLER_GEMINI = "gemini_fehler"  # 5xx/Timeout/Netz/sonstiges erschöpft
-
-
-@dataclass
-class GeminiResult:
-    """
-    Ergebnis eines Gemini-Extraktionsversuchs.
-
-    - reads:      erkannte Karten; None = kein verwertbares Ergebnis
-                  (Aufrufer weicht auf lokale OCR aus).
-    - tokens:     Tokenverbrauch eines ZÄHLBAREN Calls; None = kein
-                  abrechenbarer Call (Fehler vor/ohne gültige Antwort) → der
-                  Aufrufer bucht die Nutzung dann nicht (Issue #9).
-    - fehler_art: None = ok bzw. kein harter Fehler; sonst FEHLER_* als
-                  maschinenlesbarer Fallback-Grund.
-    """
-    reads: Optional[list[ScanRawRead]]
-    tokens: Optional[int]
-    fehler_art: Optional[str] = None
+# der Scan-Response (schemas/scan.py). Key/Rate teilen die Werte mit dem
+# generischen VLM-Pfad; der harte Gemini-Fehler behält seinen eigenen Wert,
+# damit die UI-Meldung „Gemini nicht erreichbar" korrekt bleibt.
+FEHLER_KEY = vlm.FEHLER_KEY       # 401/403 – dauerhaft, KEIN Retry
+FEHLER_RATE = vlm.FEHLER_RATE     # 429 erschöpft – Limit erreicht
+FEHLER_GEMINI = "gemini_fehler"   # 5xx/Timeout/Netz/sonstiges erschöpft
 
 
 def is_enabled(api_key: Optional[str]) -> bool:
@@ -152,38 +96,6 @@ async def extract(
     return _klassifiziere(resp)
 
 
-async def _post_mit_retry(do_post, *, sleep, backoffs=_BACKOFF_SEKUNDEN):
-    """
-    Pure, testbare Retry-Schleife. Ruft `do_post()` auf und wiederholt bei
-    transienten Fehlern (Status in `_RETRY_STATUS` sowie httpx-Netz-/Timeout-
-    Fehlern) mit exponentiellem Backoff; dauerhafte Fehler (z. B. 401/403)
-    kehren sofort zurück (kein Retry).
-
-    - do_post: async Callable → Response-artiges Objekt (`.status_code`,
-      `.json()`, `.text`) ODER wirft `httpx.HTTPError`.
-    - sleep:   async Callable(seconds) — im Test mockbar (kein echtes Warten).
-
-    Rückgabe: die (letzte) Antwort, oder None bei erschöpften Netz-/Timeout-
-    Fehlern (kein HTTP-Status verfügbar).
-    """
-    for i in range(len(backoffs) + 1):
-        try:
-            resp = await do_post()
-        except httpx.HTTPError as exc:
-            if i < len(backoffs):
-                log.info("Gemini-Netzfehler (%s) – Retry in %ss", exc, backoffs[i])
-                await sleep(backoffs[i])
-                continue
-            log.warning("Gemini-Request nach %d Versuchen fehlgeschlagen: %s", i + 1, exc)
-            return None
-        if resp.status_code in _RETRY_STATUS and i < len(backoffs):
-            log.info("Gemini Status %s – Retry in %ss", resp.status_code, backoffs[i])
-            await sleep(backoffs[i])
-            continue
-        return resp
-    return None
-
-
 def _klassifiziere(resp) -> GeminiResult:
     """Ordnet die (finale) HTTP-Antwort einer Fehlerart zu bzw. parst sie."""
     if resp is None:
@@ -216,114 +128,14 @@ def _parse_erfolg(resp) -> GeminiResult:
     # Erfolgreicher (kontingentierter) Call → Tokens an den Aufrufer melden
     try:
         tokens = int(data.get("usageMetadata", {}).get("totalTokenCount", 0) or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, AttributeError):
         tokens = 0
 
     try:
         text = data["candidates"][0]["content"]["parts"][0]["text"]
-        parsed = json.loads(text)
-    except (KeyError, IndexError, ValueError, TypeError) as exc:
+    except (KeyError, IndexError, TypeError) as exc:
         log.warning("Gemini-Antwort nicht interpretierbar: %s", exc)
         return GeminiResult(None, tokens, None)
 
-    if isinstance(parsed, dict):
-        parsed = [parsed]
-    if not isinstance(parsed, list):
-        return GeminiResult(None, tokens, None)
-
-    out: list[ScanRawRead] = []
-    for idx, item in enumerate(parsed):
-        if not isinstance(item, dict):
-            continue
-        read = ScanRawRead(
-            name=_str(item.get("name")),
-            set_code=_str(item.get("set_code")),
-            number=_str(item.get("number")),
-            language=_norm_lang(item.get("language")),
-            position=_int(item.get("position"), default=idx),
-            confidence=_float(item.get("confidence")),
-            bbox=_bbox(item),
-            quad=_quad(item),
-        )
-        out.append(read)
-    return GeminiResult(out, tokens, None)
-
-
-def _str(v) -> Optional[str]:
-    if v is None:
-        return None
-    s = str(v).strip()
-    return s or None
-
-
-def _int(v, default=None) -> Optional[int]:
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return default
-
-
-def _float(v) -> Optional[float]:
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
-
-
-def _bbox(item: dict) -> Optional[list[float]]:
-    """
-    Wandelt Geminis Bounding-Box in [x, y, w, h] als Anteil 0..1 um.
-    Bevorzugt das native box_2d-Format [ymin, xmin, ymax, xmax] (0..1000);
-    akzeptiert als Fallback auch [x, y, w, h].
-    """
-    raw = item.get("box_2d")
-    if isinstance(raw, (list, tuple)) and len(raw) == 4:
-        try:
-            ymin, xmin, ymax, xmax = (float(v) for v in raw)
-        except (TypeError, ValueError):
-            return None
-        scale = 1000.0 if max(ymin, xmin, ymax, xmax) > 1.5 else 1.0
-        x, y = xmin / scale, ymin / scale
-        w, h = (xmax - xmin) / scale, (ymax - ymin) / scale
-        if w <= 0 or h <= 0:
-            return None
-        return [x, y, w, h]
-
-    raw = item.get("bbox")
-    if isinstance(raw, (list, tuple)) and len(raw) == 4:
-        try:
-            box = [float(v) for v in raw]
-        except (TypeError, ValueError):
-            return None
-        if any(v > 1.5 for v in box):
-            box = [v / 100.0 for v in box]
-        return box
-    return None
-
-
-def _quad(item: dict) -> Optional[list[list[float]]]:
-    """Vier Eckpunkte [[x,y]…] (TL,TR,BR,BL) als Anteile 0..1; sonst None."""
-    raw = item.get("corners") or item.get("quad")
-    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
-        return None
-    pts: list[list[float]] = []
-    for p in raw:
-        if not isinstance(p, (list, tuple)) or len(p) != 2:
-            return None
-        try:
-            pts.append([float(p[0]), float(p[1])])
-        except (TypeError, ValueError):
-            return None
-    scale = 1000.0 if max(max(p) for p in pts) > 1.5 else 1.0
-    return [[p[0] / scale, p[1] / scale] for p in pts]
-
-
-def _norm_lang(v) -> Optional[str]:
-    s = _str(v)
-    if not s:
-        return None
-    s = s.upper()
-    mapping = {"DE": "DE", "GER": "DE", "EN": "EN", "ENG": "EN",
-               "JP": "JP", "JA": "JP", "JPN": "JP",
-               "CN": "CN", "ZH": "CN", "FR": "FR", "ES": "ES", "IT": "IT"}
-    return mapping.get(s, s[:2])
+    reads = vlm.reads_from_json(vlm.loads_tolerant(text))
+    return GeminiResult(reads, tokens, None)

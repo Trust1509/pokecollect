@@ -47,6 +47,9 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         default_condition=raw["default_condition"] or "",
         gemini_model=raw["gemini_model"] or "gemini-2.5-flash",
         gemini_daily_limit=int(raw["gemini_daily_limit"] or 0),
+        scan_reader_provider=raw["scan_reader_provider"] or "gemini",
+        openai_model=raw["openai_model"] or "gpt-4o-mini",
+        openrouter_model=raw["openrouter_model"] or "google/gemini-2.5-flash",
         **secret_fields,
     )
 

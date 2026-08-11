@@ -3,7 +3,7 @@ Unit-Tests für pure Parser/Mapper (Issue #9) — laufen ohne Postgres/Netz:
 - resolver._map_rarity + Confidence-Formel
 - tcgdex.local_id_from_card_nr
 - pricing.pick_cardmarket_price
-- gemini._bbox / _quad
+- vlm._bbox / _quad (gemeinsamer VLM-Kern, #57)
 """
 
 from decimal import Decimal
@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 
 from app.services.pricing import normalize_price_source, pick_cardmarket_price
-from app.services.scan.gemini import _bbox, _quad
+from app.services.scan.vlm import _bbox, _quad  # seit #57 im gemeinsamen VLM-Kern
 from app.services.scan.resolver import _confidence, _map_rarity, strip_card_suffix
 from app.services.tcgdex import CardMarketPricing, local_id_from_card_nr
 
@@ -170,7 +170,7 @@ def test_price_legacy_current_counts_as_daily():
     assert pick_cardmarket_price(cm, None, "current") == Decimal("9.9")
 
 
-# ── gemini._bbox / _quad ─────────────────────────────────────────────────────
+# ── vlm._bbox / _quad ────────────────────────────────────────────────────────
 
 def test_bbox_box2d_normalized_from_1000():
     # box_2d = [ymin, xmin, ymax, xmax] in 0..1000 → [x, y, w, h] in 0..1

@@ -27,7 +27,7 @@ from app.schemas.scan import (
 )
 from app.services.card_creation import create_owned_card
 from app.services.collection_slots import next_free_position
-from app.services.scan import gemini, ocr
+from app.services.scan import gemini, ocr, vlm
 from app.services.scan.rate_window import gemini_rate
 from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
@@ -48,6 +48,47 @@ def _gemini_config(db: Session) -> tuple[str, str]:
     key = _setting(db, "gemini_api_key", settings.gemini_api_key)
     model = _setting(db, "gemini_model", settings.gemini_model)
     return key, model
+
+
+# ── Scan-Stufe B: pluggbares Lese-Modell (Issue #57) ─────────────────────────
+# OpenAI und OpenRouter teilen die OpenAI-kompatible chat/completions-API und
+# unterscheiden sich nur in der base_url. Gemini spricht seine eigene REST-API.
+_OPENAI_BASE = "https://api.openai.com/v1"
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+_READER_PROVIDERS = {"gemini", "openai", "openrouter", "ocr"}
+
+
+def _reader_config(db: Session) -> tuple[str, str, str, str | None]:
+    """
+    (provider, api_key, model, base_url) der aktiven Lese-Stufe. Unbekannte
+    Provider fallen sicher auf "gemini" (rückwärtskompatibler Default) zurück;
+    base_url ist None für Gemini/OCR (kein OpenAI-kompatibler Endpunkt).
+    """
+    provider = (_setting(db, "scan_reader_provider", "gemini") or "gemini").lower()
+    if provider not in _READER_PROVIDERS:
+        provider = "gemini"
+    if provider == "openai":
+        return (provider, _setting(db, "openai_api_key", ""),
+                _setting(db, "openai_model", "gpt-4o-mini") or "gpt-4o-mini",
+                _OPENAI_BASE)
+    if provider == "openrouter":
+        return (provider, _setting(db, "openrouter_api_key", ""),
+                _setting(db, "openrouter_model", "google/gemini-2.5-flash")
+                or "google/gemini-2.5-flash",
+                _OPENROUTER_BASE)
+    if provider == "gemini":
+        key, model = _gemini_config(db)
+        return provider, key, model, None
+    return "ocr", "", "", None
+
+
+# Menschenlesbarer Hinweis je harter Fehlerart eines OpenAI-/OpenRouter-Lese-
+# modells (Issue #57). Das UI zeigt per hinweis_art eigene i18n-Texte.
+_READER_HINWEIS = {
+    vlm.FEHLER_RATE: "Rate-Limit des Lesemodells erreicht – Erkennung über lokale OCR.",
+    vlm.FEHLER_KEY: "API-Key des Lesemodells ungültig oder fehlt – Erkennung über lokale OCR.",
+    vlm.FEHLER_VLM: "Lesemodell nicht erreichbar – Erkennung über lokale OCR.",
+}
 
 
 def _today_utc() -> str:
@@ -84,13 +125,23 @@ def _record_usage(db: Session, total_tokens: int) -> None:
 
 @router.get("/status")
 def scan_status(db: Session = Depends(get_db)):
-    """Welche Erkennungs-Engine ist aktiv? (Hybrid-Anzeige im UI)"""
-    key, _ = _gemini_config(db)
-    gem = gemini.is_enabled(key)
+    """Welche Erkennungs-Engine ist aktiv? (provider-bewusste Anzeige im UI)"""
+    provider, key, model, _base = _reader_config(db)
+    ocr_on = ocr.is_enabled()
+    if provider == "gemini":
+        reader_on = gemini.is_enabled(key)
+    elif provider in ("openai", "openrouter"):
+        reader_on = vlm.is_enabled(key)
+    else:  # "ocr": bewusst nur lokale Erkennung
+        reader_on = False
+    active = provider if reader_on else ("ocr" if ocr_on else "none")
     return {
-        "gemini": gem,
-        "ocr": ocr.is_enabled(),
-        "active": "gemini" if gem else ("ocr" if ocr.is_enabled() else "none"),
+        "provider": provider,
+        "model": model,
+        # Rückwärtskompatibel: alte Clients lesen weiter gemini/ocr/active.
+        "gemini": provider == "gemini" and reader_on,
+        "ocr": ocr_on,
+        "active": active,
     }
 
 
@@ -179,9 +230,10 @@ async def scan(
     hinweis: str | None = None
     hinweis_art: str | None = None
     limit_erreicht = False
-    # Hybrid: Gemini bevorzugt (stark bei Binder/Multi), sonst lokale OCR.
-    gemini_key, gemini_model = _gemini_config(db)
-    if gemini.is_enabled(gemini_key):
+    # Lese-Stufe B (Issue #57): das in den Einstellungen gewählte Modell liest
+    # die Karte; bei fehlendem Key/hartem Fehler/„ocr" greift die lokale OCR.
+    provider, reader_key, reader_model, reader_base = _reader_config(db)
+    if provider == "gemini" and gemini.is_enabled(reader_key):
         if _gemini_limit_reached(db):
             limit_erreicht = True
             hinweis_art = "tageslimit"
@@ -189,7 +241,7 @@ async def scan(
             log.info("Gemini-Tageslimit erreicht – Scan fällt auf lokale OCR zurück.")
         else:
             result = await gemini.extract(
-                data, api_key=gemini_key, model=gemini_model, mime_type=mime)
+                data, api_key=reader_key, model=reader_model, mime_type=mime)
             if result.tokens is not None:
                 _record_usage(db, result.tokens)
                 # Live-Verbrauch (RPM/TPM) im 60s-Fenster mitzählen (Issue #22).
@@ -204,6 +256,18 @@ async def scan(
                 # Rate-Limit ist wie das Tageslimit ein erreichtes Kontingent →
                 # limit_erreicht (grobes Bool für Bestandskonsumenten).
                 limit_erreicht = result.fehler_art == gemini.FEHLER_RATE
+    elif provider in ("openai", "openrouter") and vlm.is_enabled(reader_key):
+        result = await vlm.extract(
+            data, base_url=reader_base, api_key=reader_key, model=reader_model,
+            mime_type=mime, title="PokeCollect")  # ASCII: HTTP-Header vertragen kein „é"
+        if result.reads is not None:
+            reads = result.reads
+            engine = provider
+        elif result.fehler_art:
+            # Harter Fehler des Lesemodells → OCR-Fallback, Ursache melden.
+            hinweis_art = result.fehler_art
+            hinweis = _READER_HINWEIS.get(result.fehler_art)
+            limit_erreicht = result.fehler_art == vlm.FEHLER_RATE
     if reads is None:
         reads = ocr.extract(data, mode=mode, rows=rows, cols=cols)
         engine = "ocr"

@@ -1,5 +1,28 @@
 # Changelog
 
+## [v1.7.0] – 2026-08-11 (Scan: freie Modellwahl fürs Lesen — Gemini · OpenAI · OpenRouter · OCR)
+
+### Neu
+- **Das Lese-Modell des Karten-Scans ist jetzt frei wählbar** (Einstellungen →
+  Scan). Bisher fest Gemini-oder-OCR; ab jetzt liest wahlweise **Google Gemini**,
+  **OpenAI** oder **OpenRouter** (eigenes Modell + eigener Key) den Karten­inhalt
+  aus dem Foto — oder bewusst **nur lokale OCR** ohne jede Cloud. Jeder Anbieter
+  hat sein eigenes, frei eintippbares Modellfeld (z. B. `gpt-4o-mini`,
+  `google/gemini-2.5-flash`).
+- **Lokale OCR bleibt der automatische Rückfall:** Fehlt der Key oder ist das
+  Modell nicht erreichbar/über dem Limit, liest der Scan wie bisher lokal weiter;
+  die Ursache wird im UI klar gemeldet (getrennt nach Key/Rate-Limit/Ausfall).
+
+### Hinweise
+- Diese Stufe betrifft nur das **Lesen** („welche Karte ist es?"). Der **Zuschnitt/
+  die Karten-Erkennung im Bild** (Issue #36) bleibt eine getrennte, später separat
+  einstellbare Stufe — VLMs lesen Inhalte stark, sind aber bei pixelgenauer
+  Geometrie unzuverlässig.
+- **Keine Migration, kein Datenrisiko:** rein additive Einstellungen; Default
+  bleibt **Gemini** → bestehende Installationen verhalten sich unverändert.
+- Keys werden wie gehabt nur **maskiert** ausgeliefert und nie im Klartext
+  zurückgegeben.
+
 ## [v1.6.8] – 2026-08-07 (Artname auch in der Karten-Detailansicht)
 
 ### Neu
