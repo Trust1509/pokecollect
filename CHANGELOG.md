@@ -12,6 +12,10 @@
 - **Lokale OCR bleibt der automatische Rückfall:** Fehlt der Key oder ist das
   Modell nicht erreichbar/über dem Limit, liest der Scan wie bisher lokal weiter;
   die Ursache wird im UI klar gemeldet (getrennt nach Key/Rate-Limit/Ausfall).
+- **Modell-Combobox statt reinem Freitext:** Das Modellfeld schlägt jetzt echte,
+  **bild-fähige** Modelle vor (bei OpenRouter live über dessen öffentlichen
+  Modell-Katalog gefiltert, kein Key nötig; bei OpenAI/Gemini kuratiert) — man
+  wählt aus oder tippt frei, kein Vertippen mehr.
 
 ### Hinweise
 - Diese Stufe betrifft nur das **Lesen** („welche Karte ist es?"). Der **Zuschnitt/

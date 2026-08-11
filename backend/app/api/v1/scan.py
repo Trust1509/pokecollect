@@ -27,7 +27,7 @@ from app.schemas.scan import (
 )
 from app.services.card_creation import create_owned_card
 from app.services.collection_slots import next_free_position
-from app.services.scan import gemini, ocr, vlm
+from app.services.scan import gemini, model_catalog, ocr, vlm
 from app.services.scan.rate_window import gemini_rate
 from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
@@ -121,6 +121,16 @@ def _record_usage(db: Session, total_tokens: int) -> None:
     except Exception as exc:  # Nutzung tracken darf den Scan nie stören
         db.rollback()
         log.debug("Gemini-Usage konnte nicht gezählt werden: %s", exc)
+
+
+@router.get("/models")
+async def scan_models(provider: str = "openrouter"):
+    """
+    Bild-fähige Modell-Vorschläge für die Combobox der Lese-Stufe (Issue #57).
+    OpenRouter live (öffentlich, ohne Key); OpenAI/Gemini kuratiert. Nur
+    Vorschläge — das Modellfeld bleibt frei tippbar.
+    """
+    return await model_catalog.list_models(provider)
 
 
 @router.get("/status")

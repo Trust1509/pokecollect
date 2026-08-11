@@ -473,6 +473,9 @@ const DE = {
   settings_openai_model_hint: "Bild-fähiges Modell, z.B. gpt-4o-mini. Key von platform.openai.com.",
   settings_openrouter_model: "OpenRouter Modell",
   settings_openrouter_model_hint: "z.B. google/gemini-2.5-flash oder ein anderes Vision-Modell. Key von openrouter.ai.",
+  settings_model_hint: (n: number, live: boolean) => live
+    ? `${n} bild-fähige Modelle von OpenRouter — tippen oder auswählen`
+    : "Vorschläge — oder eigenes Modell frei eintippen",
   settings_gemini_daily_limit: "Tägliches Limit (Anfragen)",
   settings_gemini_daily_limit_hint: "Aus deinem Google-AI-Plan. 0 = nicht anzeigen. Wird nur zur Anzeige des Verbrauchs genutzt.",
   settings_save_scan: "Scan-Einstellungen speichern",
@@ -989,6 +992,9 @@ const EN: typeof DE = {
   settings_openai_model_hint: "A vision-capable model, e.g. gpt-4o-mini. Key from platform.openai.com.",
   settings_openrouter_model: "OpenRouter model",
   settings_openrouter_model_hint: "e.g. google/gemini-2.5-flash or another vision model. Key from openrouter.ai.",
+  settings_model_hint: (n: number, live: boolean) => live
+    ? `${n} image-capable models from OpenRouter — type or pick`
+    : "Suggestions — or type your own model",
   settings_gemini_daily_limit: "Daily limit (requests)",
   settings_gemini_daily_limit_hint: "From your Google AI plan. 0 = do not show. Only used to display usage.",
   settings_save_scan: "Save scan settings",

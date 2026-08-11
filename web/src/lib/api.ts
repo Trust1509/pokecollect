@@ -565,9 +565,14 @@ export const catalogApi = {
     ),
 };
 
+export type ScanModelSuggestion = { id: string; name: string };
+export type ScanModelList = { models: ScanModelSuggestion[]; source: "live" | "curated" };
+
 export const scanApi = {
   status: () => api.get<ScanStatus>("/scan/status"),
   usage: () => api.get<ScanUsage>("/scan/usage"),
+  models: (provider: string) =>
+    api.get<ScanModelList>("/scan/models", { params: { provider } }),
   scan: (file: Blob, opts: { mode: ScanMode; rows?: number; cols?: number; default_language?: string }) => {
     const form = new FormData();
     form.append("file", file, "scan.jpg");

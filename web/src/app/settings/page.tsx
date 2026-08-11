@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, dataApi, AppSettings, AppSettingsUpdate, ScanUsage } from "@/lib/api";
+import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, dataApi, AppSettings, AppSettingsUpdate, ScanUsage, ScanModelSuggestion } from "@/lib/api";
 import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
 import { useI18n } from "@/lib/i18n";
@@ -78,12 +78,26 @@ export default function SettingsPage() {
   const [restoring, setRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreAck, setRestoreAck] = useState(false);
+  // Scan-Stufe B (Issue #57): bild-fähige Modell-Vorschläge für die Combobox.
+  const [modelList, setModelList] = useState<ScanModelSuggestion[]>([]);
+  const [modelSource, setModelSource] = useState<"live" | "curated" | null>(null);
 
   useEffect(() => {
     settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error(t.settings_load_error));
     scanApi.usage().then((r) => setUsage(r.data)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Modell-Vorschläge laden, sobald ein Cloud-Provider aktiv ist / gewechselt wird.
+  const provider = s?.scan_reader_provider;
+  useEffect(() => {
+    if (!provider || provider === "ocr") { setModelList([]); setModelSource(null); return; }
+    let alive = true;
+    scanApi.models(provider)
+      .then((r) => { if (alive) { setModelList(r.data.models); setModelSource(r.data.source); } })
+      .catch(() => { if (alive) { setModelList([]); setModelSource(null); } });
+    return () => { alive = false; };
+  }, [provider]);
 
   const save = async (patch: AppSettingsUpdate, clearSecrets: SecretKey[] = []) => {
     if (!s) return;
@@ -394,7 +408,7 @@ export default function SettingsPage() {
               <input type="password" value={secrets.gemini_api_key} onChange={(e) => setSecret("gemini_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.gemini_api_key_set, s.gemini_api_key_masked) ?? "AIza…"} />
             </Field>
             <Field label={t.settings_gemini_model} hint={t.settings_gemini_model_hint}>
-              <input type="text" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
+              <input type="text" list="scan-model-suggestions" value={s.gemini_model} onChange={(e) => set("gemini_model", e.target.value)} className={INPUT} placeholder="gemini-2.5-flash" />
             </Field>
             <Field label={t.settings_gemini_daily_limit} hint={t.settings_gemini_daily_limit_hint}>
               <input type="number" min={0} value={s.gemini_daily_limit} onChange={(e) => set("gemini_daily_limit", Number(e.target.value))} className={INPUT} style={{ width: "120px" }} />
@@ -411,7 +425,7 @@ export default function SettingsPage() {
               <input type="password" value={secrets.openai_api_key} onChange={(e) => setSecret("openai_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.openai_api_key_set, s.openai_api_key_masked) ?? "sk-…"} />
             </Field>
             <Field label={t.settings_openai_model} hint={t.settings_openai_model_hint}>
-              <input type="text" value={s.openai_model} onChange={(e) => set("openai_model", e.target.value)} className={INPUT} placeholder="gpt-4o-mini" />
+              <input type="text" list="scan-model-suggestions" value={s.openai_model} onChange={(e) => set("openai_model", e.target.value)} className={INPUT} placeholder="gpt-4o-mini" />
             </Field>
           </>
         )}
@@ -425,8 +439,20 @@ export default function SettingsPage() {
               <input type="password" value={secrets.openrouter_api_key} onChange={(e) => setSecret("openrouter_api_key", e.target.value)} className={INPUT} autoComplete="off" placeholder={secretPlaceholder(s.openrouter_api_key_set, s.openrouter_api_key_masked) ?? "sk-or-…"} />
             </Field>
             <Field label={t.settings_openrouter_model} hint={t.settings_openrouter_model_hint}>
-              <input type="text" value={s.openrouter_model} onChange={(e) => set("openrouter_model", e.target.value)} className={INPUT} placeholder="google/gemini-2.5-flash" />
+              <input type="text" list="scan-model-suggestions" value={s.openrouter_model} onChange={(e) => set("openrouter_model", e.target.value)} className={INPUT} placeholder="google/gemini-2.5-flash" />
             </Field>
+          </>
+        )}
+
+        {/* Combobox-Vorschläge (bild-fähige Modelle) — Feld bleibt frei tippbar */}
+        {s.scan_reader_provider !== "ocr" && (
+          <>
+            <datalist id="scan-model-suggestions">
+              {modelList.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </datalist>
+            {modelSource && modelList.length > 0 && (
+              <p className="text-gray-600 text-xs">{t.settings_model_hint(modelList.length, modelSource === "live")}</p>
+            )}
           </>
         )}
 
