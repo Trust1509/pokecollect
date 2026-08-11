@@ -103,6 +103,11 @@ class CardResponse(CardBase):
     variants_firstedition: Optional[bool] = None
     hinzugefuegt_am: Optional[datetime] = None
     aktualisiert_am: Optional[datetime] = None
+    # TCGplayer-$-Marktpreis aus dem Katalog-Cache (Epic #41): reiner Anzeige-
+    # Zusatz in der Detailansicht — v. a. für JP-Karten, deren wert_eur daraus
+    # umgerechnet wird. Nur GET /cards/{id} füllt die Felder (PK-Lookup).
+    katalog_preis_usd: Optional[Decimal] = None
+    katalog_preis_usd_stand: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

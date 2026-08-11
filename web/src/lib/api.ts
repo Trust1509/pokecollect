@@ -75,6 +75,9 @@ export type Card = {
   variants_firstedition: boolean | null;
   hinzugefuegt_am: string;
   aktualisiert_am: string;
+  // TCGplayer-$ aus dem Katalog-Cache (Epic #41) — nur GET /cards/{id} füllt sie
+  katalog_preis_usd?: string | null;
+  katalog_preis_usd_stand?: string | null;
 };
 
 export type CardListResponse = {

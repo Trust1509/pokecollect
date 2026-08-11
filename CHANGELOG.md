@@ -1,5 +1,36 @@
 # Changelog
 
+## [v1.7.1] – 2026-08-11 (Japanische Karten bekommen Preise: $ → € mit EZB-Tageskurs)
+
+### Neu
+- **Karten ohne Cardmarket-€-Preis (v. a. japanische) bekommen jetzt einen Wert:**
+  Cardmarket führt JP-Karten schlicht nicht — deshalb greift beim täglichen
+  Preisupdate (und „Preise jetzt aktualisieren") eine neue, universelle Kette:
+  erst Cardmarket-€ wie bisher, sonst der **TCGplayer-$-Marktpreis aus dem
+  Katalog-Cache, mit dem EZB-Tageskurs in € umgerechnet** (Quellen frankfurter.dev/
+  EZB, Fallback open.er-api.com; 12 h gecacht). Der Preisverlauf markiert die
+  Herkunft als `tcgplayer-usd`. JP-Karten zählen damit in Sammlungswert-Summen mit.
+- **Detailansicht zeigt den Original-$:** Neben dem €-Wert erscheint der
+  TCGplayer-Marktpreis ($, mit Datenstand) aus dem Katalog-Cache.
+
+### Hinweise (Schutzplanken, Panel-gehärtet)
+- **Kein stiller Basiswechsel:** Ist TCGdex nur gerade nicht erreichbar (Ausfall/
+  Rate-Limit), bleibt die Karte unangetastet — der $-Fallback greift nur, wenn
+  die €-Quelle wirklich geprüft wurde und dort kein Preis existiert.
+- **Echte Holo-Varianten überspringen den Fallback** (der gecachte $ ist der
+  Normal-Varianten-Preis; Reverse zählt wie im €-Pfad als Normal). Varianten-
+  genaue $-Preise sind als Folge-Ausbau vorgemerkt.
+- $-Datenstände älter als 30 Tage werden nicht verwendet; 0-/Ausreißer-Preise
+  werden übersprungen (nie 0 schreiben, ein Ausreißer rollt nie den ganzen
+  Lauf zurück). Der Umrechnungskurs steht auditierbar im Verlauf
+  (`tcgplayer-usd@0.8666`); ohne erreichbare Kurs-API dient der letzte bekannte
+  Kurs (max. 7 Tage) als Notnagel.
+- Preise erscheinen nach dem nächsten Preisupdate (Cron, Standard 03:00, oder
+  Einstellungen → „Preise jetzt aktualisieren"); der $-Preis der JP-Karten
+  stammt aus dem Katalog-Sync (04:00).
+- Keine Migration — nutzt vorhandene Spalten (`wert_eur`, Preisverlauf-Quelle,
+  Katalog-Preis-Cache).
+
 ## [v1.7.0] – 2026-08-11 (Scan: freie Modellwahl fürs Lesen — Gemini · OpenAI · OpenRouter · OCR)
 
 ### Neu

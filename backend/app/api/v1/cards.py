@@ -19,6 +19,7 @@ from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
+from app.models.tcgdex_catalog import TcgdexCatalog
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
@@ -174,9 +175,25 @@ def list_cards(
     )
 
 
+def _card_response(db: Session, card: PokemonCard) -> CardResponse:
+    """
+    CardResponse + TCGplayer-$-Beilage aus dem Katalog-Cache (Epic #41, reiner
+    PK-Lookup). Gemeinsame Routine ALLER Einzelkarten-Antworten (GET/POST/PUT/
+    Bild), damit die $-Zeile im UI nach Speichern/Toggle nicht verschwindet —
+    das Frontend ersetzt seinen Kartenzustand aus jeder dieser Antworten.
+    """
+    resp = CardResponse.model_validate(card)
+    if card.tcgdex_card_id:
+        row = db.get(TcgdexCatalog, card.tcgdex_card_id)
+        if row is not None and row.price_usd is not None:
+            resp.katalog_preis_usd = row.price_usd
+            resp.katalog_preis_usd_stand = row.price_usd_updated
+    return resp
+
+
 @router.get("/{card_id}", response_model=CardResponse)
 def get_card(card_id: int, db: Session = Depends(get_db)):
-    return _card_or_404(card_id, db)
+    return _card_response(db, _card_or_404(card_id, db))
 
 
 @router.get("/{card_id}/collections", response_model=list[CollectionResponse])
@@ -202,13 +219,14 @@ def create_card(data: CardCreate, background_tasks: BackgroundTasks, db: Session
     # Besessene Karten laufen über den Domain-Service (Adoption + Auto-Flag
     # + Bild-Fetch — eine Routine für alle Anlege-Pfade, Issue #4).
     if data.besessen:
-        return create_owned_card(db, data.model_dump(), background_tasks=background_tasks)
+        card = create_owned_card(db, data.model_dump(), background_tasks=background_tasks)
+        return _card_response(db, card)
 
     card = PokemonCard(**data.model_dump())
     db.add(card)
     db.commit()
     db.refresh(card)
-    return card
+    return _card_response(db, card)
 
 
 @router.put("/{card_id}", response_model=CardResponse)
@@ -233,7 +251,7 @@ def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTask
         background_tasks.add_task(_trigger_image_fetch, card.id)
     db.commit()
     db.refresh(card)
-    return card
+    return _card_response(db, card)
 
 
 @router.delete("/{card_id}", status_code=204)
@@ -284,7 +302,7 @@ async def upload_image(
 ):
     card = _card_or_404(card_id, db)
     try:
-        return store_card_image(db, card, file, original)
+        return _card_response(db, store_card_image(db, card, file, original))
     except ImageValidationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail)
 
@@ -297,7 +315,7 @@ def delete_image(card_id: int, background_tasks: BackgroundTasks, db: Session = 
     # damit nicht der Platzhalter stehen bleibt.
     if card.besessen and not card.bild_karte_url and not card.bild_pokedex_url:
         background_tasks.add_task(_trigger_image_fetch, card.id)
-    return card
+    return _card_response(db, card)
 
 
 # ── Statistiken ──────────────────────────────────────────────────────────────

@@ -265,7 +265,7 @@ export default function EditForm({
         {field("notizen", t.field_notes, "textarea")}
       </dl>
 
-      {(card.wert_eur != null || card.kaufpreis_eur != null) && (
+      {(card.wert_eur != null || card.kaufpreis_eur != null || card.katalog_preis_usd != null) && (
         <div className="mt-4 p-3 bg-pokemon-card rounded-lg space-y-1.5">
           {card.kaufpreis_eur != null && (
             <div className="flex items-baseline justify-between text-sm">
@@ -284,6 +284,21 @@ export default function EditForm({
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-gray-400">{t.detail_current_value}</span>
               <span className="text-yellow-400 font-bold">{formatEur(card.wert_eur)}</span>
+            </div>
+          )}
+          {/* TCGplayer-$ aus dem Katalog-Cache (Epic #41) — Original-Preis,
+              aus dem wert_eur bei Karten ohne Cardmarket-€ umgerechnet wird */}
+          {card.katalog_preis_usd != null && (
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="text-gray-400">{t.detail_tcgplayer_usd}</span>
+              <span className="text-white">
+                ${Number(card.katalog_preis_usd).toFixed(2)}
+                {card.katalog_preis_usd_stand && !isNaN(new Date(card.katalog_preis_usd_stand).getTime()) && (
+                  <span className="text-gray-500 text-xs ml-1">
+                    · {new Date(card.katalog_preis_usd_stand).toLocaleDateString(t.date_locale)}
+                  </span>
+                )}
+              </span>
             </div>
           )}
           {gv != null && (
