@@ -23,7 +23,7 @@ from app.services.catalog_lookup import catalog_row_for
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
-    SELTENHEIT_VALUES, KARTENVERSION_VALUES, FOLIERUNG_VALUES,
+    SELTENHEIT_VALUES, KARTENVERSION_VALUES, FOLIERUNG_VALUES, MUSTER_VALUES,
     SPRACHE_VALUES, ZUSTAND_VALUES, PRIORITAET_VALUES,
 )
 from app.schemas.collection import CollectionResponse
@@ -244,6 +244,9 @@ def update_card(card_id: int, data: CardUpdate, background_tasks: BackgroundTask
         )
     for field, value in updated.items():
         setattr(card, field, value)
+    # Invariante (#63): Muster nur an folierten Grundformen (vgl. create_owned_card)
+    if card.muster and "Holo" not in (card.folierung or ""):
+        card.muster = None
     # Bild + TCGdex-Referenz neu abrufen wenn relevante Felder geändert wurden
     if any(k in updated for k in ("set_edition", "karten_nr", "sprache")):
         card.bild_karte_url = None  # wird neu gesetzt
@@ -331,6 +334,7 @@ def get_enums():
         seltenheit=SELTENHEIT_VALUES,
         kartenversion=KARTENVERSION_VALUES,
         folierung=FOLIERUNG_VALUES,
+        muster=MUSTER_VALUES,
         sprache=SPRACHE_VALUES,
         zustand=ZUSTAND_VALUES,
         prioritaet=PRIORITAET_VALUES,

@@ -22,12 +22,18 @@ KARTENVERSION_VALUES = [
     "Shiny", "Illustration Rare", "Special Illustration Rare",
 ]
 
-FOLIERUNG_VALUES = [
-    "Normal", "Holo", "Cosmos Holo", "Reverse Holo",
-    "Reverse Holo – Sterne", "Reverse Holo – Energie",
-    "Reverse Holo – Pokéball", "Reverse Holo – Masterball",
-    "Reverse Holo – Team Rocket R", "Reverse Holo – Muster",
-    "Etched Holo", "Bubble Holo",
+# Folierung = preis-zuordenbare GRUNDFORM (#63, Expand-Contract Schritt 1):
+# die früheren Kombi-Werte („Reverse Holo – Pokéball", „Cosmos Holo", …) leben
+# jetzt als Grundform + MUSTER_VALUES weiter; die Light-Migration teilt
+# Bestandswerte auf. Server akzeptiert Alt-Werte weiterhin (keine Validierung
+# gegen diese Liste — sie speist nur /enums fürs UI).
+FOLIERUNG_VALUES = ["Normal", "Holo", "Reverse Holo"]
+
+# Muster/Pattern der Folierung als eigene Dimension. Auswahlfeld statt
+# Checkboxen (Owner-Grilling): Muster schließen sich gegenseitig aus.
+MUSTER_VALUES = [
+    "Pokéball", "Masterball", "Cosmos", "Etched", "Bubble",
+    "Sterne", "Energie", "Team Rocket R", "Sonstiges",
 ]
 
 SPRACHE_VALUES = ["DE", "EN", "CN", "JP", "FR", "ES", "IT"]
@@ -44,6 +50,7 @@ class CardBase(BaseModel):
     seltenheit: Optional[str] = None
     kartenversion: Optional[str] = None
     folierung: Optional[str] = None
+    muster: Optional[str] = None       # Folierungs-Muster (#63), z. B. Pokéball
     erste_edition: bool = False
     sprache: Optional[str] = "DE"
     besessen: bool = False
@@ -71,6 +78,7 @@ class CardUpdate(BaseModel):
     seltenheit: Optional[str] = None
     kartenversion: Optional[str] = None
     folierung: Optional[str] = None
+    muster: Optional[str] = None
     erste_edition: Optional[bool] = None
     sprache: Optional[str] = None
     besessen: Optional[bool] = None
@@ -162,6 +170,7 @@ class EnumsResponse(BaseModel):
     seltenheit: list[str]
     kartenversion: list[str]
     folierung: list[str]
+    muster: list[str] = []     # Folierungs-Muster (#63)
     sprache: list[str]
     zustand: list[str]
     prioritaet: list[str]

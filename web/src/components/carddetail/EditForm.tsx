@@ -240,6 +240,10 @@ export default function EditForm({
         )}
         {field("kartenversion", t.field_card_version, "select", enums?.kartenversion)}
         {field("folierung", t.field_foiling, "select", enums?.folierung)}
+        {/* Muster (#63): eigene Dimension, nur bei Foil-Grundformen sinnvoll */}
+        {(Boolean(((form as Record<string, unknown>).folierung as string | null)?.includes("Holo"))
+          || Boolean((form as Record<string, unknown>).muster)) &&
+          field("muster", t.field_pattern, "select", enums?.muster)}
         {field("sprache", t.field_language, "select", enums?.sprache)}
         {field("zustand", t.field_condition, "select", enums?.zustand)}
         {field("besessen", t.field_owned, "boolean")}

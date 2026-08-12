@@ -216,6 +216,46 @@ def _run_light_migrations():
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd NUMERIC(10,2)",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur_updated TEXT",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_updated TEXT",
+        # #63: Muster als eigene Dimension (Expand-Contract Schritt 1) + die
+        # Varianten-$-Preisspalten am Katalog.
+        "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS muster TEXT",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_holo NUMERIC(10,2)",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_reverse NUMERIC(10,2)",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_pokeball NUMERIC(10,2)",
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_masterball NUMERIC(10,2)",
+        # #63: Bestands-Folierungen in Grundform + Muster aufteilen. Idempotent:
+        # nach der Aufteilung matcht die WHERE-Klausel keine Zeile mehr; ein
+        # bereits (z. B. nach einem Alt-Backup-Restore manuell) gesetztes muster
+        # wird NIE überschrieben (Panel-Fund).
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Pokéball') WHERE folierung='Reverse Holo – Pokéball'",
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Masterball') WHERE folierung='Reverse Holo – Masterball'",
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Sterne') WHERE folierung='Reverse Holo – Sterne'",
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Energie') WHERE folierung='Reverse Holo – Energie'",
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Team Rocket R') WHERE folierung='Reverse Holo – Team Rocket R'",
+        "UPDATE pokemon_cards SET folierung='Reverse Holo', muster=COALESCE(NULLIF(muster,''),'Sonstiges') WHERE folierung='Reverse Holo – Muster'",
+        "UPDATE pokemon_cards SET folierung='Holo', muster=COALESCE(NULLIF(muster,''),'Cosmos') WHERE folierung='Cosmos Holo'",
+        "UPDATE pokemon_cards SET folierung='Holo', muster=COALESCE(NULLIF(muster,''),'Etched') WHERE folierung='Etched Holo'",
+        "UPDATE pokemon_cards SET folierung='Holo', muster=COALESCE(NULLIF(muster,''),'Bubble') WHERE folierung='Bubble Holo'",
+        # #63 (Panel-MAJOR): Sammelziel-Regeln tragen dieselbe Alt-Semantik und
+        # vergleichen EXAKT (set_goal) — ohne Mitmigration bräche der Fortschritt
+        # still ein. Ziele werden auf die Grundform normalisiert (Muster-genaue
+        # Ziele wären ein eigener Ausbau: ziel_muster/soll_muster).
+        """
+        UPDATE collections SET ziel_folierung =
+          CASE WHEN ziel_folierung IN ('Cosmos Holo','Etched Holo','Bubble Holo')
+               THEN 'Holo' ELSE 'Reverse Holo' END
+        WHERE ziel_folierung IN ('Cosmos Holo','Etched Holo','Bubble Holo',
+          'Reverse Holo – Sterne','Reverse Holo – Energie','Reverse Holo – Pokéball',
+          'Reverse Holo – Masterball','Reverse Holo – Team Rocket R','Reverse Holo – Muster')
+        """,
+        """
+        UPDATE collection_soll SET soll_folierung =
+          CASE WHEN soll_folierung IN ('Cosmos Holo','Etched Holo','Bubble Holo')
+               THEN 'Holo' ELSE 'Reverse Holo' END
+        WHERE soll_folierung IN ('Cosmos Holo','Etched Holo','Bubble Holo',
+          'Reverse Holo – Sterne','Reverse Holo – Energie','Reverse Holo – Pokéball',
+          'Reverse Holo – Masterball','Reverse Holo – Team Rocket R','Reverse Holo – Muster')
+        """,
         # v1.7.3: Funktionsindex für den case-toleranten Katalog-Lookup
         # (catalog_row_for) UND den Backfill-Join darunter — ohne ihn wäre jeder
         # upper()-Fehltreffer ein Seq-Scan über ~29k Zeilen (Panel-Fund; gleiches

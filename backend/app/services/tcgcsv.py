@@ -118,6 +118,33 @@ def product_denominator(product: dict) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
+def product_pattern(product: dict) -> Optional[str]:
+    """
+    Muster-Produkt erkennen (#63): TCGplayer führt Pokéball-/Masterball-
+    Varianten als EIGENE Produkte mit Suffix im Namen — z. B.
+    „Gothitelle (Poke Ball Pattern)". Tolerant gegen Schreibvarianten
+    (é, mit/ohne Leerzeichen — Panel-Fund). Rückgabe "pokeball"/"masterball"/None.
+    """
+    n = (product.get("name") or "").lower().replace("é", "e").replace(" ", "")
+    if "masterballpattern" in n:
+        return "masterball"
+    if "pokeballpattern" in n:
+        return "pokeball"
+    return None
+
+
+def usd_for_subtype(prices: list[dict], product_id: int, subtype: str) -> Optional[float]:
+    """Marktpreis ($) eines Produkts für GENAU einen Subtyp (z. B. 'Holofoil',
+    'Reverse Holofoil'); None ohne passenden Satz (#63)."""
+    if product_id is None:
+        return None
+    for p in prices:
+        if (p.get("productId") == product_id and p.get("subTypeName") == subtype
+                and p.get("marketPrice") is not None):
+            return p.get("marketPrice")
+    return None
+
+
 def clean_card_name(name: Optional[str]) -> Optional[str]:
     """
     TCGplayer-Produktname → Kartenname: hängt oft „ - 032/063" (+ ggf.

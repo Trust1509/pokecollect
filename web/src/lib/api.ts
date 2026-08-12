@@ -47,6 +47,7 @@ export type Card = {
   seltenheit: string | null;
   kartenversion: string | null;
   folierung: string | null;
+  muster: string | null;       // Folierungs-Muster (#63): Pokéball/Masterball/…
   erste_edition: boolean;
   sprache: string;
   besessen: boolean;
@@ -114,6 +115,7 @@ export type Enums = {
   seltenheit: string[];
   kartenversion: string[];
   folierung: string[];
+  muster?: string[];           // Folierungs-Muster (#63)
   sprache: string[];
   zustand: string[];
   prioritaet: string[];
@@ -454,6 +456,7 @@ export type ScanCommitItem = {
   seltenheit?: string | null;
   kartenversion?: string | null;
   folierung?: string | null;
+  muster?: string | null;      // Folierungs-Muster (#63)
   sprache?: string | null;
   zustand?: string | null;
   notizen?: string | null;
@@ -550,6 +553,11 @@ export type CatalogDetail = CatalogItem & {
   price_eur_updated: string | null;  // Datenstand €
   price_usd: number | null;        // $ TCGplayer (West live, JP gecacht via TCGCSV)
   price_usd_updated: string | null;  // Datenstand $
+  // Varianten-$-Preise aus dem Cache (#63)
+  price_usd_holo?: number | null;
+  price_usd_reverse?: number | null;
+  price_usd_pokeball?: number | null;
+  price_usd_masterball?: number | null;
 };
 
 export const catalogApi = {

@@ -18,6 +18,11 @@ class PokemonCard(Base):
     seltenheit = Column(Text, nullable=True, index=True)
     kartenversion = Column(Text, nullable=True)
     folierung = Column(Text, nullable=True)
+    # Muster der Folierung als EIGENE Dimension (#63, Owner-Entscheid):
+    # Pokéball/Masterball/Cosmos/… — Folierung bleibt die preis-zuordenbare
+    # Grundform (Normal/Holo/Reverse Holo). Alt-Werte („Reverse Holo – Pokéball")
+    # werden per Light-Migration aufgeteilt (Expand; Contract später).
+    muster = Column(Text, nullable=True)
     # „besitze diese Karte als 1st Edition" — eigenes Ja/Nein, unabhängig vom
     # TCGdex-variants_firstedition (das nur sagt „gibt es als 1st Edition"), #25.
     erste_edition = Column(Boolean, nullable=False, server_default=false(), default=False)

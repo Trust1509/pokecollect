@@ -40,6 +40,12 @@ class CatalogDetail(CatalogItem):
     price_eur_trend: Optional[float] = None  # nur aus Live-Abruf
     price_eur_updated: Optional[str] = None  # Datenstand €
     price_usd_updated: Optional[str] = None  # Datenstand $
+    # Varianten-$-Preise aus dem Cache (#63): Holo/Reverse (Subtypen) +
+    # Pokéball/Masterball (eigene TCGplayer-Produkte je Karte)
+    price_usd_holo: Optional[float] = None
+    price_usd_reverse: Optional[float] = None
+    price_usd_pokeball: Optional[float] = None
+    price_usd_masterball: Optional[float] = None
 
 
 class CatalogListResponse(BaseModel):

@@ -223,31 +223,68 @@ def _usd_stand_frisch(stand: Optional[str]) -> bool:
     return (datetime.now(timezone.utc) - dt).days <= _MAX_USD_STAND_TAGE
 
 
+def _hat_muster_preisprodukt(card: PokemonCard) -> bool:
+    """
+    Pokéball-/Masterball-Muster haben EIGENE TCGplayer-Produkte (#63).
+    RIEGEL (Panel-Fund): Muster zählt nur bei folierter Grundform — ein stale
+    „muster" an einer Normal-Karte (UI-Wechsel zurück auf Normal) darf den
+    Wert nicht auf den Muster-Preis reißen (12,78 € statt 0,02 €).
+    """
+    if "holo" not in (card.folierung or "").lower():
+        return False
+    m = (card.muster or "").lower()
+    return "masterball" in m or "pokeball" in m or "pokéball" in m
+
+
 def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
     """
-    TCGplayer-$-Marktpreis aus dem Katalog-Cache (Epic #41: West aus TCGdex,
-    JP aus TCGCSV; im täglichen Sync gefüllt). None ohne Katalog-Referenz/-Preis
-    oder wenn der Datenstand älter als _MAX_USD_STAND_TAGE ist. Case-toleranter
-    Lookup: Scan-IDs sind klein, JP-Katalog-IDs groß (v1.7.3).
+    TCGplayer-$-Marktpreis aus dem Katalog-Cache, passend zur (Folierung,
+    Muster)-Kombination der Karte (#63):
+      - Muster Pokéball/Masterball → Preis des Muster-PRODUKTS; KEIN Fallback
+        auf andere Spalten (materiell anderes Produkt, $0.60/$12.78 vs $0.26).
+      - echtes Holo → Holofoil-Subtyp; kein Fallback auf Normal (falsche Variante).
+      - Reverse → Reverse-Subtyp, ersatzweise Normal (dokumentierte Näherung —
+        JP-Produkte führen oft keinen Reverse-Subtyp).
+      - Normal → Basispreis.
+    None ohne Katalog-Referenz/-Preis oder wenn der Datenstand älter als
+    _MAX_USD_STAND_TAGE ist. Case-toleranter Lookup (v1.7.3).
     """
     row = catalog_row_for(db, card.tcgdex_card_id)
-    if row is None or row.price_usd is None:
+    if row is None:
         return None
     if not _usd_stand_frisch(row.price_usd_updated):
         return None
-    return Decimal(str(row.price_usd))
+    # Muster nur bei folierter Grundform honorieren (Riegel wie in
+    # _hat_muster_preisprodukt — stale muster an Normal-Karten ignorieren).
+    f = (card.folierung or "").lower()
+    m = (card.muster or "").lower() if "holo" in f else ""
+    if "masterball" in m:
+        val = row.price_usd_masterball
+    elif "pokeball" in m or "pokéball" in m:
+        val = row.price_usd_pokeball
+    elif _is_holo(card.folierung):
+        val = row.price_usd_holo
+    elif "reverse" in f:
+        val = row.price_usd_reverse if row.price_usd_reverse is not None else row.price_usd
+    else:
+        val = row.price_usd
+    return Decimal(str(val)) if val is not None else None
 
 
 async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
     """
     Aktualisiert Preise für die angegebenen Karten und schreibt Preisverlauf in
-    preis_historie. Preis-Kette (Owner-Entscheid 2026-08-11, universell):
-      1. Cardmarket-€ über TCGdex (wie bisher)
+    preis_historie. Preis-Kette (Owner-Entscheide 2026-08-11/12):
+      0. Muster-Karten (Pokéball/Masterball, #63) ZUERST über ihr eigenes
+         TCGplayer-Produkt ($ × EZB-Kurs) — Cardmarket kennt keine Muster-
+         Preise, der Basis-€ läge um ein Vielfaches daneben ($12.78 vs 0,08 €).
+         Ohne Muster-$ fällt die Karte in die normale Kette (Näherung).
+      1. Cardmarket-€ über TCGdex (Folierungs-bewusst, v1.7.3)
       2. Cardmarket-OAuth-Fallback (optional, wie bisher)
-      3. TCGplayer-$ aus dem Katalog-Cache, mit EZB-Tageskurs in € umgerechnet
-         (Quelle „tcgplayer-usd@<kurs>") — gibt v. a. japanischen Karten einen
-         Wert, die Cardmarket gar nicht führt. Greift NICHT, wenn die €-Quelle
-         nur gerade ausgefallen ist, und nicht für echte Holo-Varianten.
+      3. TCGplayer-$ aus dem Katalog-Cache, varianten-bewusst (#63: Holo-/
+         Reverse-Subtyp bzw. Basis), mit EZB-Tageskurs in € umgerechnet
+         (Quelle „tcgplayer-usd@<kurs>"). Greift NICHT, wenn die €-Quelle nur
+         gerade ausgefallen ist.
     Karten ganz ohne Preis bleiben unverändert (kein 0-Wert). Session kommt
     injiziert (Kredo „testbar by default"); Hintergrund-Aufrufer nutzen
     database.run_with_session. Gemeinsame Routine für Cron UND /prices/refresh.
@@ -255,6 +292,27 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
     updated = 0
     usd_rate: Optional[Decimal] = None
     usd_rate_geholt = False  # Kurs nur einmal je Lauf holen (nicht je Karte)
+
+    async def usd_in_eur(card: PokemonCard) -> Optional[Decimal]:
+        """Varianten-$ der Karte in € (Kurs je Lauf gecacht); None wenn nicht
+        bepreisbar (kein $/kein Kurs/außerhalb des Wertebereichs)."""
+        nonlocal usd_rate, usd_rate_geholt
+        usd = _usd_from_catalog(db, card)
+        # 0/negativ = Datenfehler in der Quelle, kein Preis (nie 0 schreiben)
+        if usd is None or usd <= 0:
+            return None
+        if not usd_rate_geholt:
+            usd_rate = await fx.usd_eur_rate()
+            usd_rate_geholt = True
+        if usd_rate is None:
+            return None
+        kandidat = convert_usd_eur(usd, usd_rate)
+        if not _wert_plausibel(kandidat):
+            log.warning("Karte %s: umgerechneter $-Preis %s außerhalb des "
+                        "Wertebereichs – übersprungen.", card.id, kandidat)
+            return None
+        return kandidat
+
     try:
         price_source = get_price_source(db)
         for card_id in card_ids:
@@ -262,33 +320,27 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
             if not card:
                 continue
             quelle = "tcgdex-cardmarket"
-            price, eur_geprueft = await _price_for_card(db, card, price_source)
+            price: Optional[Decimal] = None
+            eur_geprueft = True
+            # Kette 0: Muster-Produktpreis hat Vorrang vor Cardmarket-Basis-€.
+            if _hat_muster_preisprodukt(card):
+                price = await usd_in_eur(card)
+                if price is not None:
+                    # Kurs im Verlauf dokumentieren → $-Basis bleibt auditierbar
+                    quelle = f"tcgplayer-usd@{usd_rate}"
+            if price is None:
+                price, eur_geprueft = await _price_for_card(db, card, price_source)
             if price is None:
                 price = _cardmarket_oauth_fallback(db, card)
                 if price is not None:
                     quelle = "cardmarket-oauth"
-            # $-Fallback NUR wenn die €-Quelle wirklich geprüft wurde (nicht bei
-            # TCGdex-Ausfall) und die Karte keine echte Holo ist — der gecachte $
-            # ist der NORMAL-Varianten-Preis. Bekannte Asymmetrie bis #63: der
-            # €-Pfad bepreist Reverse (ohne echtes Holo) als Foil, der $-Pfad
-            # dieselbe Karte als Normal — Varianten-$-Cache räumt das auf.
-            if price is None and eur_geprueft and not _is_holo(card.folierung):
-                usd = _usd_from_catalog(db, card)
-                # 0/negativ = Datenfehler in der Quelle, kein Preis (nie 0 schreiben)
-                if usd is not None and usd > 0:
-                    if not usd_rate_geholt:
-                        usd_rate = await fx.usd_eur_rate()
-                        usd_rate_geholt = True
-                    if usd_rate is not None:
-                        kandidat = convert_usd_eur(usd, usd_rate)
-                        if _wert_plausibel(kandidat):
-                            price = kandidat
-                            # Kurs im Verlauf dokumentieren → $-Basis bleibt
-                            # auditierbar (z. B. "tcgplayer-usd@0.8666")
-                            quelle = f"tcgplayer-usd@{usd_rate}"
-                        else:
-                            log.warning("Karte %s: umgerechneter $-Preis %s außerhalb "
-                                        "des Wertebereichs – übersprungen.", card.id, kandidat)
+            # $-Fallback NUR wenn die €-Quelle wirklich geprüft wurde (nicht
+            # bei TCGdex-Ausfall). Varianten-Wahl (inkl. echtem Holo über den
+            # Holofoil-Subtyp) übernimmt _usd_from_catalog (#63).
+            if price is None and eur_geprueft:
+                price = await usd_in_eur(card)
+                if price is not None:
+                    quelle = f"tcgplayer-usd@{usd_rate}"
             if price is None:
                 continue
             card.wert_eur = price

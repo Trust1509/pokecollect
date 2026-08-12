@@ -109,6 +109,12 @@ def create_owned_card(
         if row is not None and row.name_en:
             fields["englischer_name"] = row.name_en
 
+    # Invariante (#63): Muster gibt es nur an folierten Grundformen — ein im UI
+    # zurückgelassenes Muster an einer Normal-Karte würde sonst den Wert auf
+    # den Muster-Produktpreis reißen (Panel-Fund).
+    if fields.get("muster") and "Holo" not in (fields.get("folierung") or ""):
+        fields["muster"] = None
+
     card: Optional[PokemonCard] = None
     if pokedex_nr:
         # Platzhalter-Adoption: vorhandene nicht-besessene Zeile übernehmen

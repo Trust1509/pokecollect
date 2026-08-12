@@ -79,6 +79,7 @@ class ScanCommitItem(BaseModel):
     seltenheit: Optional[str] = None
     kartenversion: Optional[str] = None
     folierung: Optional[str] = None
+    muster: Optional[str] = None           # Folierungs-Muster (#63)
     sprache: Optional[str] = "DE"
     zustand: Optional[str] = None
     notizen: Optional[str] = None

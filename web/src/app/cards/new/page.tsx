@@ -130,6 +130,8 @@ function NewCardForm() {
         {sel("seltenheit", t.form_rarity, enums?.seltenheit ?? [])}
         {sel("kartenversion", t.form_card_version, enums?.kartenversion ?? [])}
         {sel("folierung", t.form_foiling, enums?.folierung ?? [])}
+        {/* Muster (#63): nur bei Foil-Grundformen anbieten */}
+        {form.folierung?.includes("Holo") && sel("muster", t.field_pattern, enums?.muster ?? [])}
         {sel("sprache", t.form_language, enums?.sprache ?? [])}
         {sel("zustand", t.form_condition, enums?.zustand ?? [])}
         <div className="flex items-center gap-2">

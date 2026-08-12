@@ -39,6 +39,13 @@ class TcgdexCatalog(Base):
     price_usd = Column(Numeric(10, 2), nullable=True)
     price_eur_updated = Column(Text, nullable=True)
     price_usd_updated = Column(Text, nullable=True)
+    # Varianten-$-Preise (#63): Subtypen des Basisprodukts (Holofoil/Reverse
+    # Holofoil) + Muster-PRODUKTE („(Poke Ball Pattern)"/„(Master Ball Pattern)",
+    # eigene TCGplayer-Produkte je Karte). Datenstand teilt price_usd_updated.
+    price_usd_holo = Column(Numeric(10, 2), nullable=True)
+    price_usd_reverse = Column(Numeric(10, 2), nullable=True)
+    price_usd_pokeball = Column(Numeric(10, 2), nullable=True)
+    price_usd_masterball = Column(Numeric(10, 2), nullable=True)
     variants_normal = Column(Boolean, nullable=True)
     variants_reverse = Column(Boolean, nullable=True)
     variants_holo = Column(Boolean, nullable=True)

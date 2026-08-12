@@ -405,18 +405,23 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
                 log.info("TCGplayer-Übernahme %s: Set %s/%s nicht plausibel "
                          "(Fremd-Vokabular?) – übersprungen.", region, set_code, set_id)
                 continue
-            num_to_product: dict[str, dict] = {}
+            # Je Nummer die Produkt-SLOTS sammeln (#63): Grundform (Dubletten →
+            # Klammerzusatz verliert, Panel-Fund) + Muster-Produkte separat
+            # („(Poke Ball Pattern)"/„(Master Ball Pattern)" = eigene Produkte).
+            num_to_slots: dict[str, dict[str, dict]] = {}
             for p in products:
                 num = tcgcsv.product_number(p)
                 if not num:
                     continue
-                prev = num_to_product.get(num)
-                # Bei Nummern-Dubletten (z. B. „Mew ex - 205/165 (151 Metal
-                # Card)") die Grundform ohne Klammerzusatz bevorzugen statt
-                # Reihenfolgezufall (Panel-Fund).
+                slots = num_to_slots.setdefault(num, {})
+                pattern = tcgcsv.product_pattern(p)
+                if pattern:
+                    slots.setdefault(pattern, p)
+                    continue
+                prev = slots.get("base")
                 if prev is None or ("(" in str(prev.get("name") or "")
                                     and "(" not in str(p.get("name") or "")):
-                    num_to_product[num] = p
+                    slots["base"] = p
             price_rows = await tcgcsv.get_prices(category, gid)
             touched = False
             for card_id, local_id in rows:
@@ -424,35 +429,58 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
                 # isascii() zusätzlich zu isdigit(): „²".isdigit() ist True, aber
                 # int(„²") wirft — nur echte ASCII-Ziffern normalisieren.
                 key = str(int(lid)) if (lid.isascii() and lid.isdigit()) else lid
-                p = num_to_product.get(key)
-                if not p:
+                slots = num_to_slots.get(key)
+                if not slots:
                     continue
-                # Bild: atomar NUR wo noch keins steht (Race-Schutz gegen ein
-                # zwischenzeitlich geschriebenes TCGdex-Bild, #41 Slice 1).
-                img = tcgcsv.hires_image_url(p)
-                if img:
-                    res = db.execute(
-                        update(TcgdexCatalog)
-                        .where(TcgdexCatalog.card_id == card_id,
-                               TcgdexCatalog.image_url.is_(None))
-                        .values(image_url=img, image_source="tcgplayer")
-                        .execution_options(synchronize_session=False)
-                    )
-                    if res.rowcount:
-                        images += 1
-                        touched = True
-                # EN-Name (nur falls fehlend, via COALESCE) + $-Marktpreis (täglich
-                # auffrischen). Ein atomarer UPDATE je Karte.
-                usd = tcgcsv.market_usd_for(price_rows, p.get("productId"))
-                # Nummern-Suffix („… - 032/063") aus dem Produktnamen schneiden —
-                # der landet sonst als Kartenname im UI (v1.7.3).
-                name = tcgcsv.clean_card_name(p.get("name"))
+                # NUR das Basisprodukt liefert Bild/Name/Basispreis — ein
+                # Muster-only-Treffer darf nicht zur Basis werden (sonst landet
+                # das Pokéball-BILD als Kartenbild und der Muster-$ als
+                # Normalpreis, Panel-Fund). Muster-Spalten laufen separat.
+                p = slots.get("base")
+                pid = p.get("productId") if p else None
+                if p is not None:
+                    # Bild: atomar NUR wo noch keins steht (Race-Schutz gegen ein
+                    # zwischenzeitlich geschriebenes TCGdex-Bild, #41 Slice 1).
+                    img = tcgcsv.hires_image_url(p)
+                    if img:
+                        res = db.execute(
+                            update(TcgdexCatalog)
+                            .where(TcgdexCatalog.card_id == card_id,
+                                   TcgdexCatalog.image_url.is_(None))
+                            .values(image_url=img, image_source="tcgplayer")
+                            .execution_options(synchronize_session=False)
+                        )
+                        if res.rowcount:
+                            images += 1
+                            touched = True
                 vals: dict = {}
-                if name:
-                    vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name)
-                if usd is not None:
-                    vals["price_usd"] = usd
-                    vals["price_usd_updated"] = stamp
+                if p is not None:
+                    # EN-Name (nur falls fehlend, via COALESCE) + Basispreis.
+                    # Nummern-Suffix („… - 032/063") aus dem Produktnamen
+                    # schneiden — landet sonst als Kartenname im UI (v1.7.3).
+                    name = tcgcsv.clean_card_name(p.get("name"))
+                    if name:
+                        vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name)
+                    usd = tcgcsv.market_usd_for(price_rows, pid)
+                    if usd is not None:
+                        vals["price_usd"] = usd
+                # Varianten (#63): Subtypen des Basisprodukts + Muster-Produkte.
+                # Liegen Preisdaten der Gruppe vor, sind die Varianten-Spalten
+                # AUTHORITATIV (found-or-NULL) — sonst hielte der gemeinsame
+                # Zeitstempel einen verschwundenen Varianten-Preis ewig frisch
+                # (Panel-Fund). Ohne Preisdaten (Ausfall) nichts anfassen.
+                if price_rows:
+                    vals["price_usd_holo"] = tcgcsv.usd_for_subtype(
+                        price_rows, pid, "Holofoil") if pid is not None else None
+                    vals["price_usd_reverse"] = tcgcsv.usd_for_subtype(
+                        price_rows, pid, "Reverse Holofoil") if pid is not None else None
+                    for slot_name, col in (("pokeball", "price_usd_pokeball"),
+                                           ("masterball", "price_usd_masterball")):
+                        sp = slots.get(slot_name)
+                        vals[col] = (tcgcsv.market_usd_for(price_rows, sp.get("productId"))
+                                     if sp is not None else None)
+                if any(k.startswith("price_usd") for k in vals):
+                    vals["price_usd_updated"] = stamp  # Stand gilt für alle $-Spalten
                 if vals:
                     db.execute(
                         update(TcgdexCatalog)

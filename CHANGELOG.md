@@ -1,5 +1,32 @@
 # Changelog
 
+## [v1.8.0] – 2026-08-12 (Folierung & Muster getrennt + Pokéball-/Masterball-Marktpreise)
+
+### Neu
+- **Muster als eigenes Feld** (Owner-Entscheid): Die Folierung ist jetzt die
+  preis-zuordenbare Grundform (**Normal / Holo / Reverse Holo**), das Muster
+  (**Pokéball / Masterball / Cosmos / Etched / Bubble / Sterne / Energie /
+  Team Rocket R / Sonstiges**) eine eigene Auswahl daneben — im Karten-Formular,
+  in der Detailansicht und in der Scan-Bestätigung (Auswahlfeld statt Checkbox,
+  weil Muster sich gegenseitig ausschließen). Bestandswerte („Reverse Holo –
+  Pokéball", „Cosmos Holo" …) werden beim ersten Start automatisch aufgeteilt.
+- **Pokéball-/Masterball-Karten bekommen ihren echten Marktpreis:** TCGplayer
+  führt die Muster als eigene Produkte (z. B. $0.26 Standard-Reverse / $0.60
+  Pokéball / **$12.78 Masterball** bei derselben Karte). Der tägliche Sync
+  cached jetzt Varianten-Preise (Holo-/Reverse-Subtyp + Pokéball/Masterball),
+  und der Kartenwert folgt der eingetragenen Kombination — Muster-Preis hat
+  Vorrang vor dem Cardmarket-Basis-€ (der die Muster nicht kennt).
+- **Varianten-Preise im Katalog-Popup:** Holo/Reverse/Pokéball/Masterball-$
+  erscheinen, sobald der Cache sie kennt.
+- Echte Holo-Karten können jetzt auch über den $-Fallback bewertet werden
+  (Holofoil-Subtyp) — bisher wurden sie mangels Varianten-Preis übersprungen.
+
+### Hinweise
+- **Expand-Contract Schritt 1:** additive Spalten + idempotente Wert-Aufteilung;
+  Alt-Werte bleiben server-seitig akzeptiert. Varianten-Preise füllen sich mit
+  dem nächsten Katalog-Sync (04:00 oder manuell); der Kartenwert folgt beim
+  nächsten Preisupdate.
+
 ## [v1.7.3] – 2026-08-12 (Reverse-Holo-€-Preise + englische Namen für JP-Karten)
 
 ### Korrigiert

@@ -344,6 +344,7 @@ export default function ScanPage() {
           set_edition: s.set_edition,
           karten_nr: s.karten_nr,
           sprache: s.sprache,
+          muster: s.muster,   // gewähltes Muster überlebt das Re-Resolve (#63)
           // manuell gesetzte Pokédex-Nr. nicht verlieren, wenn die Auflösung keine findet
           pokedex_nr: (nc.suggested as Record<string, unknown>).pokedex_nr ?? s.pokedex_nr,
         },
@@ -366,6 +367,7 @@ export default function ScanPage() {
           karten_nr: (s.karten_nr as string) ?? null,
           seltenheit: (s.seltenheit as string) ?? c.match?.rarity ?? null,
           folierung: (s.folierung as string) ?? null,
+          muster: (s.muster as string) || null,
           sprache: (s.sprache as string) ?? "DE",
           tcgdex_card_id: c.match?.tcgdex_card_id ?? null,
           set_id: c.match?.set_id ?? null,
@@ -680,7 +682,12 @@ export default function ScanPage() {
                       {/* Folierung – alle Möglichkeiten; laut Karte mögliche zuerst */}
                       <select
                         value={String(s.folierung ?? "")}
-                        onChange={(e) => updateField(idx, "folierung", e.target.value)}
+                        onChange={(e) => {
+                          updateField(idx, "folierung", e.target.value);
+                          // Muster hängt an folierter Grundform — beim Wechsel
+                          // auf Normal zurücksetzen (kein stale Muster im Commit)
+                          if (!e.target.value.includes("Holo")) updateField(idx, "muster", "");
+                        }}
                         className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-xs"
                       >
                         <option value="">{t.scan_field_foiling}</option>
@@ -690,6 +697,16 @@ export default function ScanPage() {
                           const rest = all.filter((f) => !pref.includes(f));
                           return [...pref, ...rest].map((f) => <option key={f} value={f}>{f}</option>);
                         })()}
+                      </select>
+                      {/* Muster (#63): nur bei Foil-Grundformen sinnvoll */}
+                      <select
+                        value={String(s.muster ?? "")}
+                        onChange={(e) => updateField(idx, "muster", e.target.value)}
+                        disabled={!String(s.folierung ?? "").includes("Holo")}
+                        className="min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-xs disabled:opacity-40"
+                      >
+                        <option value="">{t.field_pattern}</option>
+                        {(enums?.muster ?? []).map((m) => <option key={m} value={m}>{m}</option>)}
                       </select>
                       {/* Seltenheit mit Symbol (wie beim manuellen Anlegen) */}
                       <div className="min-w-0">

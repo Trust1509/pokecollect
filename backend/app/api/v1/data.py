@@ -315,6 +315,14 @@ async def restore(file: UploadFile = File(...), confirm: str = Form("")):
     finally:
         os.unlink(tmp.name)
 
+    # Light-Migrations nachziehen (idempotent): ein Backup älterer Versionen
+    # bringt Alt-Semantik zurück (z. B. Kombi-Folierungen vor #63, leere
+    # EN-Namen) — ohne diesen Lauf gälte sie bis zum nächsten Container-
+    # Neustart (Panel-Fund v1.8.0). Lokaler Import: main importiert die Router,
+    # ein Top-Level-Import wäre zirkulär.
+    from app.main import _run_light_migrations
+    _run_light_migrations()
+
     logger.info("Restore eingespielt: %s Tabellen, %d Bilder (Backup-App-Version %s)",
                 len(counts), images, payload.get("app_version"))
     return {
