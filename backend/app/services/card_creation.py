@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.card import PokemonCard
+from app.services.catalog_lookup import catalog_row_for
 from app.services.card_image_service import (
     apply_card_to_model,
     apply_species_image,
@@ -64,6 +65,14 @@ async def _trigger_image_fetch(card_id: int):
             apply_card_to_model(card, tc, overwrite_image=overwrite)
         else:
             apply_species_image(card, tc, overwrite_image=overwrite)
+        # tcgdex_card_id entsteht bei manueller Anlage erst HIER (nicht im
+        # create-Aufruf) → den EN-Namen-Fill aus dem Katalog wiederholen, sonst
+        # bekämen manuell angelegte JP-Karten ihn erst beim nächsten App-Start
+        # über den Backfill (Panel-Fund v1.7.3).
+        if not card.englischer_name and card.tcgdex_card_id:
+            row = catalog_row_for(db, card.tcgdex_card_id)
+            if row is not None and row.name_en:
+                card.englischer_name = row.name_en
         db.commit()
     finally:
         db.close()
@@ -91,6 +100,14 @@ def create_owned_card(
     fields.pop("im_pokedex", None)  # wird unten exklusiv berechnet
     fields.setdefault("wunschliste", False)
     pokedex_nr = fields.get("pokedex_nr")
+
+    # Fehlender EN-Name (typisch JP: TCGdex kennt keinen) → aus dem Katalog-
+    # Cache übernehmen (TCGplayer benennt JP-Karten englisch, v1.7.3). Eine
+    # Routine für alle Anlege-Pfade — Scan, Katalog-Übernahme, manuell.
+    if not fields.get("englischer_name") and fields.get("tcgdex_card_id"):
+        row = catalog_row_for(db, fields["tcgdex_card_id"])
+        if row is not None and row.name_en:
+            fields["englischer_name"] = row.name_en
 
     card: Optional[PokemonCard] = None
     if pokedex_nr:

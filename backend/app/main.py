@@ -216,6 +216,46 @@ def _run_light_migrations():
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd NUMERIC(10,2)",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur_updated TEXT",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_updated TEXT",
+        # v1.7.3: Funktionsindex für den case-toleranten Katalog-Lookup
+        # (catalog_row_for) UND den Backfill-Join darunter — ohne ihn wäre jeder
+        # upper()-Fehltreffer ein Seq-Scan über ~29k Zeilen (Panel-Fund; gleiches
+        # Muster wie ix_sealed_product_sets_set_code_upper).
+        "CREATE INDEX IF NOT EXISTS ix_tcgdex_catalog_card_id_upper "
+        "ON tcgdex_catalog (upper(card_id))",
+        # v1.7.3: Nummern-Suffix („… - 032/063", ggf. + Klammerzusatz) aus
+        # TCGplayer-übernommenen EN-Namen schneiden — Bestand in Katalog UND
+        # Karten, idempotent (Guard-Regex), nie leerend (btrim-Ergebnis <> '').
+        r"""
+        UPDATE tcgdex_catalog
+        SET name_en = btrim(regexp_replace(name_en, '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+.*$', ''))
+        WHERE name_en ~ '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+'
+          AND btrim(regexp_replace(name_en, '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+.*$', '')) <> ''
+        """,
+        r"""
+        UPDATE pokemon_cards
+        SET englischer_name = btrim(regexp_replace(englischer_name, '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+.*$', ''))
+        WHERE englischer_name ~ '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+'
+          AND btrim(regexp_replace(englischer_name, '\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+.*$', '')) <> ''
+        """,
+        # v1.7.3: EN-Namen-Backfill für Bestandskarten (v. a. JP): TCGdex kennt
+        # für JP-exklusive Karten keinen EN-Namen, der Katalog hat ihn aus
+        # TCGplayer (v1.6.7). Case-tolerant (Scan-IDs klein, JP-Katalog groß);
+        # idempotent (füllt nur leere Felder), nie überschreibend. DISTINCT ON
+        # macht die Wahl bei case-gleichen Katalogzeilen deterministisch
+        # (alphabetisch erste) statt Planer-Zufall (Panel-Fund).
+        """
+        UPDATE pokemon_cards pc
+        SET englischer_name = tc.name_en
+        FROM (
+            SELECT DISTINCT ON (upper(card_id)) upper(card_id) AS ucid, name_en
+            FROM tcgdex_catalog
+            WHERE name_en IS NOT NULL AND name_en <> ''
+            ORDER BY upper(card_id), card_id
+        ) tc
+        WHERE (pc.englischer_name IS NULL OR pc.englischer_name = '')
+          AND pc.tcgdex_card_id IS NOT NULL
+          AND upper(pc.tcgdex_card_id) = tc.ucid
+        """,
     ]
     with engine.begin() as conn:
         for stmt in stmts:

@@ -1,5 +1,37 @@
 # Changelog
 
+## [v1.7.3] – 2026-08-12 (Reverse-Holo-€-Preise + englische Namen für JP-Karten)
+
+### Korrigiert
+- **Reverse-Holo-Karten bekommen den richtigen €-Preis** (Owner-Fund): Cardmarkets
+  `-holo`-Preisfelder bepreisen die Foil-Variante der Karte — hat eine Karte
+  keine echte Holo-Variante (nur Normal + Reverse, der Standardfall moderner
+  Commons), ist das der **Reverse-Preis**. Bisher wurde Reverse mit dem
+  Normal-Preis bewertet (z. B. 0,02 € statt 0,08 €). Muster-Reverse
+  („– Pokéball", „– Masterball" …) nutzen dieselbe Kette.
+- **Case-Fix beim Katalog-Abgleich** (Preis-Fallback, $-Anzeige, EN-Namen):
+  Der Scan schreibt TCGdex-IDs klein („me03-029"), der JP-Katalog führt sie
+  groß — dadurch verfehlten scan-erfasste JP-Karten den $→€-Preis-Fallback
+  und die $-Anzeige. Diese Abgleiche sind jetzt case-tolerant (mit eigenem
+  Funktionsindex). Der grüne Besessen-Punkt im Katalog-Grid und die
+  Set-Sammelziele vergleichen noch exakt — als Folge-Punkt notiert.
+
+### Neu
+- **Englische Namen für JP-Karten:** Der EN-Name (von TCGplayer, liegt seit
+  v1.6.7 im Katalog) wird jetzt in besessene Karten übernommen — beim Anlegen
+  (Scan/Katalog/manuell) und einmalig als Backfill für den Bestand. Die
+  Detailseite zeigt bei englischer UI-Sprache den EN-Namen als Titel (wie das
+  Karten-Grid), den Drucknamen als Untertitel. `kartenname` bleibt bewusst der
+  **Druckname** (deutsch bei deutschen Karten, japanisch bei JP) — JP-exklusive
+  Karten haben keinen deutschen Kartennamen; die deutsche Identität liefert
+  weiterhin der Art-Name.
+
+### Hinweise
+- Pokéball-/Masterball-**Marktpreise** (eigene TCGplayer-Produkte, z. B. $0.60/
+  $12.78 statt $0.26 bei derselben Karte) folgen mit dem Folierung/Muster-Umbau
+  (#63) als eigene Welle.
+- Keine Schema-Migration (nur idempotenter Namens-Backfill beim Start).
+
 ## [v1.7.2] – 2026-08-11 (Preis-Welle: Preise im Katalog-Grid, Quellen im Verlauf, West-$ täglich)
 
 ### Neu

@@ -19,7 +19,7 @@ from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
-from app.models.tcgdex_catalog import TcgdexCatalog
+from app.services.catalog_lookup import catalog_row_for
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
@@ -177,17 +177,17 @@ def list_cards(
 
 def _card_response(db: Session, card: PokemonCard) -> CardResponse:
     """
-    CardResponse + TCGplayer-$-Beilage aus dem Katalog-Cache (Epic #41, reiner
-    PK-Lookup). Gemeinsame Routine ALLER Einzelkarten-Antworten (GET/POST/PUT/
-    Bild), damit die $-Zeile im UI nach Speichern/Toggle nicht verschwindet —
-    das Frontend ersetzt seinen Kartenzustand aus jeder dieser Antworten.
+    CardResponse + TCGplayer-$-Beilage aus dem Katalog-Cache (Epic #41; case-
+    toleranter Lookup, v1.7.3). Gemeinsame Routine ALLER Einzelkarten-Antworten
+    (GET/POST/PUT/Bild), damit die $-Zeile im UI nach Speichern/Toggle nicht
+    verschwindet — das Frontend ersetzt seinen Kartenzustand aus jeder dieser
+    Antworten.
     """
     resp = CardResponse.model_validate(card)
-    if card.tcgdex_card_id:
-        row = db.get(TcgdexCatalog, card.tcgdex_card_id)
-        if row is not None and row.price_usd is not None:
-            resp.katalog_preis_usd = row.price_usd
-            resp.katalog_preis_usd_stand = row.price_usd_updated
+    row = catalog_row_for(db, card.tcgdex_card_id)
+    if row is not None and row.price_usd is not None:
+        resp.katalog_preis_usd = row.price_usd
+        resp.katalog_preis_usd_stand = row.price_usd_updated
     return resp
 
 

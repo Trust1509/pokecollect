@@ -118,6 +118,18 @@ def product_denominator(product: dict) -> Optional[int]:
     return int(m.group(1)) if m else None
 
 
+def clean_card_name(name: Optional[str]) -> Optional[str]:
+    """
+    TCGplayer-Produktname → Kartenname: hängt oft „ - 032/063" (+ ggf.
+    Klammerzusatz) an — fürs Namensfeld abschneiden (v1.7.3). Nie leeren:
+    unerwartete Formen bleiben unverändert.
+    """
+    if not isinstance(name, str) or not name.strip():
+        return None
+    cleaned = re.sub(r"\s*-\s*[0-9A-Za-z]+/[0-9A-Za-z]+.*$", "", name).strip()
+    return cleaned or name.strip()
+
+
 def hires_image_url(product: dict) -> Optional[str]:
     """
     Hochauflösende Bild-URL eines Produkts (`_200w` → `_in_1000x1000`). Nur wenn

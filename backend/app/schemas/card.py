@@ -105,7 +105,8 @@ class CardResponse(CardBase):
     aktualisiert_am: Optional[datetime] = None
     # TCGplayer-$-Marktpreis aus dem Katalog-Cache (Epic #41): reiner Anzeige-
     # Zusatz in der Detailansicht — v. a. für JP-Karten, deren wert_eur daraus
-    # umgerechnet wird. Nur GET /cards/{id} füllt die Felder (PK-Lookup).
+    # umgerechnet wird. Einzelkarten-Antworten füllen die Felder (case-
+    # toleranter Katalog-Lookup, v1.7.3); Listen nicht.
     katalog_preis_usd: Optional[Decimal] = None
     katalog_preis_usd_stand: Optional[str] = None
 

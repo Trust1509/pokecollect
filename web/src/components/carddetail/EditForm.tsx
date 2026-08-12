@@ -32,7 +32,7 @@ type Props = {
 export default function EditForm({
   card, form, setForm, enums, sets, onSetsRefresh, onCardUpdated, onDelete,
 }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [editing, setEditing] = useState(false);
   // Pokémon-Artname (DE/EN) aus der Pokédex-Nr. (PokéAPI, gecacht) — gibt auch
   // JP-Karten ohne DE/EN-Kartennamen einen Identifikator, konsistent zum Katalog.
@@ -135,12 +135,20 @@ export default function EditForm({
     <div className="flex-1">
       <div className="flex items-start justify-between mb-4">
         <div>
+          {/* Sprachabhängiger Titel (v1.7.3, wie im Karten-Grid): EN-UI zeigt den
+              englischen Namen (TCGplayer bei JP), Untertitel dann den Druckname */}
           <h1 className="text-2xl font-bold text-white flex items-center gap-2 flex-wrap">
-            {card.kartenname}
+            {lang === "EN" && card.englischer_name ? card.englischer_name : card.kartenname}
             {card.erste_edition && <FirstEditionBadge className="align-middle" />}
           </h1>
           {card.pokedex_nr && (
-            <p className="text-gray-400">#{String(card.pokedex_nr).padStart(4, "0")} · {card.englischer_name || species?.en || ""}</p>
+            <p className="text-gray-400">
+              {/* Untertitel zeigt den JEWEILS ANDEREN Namen — bei identischen
+                  Namen (EN-Karten) nicht doppeln, dann Artname wie bisher */}
+              #{String(card.pokedex_nr).padStart(4, "0")} · {lang === "EN" && card.englischer_name && card.englischer_name !== card.kartenname
+                ? card.kartenname
+                : (card.englischer_name !== card.kartenname && card.englischer_name) || species?.en || ""}
+            </p>
           )}
         </div>
         <div className="flex gap-2">

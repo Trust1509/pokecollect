@@ -444,10 +444,12 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
                 # EN-Name (nur falls fehlend, via COALESCE) + $-Marktpreis (täglich
                 # auffrischen). Ein atomarer UPDATE je Karte.
                 usd = tcgcsv.market_usd_for(price_rows, p.get("productId"))
-                name = p.get("name")
+                # Nummern-Suffix („… - 032/063") aus dem Produktnamen schneiden —
+                # der landet sonst als Kartenname im UI (v1.7.3).
+                name = tcgcsv.clean_card_name(p.get("name"))
                 vals: dict = {}
-                if isinstance(name, str) and name.strip():
-                    vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name.strip())
+                if name:
+                    vals["name_en"] = func.coalesce(TcgdexCatalog.name_en, name)
                 if usd is not None:
                     vals["price_usd"] = usd
                     vals["price_usd_updated"] = stamp

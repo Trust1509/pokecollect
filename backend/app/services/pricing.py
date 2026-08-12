@@ -11,7 +11,9 @@ Preisquelle (Setting `price_source`, Issue #12):
 
 Folierungs-Logik:
   - Holo-Variante besessen  → *-holo-Feld (Fallback auf Nicht-Holo)
-  - sonst (Normal/Reverse)  → Basisfeld (Fallback auf avg7/avg/trend)
+  - Reverse OHNE echte Holo-Variante der Karte → ebenfalls *-holo-Kette
+    (Cardmarkets -holo-Felder bepreisen die Foil-Variante = dort die Reverse,
+    v1.7.3); Reverse MIT echter Holo-Variante + Normal → Basisfeld
 
 Chinesische Karten (zh-tw) haben oft keine Preise → Feld NICHT auf 0 setzen,
 sondern unverändert lassen.
@@ -32,9 +34,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.card import PokemonCard, PreisHistorie
 from app.models.setting import AppSetting
-from app.models.tcgdex_catalog import TcgdexCatalog
 from app.services import fx
 from app.services.card_image_service import fetch_tcgdex_card, resolve_set_id
+from app.services.catalog_lookup import catalog_row_for
 from app.services.cardmarket import CardmarketCredentials
 from app.services.tcgdex import CardMarketPricing
 
@@ -80,19 +82,42 @@ def pick_cardmarket_price(
     cm: CardMarketPricing,
     folierung: Optional[str],
     price_source: str = "30d_avg",
+    *,
+    hat_echtes_holo: bool = True,
 ) -> Optional[Decimal]:
     """
     Wählt den Preis je nach Folierung und Preisquelle:
       - "30d_avg": 30-Tage-Durchschnitt (bisherige Logik)
       - "daily":   Tagespreis avg1 (TCGdex-Feld `avg1` bzw. `avg1-holo`),
                    Fallback auf die 30d-Kette, wenn kein Tagespreis vorliegt
+
+    Reverse-Holo (v1.7.3, empirisch verifiziert): Cardmarkets `-holo`-Felder
+    bepreisen die FOIL-Variante der Karte. Existiert KEINE echte Holo-Variante
+    (`hat_echtes_holo=False`, aus TCGdex `variants.holo`), ist die Foil-Variante
+    die Reverse — dann gilt für Reverse-Folierungen die `-holo`-Kette (z. B.
+    0,08 € statt 0,02 €). Mit echter Holo-Variante bleibt Reverse bei der
+    Basis-Kette (der Reverse-Preis ist dort nicht separat verfügbar).
     """
     if cm is None:
         return None
     daily = normalize_price_source(price_source) == "daily"
-    if _is_holo(folierung):
-        chain_30d = (cm.avg30_holo, cm.avg30, cm.avg7_holo, cm.avg7, cm.avg)
-        val = _first(cm.avg1_holo, cm.avg1, *chain_30d) if daily else _first(*chain_30d)
+    ist_reverse = bool(folierung) and "reverse" in folierung.lower()
+    holo_kette = _is_holo(folierung) or (ist_reverse and not hat_echtes_holo)
+    if holo_kette:
+        # Panel-Fixes v1.7.3: (a) trend(_holo) als letzte Rettung anhängen —
+        # sonst endete eine Karte mit NUR trend-Daten preislos, obwohl die
+        # Basis-Kette sie früher bepreiste; (b) im daily-Modus stehen ALLE
+        # Foil-Werte vor dem Normal-Tagespreis avg1 — sonst gewänne der
+        # Normal-Tagespreis (0,02 €) über den Foil-30d-Wert (0,08 €) und der
+        # Reverse-Fix wäre für daily-Nutzer wirkungslos.
+        chain_30d = (cm.avg30_holo, cm.avg30, cm.avg7_holo, cm.avg7, cm.avg,
+                     cm.trend_holo, cm.trend)
+        if daily:
+            val = _first(cm.avg1_holo, cm.avg30_holo, cm.avg7_holo,
+                         cm.avg1, cm.avg30, cm.avg7, cm.avg,
+                         cm.trend_holo, cm.trend)
+        else:
+            val = _first(*chain_30d)
     else:
         chain_30d = (cm.avg30, cm.avg7, cm.avg, cm.trend)
         val = _first(cm.avg1, *chain_30d) if daily else _first(*chain_30d)
@@ -149,7 +174,13 @@ async def _price_for_card(
         return None, False   # Ausfall/nicht auffindbar → NICHT auf $ ausweichen
     if not tc.pricing or not tc.pricing.cardmarket:
         return None, True    # Karte da, aber ohne Cardmarket-€ (typisch JP)
-    return pick_cardmarket_price(tc.pricing.cardmarket, card.folierung, price_source), True
+    # Reverse-Semantik: ohne echte Holo-Variante sind die -holo-Felder der
+    # Reverse-Preis (v1.7.3). FEHLT das variants-Objekt ganz → konservativ wie
+    # bisher (Basis-Kette); ein vorhandenes variants ohne holo=True gilt als
+    # „kein echtes Holo" (TCGdex liefert die Flags vollständig mit).
+    hat_holo = bool(tc.variants.holo) if tc.variants else True
+    return pick_cardmarket_price(tc.pricing.cardmarket, card.folierung, price_source,
+                                 hat_echtes_holo=hat_holo), True
 
 
 def convert_usd_eur(usd: Decimal, rate: Decimal) -> Decimal:
@@ -196,11 +227,10 @@ def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
     """
     TCGplayer-$-Marktpreis aus dem Katalog-Cache (Epic #41: West aus TCGdex,
     JP aus TCGCSV; im täglichen Sync gefüllt). None ohne Katalog-Referenz/-Preis
-    oder wenn der Datenstand älter als _MAX_USD_STAND_TAGE ist.
+    oder wenn der Datenstand älter als _MAX_USD_STAND_TAGE ist. Case-toleranter
+    Lookup: Scan-IDs sind klein, JP-Katalog-IDs groß (v1.7.3).
     """
-    if not card.tcgdex_card_id:
-        return None
-    row = db.get(TcgdexCatalog, card.tcgdex_card_id)
+    row = catalog_row_for(db, card.tcgdex_card_id)
     if row is None or row.price_usd is None:
         return None
     if not _usd_stand_frisch(row.price_usd_updated):
@@ -239,8 +269,9 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
                     quelle = "cardmarket-oauth"
             # $-Fallback NUR wenn die €-Quelle wirklich geprüft wurde (nicht bei
             # TCGdex-Ausfall) und die Karte keine echte Holo ist — der gecachte $
-            # ist der Normal-Varianten-Preis (Reverse zählt wie im €-Pfad als
-            # Normal; Holo-$ je Variante = Folge-Issue).
+            # ist der NORMAL-Varianten-Preis. Bekannte Asymmetrie bis #63: der
+            # €-Pfad bepreist Reverse (ohne echtes Holo) als Foil, der $-Pfad
+            # dieselbe Karte als Normal — Varianten-$-Cache räumt das auf.
             if price is None and eur_geprueft and not _is_holo(card.folierung):
                 usd = _usd_from_catalog(db, card)
                 # 0/negativ = Datenfehler in der Quelle, kein Preis (nie 0 schreiben)

@@ -26,6 +26,7 @@ from app.schemas.scan import (
     ScanRawRead, ScanResponse,
 )
 from app.services.card_creation import create_owned_card
+from app.services.catalog_lookup import catalog_row_for
 from app.services.collection_slots import next_free_position
 from app.services.scan import gemini, model_catalog, ocr, vlm
 from app.services.scan.rate_window import gemini_rate
@@ -346,6 +347,12 @@ def scan_commit(payload: ScanCommitRequest, background_tasks: BackgroundTasks, d
             bild_karte_url=item.bild_karte_url if is_allowed_image_url(item.bild_karte_url) else None,
         )
         if is_wishlist:
+            # EN-Namen-Fill wie in create_owned_card (Wunschliste läuft daran
+            # vorbei; typisch JP: TCGdex kennt keinen EN-Namen, v1.7.3).
+            if not fields.get("englischer_name") and fields.get("tcgdex_card_id"):
+                row = catalog_row_for(db, fields["tcgdex_card_id"])
+                if row is not None and row.name_en:
+                    fields["englischer_name"] = row.name_en
             card = PokemonCard(**fields, besessen=False, wunschliste=True, prioritaet=item.prioritaet)
             db.add(card)
             db.flush()  # ID
