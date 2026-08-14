@@ -86,25 +86,33 @@ def list_catalog(
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
 
-    # Besitz-/Pokédex-Status der angezeigten Karten ermitteln (grüner/roter Punkt)
-    ids = [r.card_id for r in rows]
+    # Besitz-/Pokédex-Status der angezeigten Karten ermitteln (grüner/roter
+    # Punkt). CASE-TOLERANT (#67): der Scan schreibt TCGdex-IDs klein
+    # („me03-029"), der JP-Katalog führt sie groß — sonst gälte eine
+    # scan-erfasste JP-Karte hier als nicht besessen. Beidseitig upper();
+    # die Katalog-Seite hat dafür den Ausdrucks-Index (v1.7.3), die
+    # Karten-Seite bekommt ihn in den Light-Migrations.
+    ids_upper = {r.card_id.upper() for r in rows if r.card_id}
     owned_ids: set[str] = set()
     pokedex_ids: set[str] = set()
-    if ids:
+    if ids_upper:
         owned_ids = set(db.scalars(
-            select(PokemonCard.tcgdex_card_id).where(
-                PokemonCard.tcgdex_card_id.in_(ids), PokemonCard.besessen == True)  # noqa: E712
+            select(func.upper(PokemonCard.tcgdex_card_id)).where(
+                func.upper(PokemonCard.tcgdex_card_id).in_(ids_upper),
+                PokemonCard.besessen == True)  # noqa: E712
         ).all())
         pokedex_ids = set(db.scalars(
-            select(PokemonCard.tcgdex_card_id).where(
-                PokemonCard.tcgdex_card_id.in_(ids), PokemonCard.im_pokedex == True)  # noqa: E712
+            select(func.upper(PokemonCard.tcgdex_card_id)).where(
+                func.upper(PokemonCard.tcgdex_card_id).in_(ids_upper),
+                PokemonCard.im_pokedex == True)  # noqa: E712
         ).all())
 
     items = []
     for r in rows:
         ci = CatalogItem.model_validate(r)
-        ci.owned = r.card_id in owned_ids
-        ci.in_pokedex = r.card_id in pokedex_ids
+        key = r.card_id.upper() if r.card_id else ""
+        ci.owned = key in owned_ids
+        ci.in_pokedex = key in pokedex_ids
         items.append(ci)
 
     return CatalogListResponse(
@@ -160,10 +168,14 @@ async def catalog_card_detail(card_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Karte nicht im Katalog")
 
     detail = CatalogDetail.model_validate(row)
+    # Case-tolerant wie in der Liste (#67)
+    cid_upper = card_id.upper()
     detail.owned = bool(db.scalar(select(PokemonCard.id).where(
-        PokemonCard.tcgdex_card_id == card_id, PokemonCard.besessen == True).limit(1)))  # noqa: E712
+        func.upper(PokemonCard.tcgdex_card_id) == cid_upper,
+        PokemonCard.besessen == True).limit(1)))  # noqa: E712
     detail.in_pokedex = bool(db.scalar(select(PokemonCard.id).where(
-        PokemonCard.tcgdex_card_id == card_id, PokemonCard.im_pokedex == True).limit(1)))  # noqa: E712
+        func.upper(PokemonCard.tcgdex_card_id) == cid_upper,
+        PokemonCard.im_pokedex == True).limit(1)))  # noqa: E712
 
     try:
         tc = await tcgdex.get_card(card_id, catalog_svc._catalog_lang(row.region))

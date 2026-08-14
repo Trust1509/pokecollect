@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.card import PokemonCard
@@ -128,17 +128,20 @@ def soll_status(db: Session, collection: Collection) -> list[dict]:
     if not slots:
         return []
 
-    tcg_ids = {s.tcgdex_card_id for s in slots}
+    # Alle ID-Vergleiche laufen CASE-TOLERANT über upper() (#67): der Scan
+    # schreibt TCGdex-IDs klein, der JP-Katalog führt sie groß — sonst gälte
+    # eine scan-erfasste JP-Karte für ihr Soll-Feld als fehlend.
+    tcg_ids = {s.tcgdex_card_id.upper() for s in slots if s.tcgdex_card_id}
     catalog = {
-        r.card_id: r for r in db.scalars(
-            select(TcgdexCatalog).where(TcgdexCatalog.card_id.in_(tcg_ids))
+        r.card_id.upper(): r for r in db.scalars(
+            select(TcgdexCatalog).where(func.upper(TcgdexCatalog.card_id).in_(tcg_ids))
         ).all()
     }
     set_ids = {c.set_id for c in catalog.values() if c.set_id}
 
     # Bestand in einem Rutsch laden: direkte tcgdex-Treffer + Set-Kandidaten
     # für den Set+Nummer-Fallback (Karten ohne tcgdex_card_id).
-    conds = [PokemonCard.tcgdex_card_id.in_(tcg_ids)]
+    conds = [func.upper(PokemonCard.tcgdex_card_id).in_(tcg_ids)]
     if set_ids:
         conds.append(PokemonCard.set_id.in_(set_ids))
     set_codes = {c.set_code for c in catalog.values() if c.set_code}
@@ -155,15 +158,16 @@ def soll_status(db: Session, collection: Collection) -> list[dict]:
     fallback_pool: list[PokemonCard] = []
     for card in owned:
         if card.tcgdex_card_id:
-            by_tcgdex.setdefault(card.tcgdex_card_id, []).append(card)
+            by_tcgdex.setdefault(card.tcgdex_card_id.upper(), []).append(card)
         else:
             fallback_pool.append(card)
 
     result: list[dict] = []
     for slot in slots:
-        cat = catalog.get(slot.tcgdex_card_id)
+        slot_key = (slot.tcgdex_card_id or "").upper()
+        cat = catalog.get(slot_key)
         required_fol = slot.soll_folierung if slot.soll_folierung is not None else collection.ziel_folierung
-        candidates = list(by_tcgdex.get(slot.tcgdex_card_id, []))
+        candidates = list(by_tcgdex.get(slot_key, []))
         if cat:
             candidates += [
                 c for c in fallback_pool

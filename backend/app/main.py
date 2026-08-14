@@ -269,6 +269,11 @@ def _run_light_migrations():
         # Muster wie ix_sealed_product_sets_set_code_upper).
         "CREATE INDEX IF NOT EXISTS ix_tcgdex_catalog_card_id_upper "
         "ON tcgdex_catalog (upper(card_id))",
+        # #67: Gegenstück auf der Karten-Seite — Katalog-Grid (Besessen-/
+        # Pokédex-Punkt) und Set-Ziele vergleichen tcgdex_card_id jetzt
+        # ebenfalls case-tolerant über upper().
+        "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id_upper "
+        "ON pokemon_cards (upper(tcgdex_card_id))",
         # v1.7.3: Nummern-Suffix („… - 032/063", ggf. + Klammerzusatz) aus
         # TCGplayer-übernommenen EN-Namen schneiden — Bestand in Katalog UND
         # Karten, idempotent (Guard-Regex), nie leerend (btrim-Ergebnis <> '').
