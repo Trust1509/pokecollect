@@ -237,39 +237,53 @@ def _hat_muster_preisprodukt(card: PokemonCard) -> bool:
     return "masterball" in m or "pokeball" in m or "pokéball" in m
 
 
-def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
+def variant_usd(row, folierung: Optional[str], muster: Optional[str]
+                ) -> tuple[Optional[Decimal], str]:
     """
-    TCGplayer-$-Marktpreis aus dem Katalog-Cache, passend zur (Folierung,
-    Muster)-Kombination der Karte (#63):
+    Welcher gecachte TCGplayer-$-Preis gehört zur (Folierung, Muster)-Kombi?
+    Rückgabe (Preis, Variantenschlüssel) — der Schlüssel benennt die Variante
+    fürs UI („pokeball"/„masterball"/„holo"/„reverse"/„normal"), damit Anzeige
+    und Bewertung dieselbe Wahrheit zeigen (v1.8.2):
       - Muster Pokéball/Masterball → Preis des Muster-PRODUKTS; KEIN Fallback
         auf andere Spalten (materiell anderes Produkt, $0.60/$12.78 vs $0.26).
       - echtes Holo → Holofoil-Subtyp; kein Fallback auf Normal (falsche Variante).
       - Reverse → Reverse-Subtyp, ersatzweise Normal (dokumentierte Näherung —
         JP-Produkte führen oft keinen Reverse-Subtyp).
       - Normal → Basispreis.
-    None ohne Katalog-Referenz/-Preis oder wenn der Datenstand älter als
-    _MAX_USD_STAND_TAGE ist. Case-toleranter Lookup (v1.7.3).
+    Muster zählt nur bei folierter Grundform (Riegel wie in
+    _hat_muster_preisprodukt — stale muster an Normal-Karten ignorieren).
+    """
+    f = (folierung or "").lower()
+    m = (muster or "").lower() if "holo" in f else ""
+    if "masterball" in m:
+        val, key = row.price_usd_masterball, "masterball"
+    elif "pokeball" in m or "pokéball" in m:
+        val, key = row.price_usd_pokeball, "pokeball"
+    elif _is_holo(folierung):
+        val, key = row.price_usd_holo, "holo"
+    elif "reverse" in f:
+        if row.price_usd_reverse is not None:
+            val, key = row.price_usd_reverse, "reverse"
+        else:
+            val, key = row.price_usd, "normal"   # dokumentierte Näherung
+    else:
+        val, key = row.price_usd, "normal"
+    return (Decimal(str(val)) if val is not None else None), key
+
+
+def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
+    """
+    TCGplayer-$-Marktpreis aus dem Katalog-Cache, passend zur Variante der
+    Karte (#63, Wahl siehe `variant_usd`). None ohne Katalog-Referenz/-Preis
+    oder wenn der Datenstand älter als _MAX_USD_STAND_TAGE ist.
+    Case-toleranter Lookup (v1.7.3).
     """
     row = catalog_row_for(db, card.tcgdex_card_id)
     if row is None:
         return None
     if not _usd_stand_frisch(row.price_usd_updated):
         return None
-    # Muster nur bei folierter Grundform honorieren (Riegel wie in
-    # _hat_muster_preisprodukt — stale muster an Normal-Karten ignorieren).
-    f = (card.folierung or "").lower()
-    m = (card.muster or "").lower() if "holo" in f else ""
-    if "masterball" in m:
-        val = row.price_usd_masterball
-    elif "pokeball" in m or "pokéball" in m:
-        val = row.price_usd_pokeball
-    elif _is_holo(card.folierung):
-        val = row.price_usd_holo
-    elif "reverse" in f:
-        val = row.price_usd_reverse if row.price_usd_reverse is not None else row.price_usd
-    else:
-        val = row.price_usd
-    return Decimal(str(val)) if val is not None else None
+    return variant_usd(row, card.folierung, card.muster)[0]
 
 
 async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:

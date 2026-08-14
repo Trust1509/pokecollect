@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.8.2] – 2026-08-14 (Preis-Herkunft ehrlich anzeigen)
+
+### Korrigiert (Owner-Fund)
+- **Das Wert-Label behauptete immer „Cardmarket"** — auch wenn der Wert aus
+  einem TCGplayer-Produkt stammte (z. B. Pokéball-Variante). Es zeigt jetzt die
+  **tatsächliche Herkunft** des zuletzt gesetzten Werts, inklusive
+  Umrechnungskurs: „Wert (TCGplayer Pokéball, $→€ Kurs 0,867)".
+- **Der angezeigte TCGplayer-Preis war der Basispreis der Karte**, nicht der
+  der besessenen Variante — bei einer Pokéball-Karte stand $0.25 neben einem
+  Wert von 0,52 €, der aus $0.60 kam. Jetzt zeigt die Zeile den Preis der
+  **tatsächlich bepreisten Variante** und benennt sie („· Pokéball").
+
+### Hinweise
+- Bewertung und Anzeige nutzen dieselbe Varianten-Routine — die Zahlen können
+  nicht mehr auseinanderlaufen. Keine Migration, reine Anzeige-Wahrheit.
+
 ## [v1.8.1] – 2026-08-13 (Sealed-Katalog: echte Produkte, Bilder, automatische Preise)
 
 ### Neu (#46)

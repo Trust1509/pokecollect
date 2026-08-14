@@ -325,6 +325,18 @@ const DE = {
   detail_purchase_price: "Kaufpreis",
   detail_current_value: "Aktueller Wert",
   detail_tcgplayer_usd: "TCGplayer-Marktpreis",
+  // Variante des $-Preises (v1.8.2) — internes Kürzel nie roh ins UI
+  detail_usd_variant: (v: string) => ({
+    pokeball: "Pokéball", masterball: "Masterball", holo: "Holo",
+    reverse: "Reverse Holo", normal: "Normal",
+  } as Record<string, string>)[v] ?? v,
+  // Wert-Label aus der ECHTEN Quelle (statt pauschal „Cardmarket")
+  detail_value_from: (quelle: string, variante: string | null, kurs: string | null) =>
+    quelle === "tcgplayer"
+      ? `Wert (TCGplayer${variante ? ` ${variante}` : ""}${kurs ? `, $→€ Kurs ${kurs.replace(".", ",")}` : ""})`
+      : quelle === "oauth" ? "Wert (Cardmarket, OAuth)"
+      : quelle === "cardmarket" ? "Wert (Cardmarket 30-Tage-Ø)"
+      : "Wert",
   field_pattern: "Muster",
   price_chart_value: "Wert",
   price_source_cardmarket: "Cardmarket €",
@@ -860,6 +872,16 @@ const EN: typeof DE = {
   detail_purchase_price: "Purchase price",
   detail_current_value: "Current value",
   detail_tcgplayer_usd: "TCGplayer market price",
+  detail_usd_variant: (v: string) => ({
+    pokeball: "Poké Ball", masterball: "Master Ball", holo: "Holo",
+    reverse: "Reverse Holo", normal: "Normal",
+  } as Record<string, string>)[v] ?? v,
+  detail_value_from: (quelle: string, variante: string | null, kurs: string | null) =>
+    quelle === "tcgplayer"
+      ? `Value (TCGplayer${variante ? ` ${variante}` : ""}${kurs ? `, $→€ rate ${kurs}` : ""})`
+      : quelle === "oauth" ? "Value (Cardmarket, OAuth)"
+      : quelle === "cardmarket" ? "Value (Cardmarket 30-day avg)"
+      : "Value",
   field_pattern: "Pattern",
   price_chart_value: "Value",
   price_source_cardmarket: "Cardmarket €",

@@ -10,6 +10,7 @@ import { useCardForm } from "@/lib/useCardForm";
 import { formatEur } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames, PokemonNames } from "@/lib/pokedex";
+import { priceSourceKey, priceSourceRate } from "@/lib/priceSource";
 
 // Detail-/Edit-Spalte der Kartendetailseite (Issue #14): Anzeige aller Felder,
 // Edit-Modus über die gemeinsame Formular-Logik (CardFormFields/useCardForm,
@@ -302,7 +303,14 @@ export default function EditForm({
               aus dem wert_eur bei Karten ohne Cardmarket-€ umgerechnet wird */}
           {card.katalog_preis_usd != null && (
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-gray-400">{t.detail_tcgplayer_usd}</span>
+              <span className="text-gray-400">
+                {t.detail_tcgplayer_usd}
+                {card.katalog_preis_usd_variante && (
+                  <span className="text-gray-500 text-xs ml-1">
+                    · {t.detail_usd_variant(card.katalog_preis_usd_variante)}
+                  </span>
+                )}
+              </span>
               <span className="text-white">
                 ${Number(card.katalog_preis_usd).toFixed(2)}
                 {card.katalog_preis_usd_stand && !isNaN(new Date(card.katalog_preis_usd_stand).getTime()) && (
@@ -328,7 +336,16 @@ export default function EditForm({
           )}
           {card.wert_eur != null && (
             <div className="text-gray-500 text-xs pt-0.5">
-              {t.detail_value_label}
+              {/* Label aus der ECHTEN Herkunft des Werts (v1.8.2) — vorher stand
+                  hier pauschal „Cardmarket", auch wenn TCGplayer zahlte. Ohne
+                  bekannte Quelle steht neutral „Wert" statt einer unbelegten
+                  Cardmarket-Behauptung (Panel-Fund). */}
+              {t.detail_value_from(
+                priceSourceKey(card.wert_quelle),
+                priceSourceKey(card.wert_quelle) === "tcgplayer" && card.katalog_preis_usd_variante
+                  ? t.detail_usd_variant(card.katalog_preis_usd_variante)
+                  : null,
+                priceSourceRate(card.wert_quelle))}
               {card.wert_aktualisiert && (
                 <> · {t.detail_value_updated}: {new Date(card.wert_aktualisiert).toLocaleDateString(t.date_locale)}</>
               )}

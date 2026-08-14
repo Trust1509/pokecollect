@@ -76,9 +76,12 @@ export type Card = {
   variants_firstedition: boolean | null;
   hinzugefuegt_am: string;
   aktualisiert_am: string;
-  // TCGplayer-$ aus dem Katalog-Cache (Epic #41) — nur GET /cards/{id} füllt sie
+  // TCGplayer-$ aus dem Katalog-Cache (Epic #41) — nur Einzelkarten-Antworten
   katalog_preis_usd?: string | null;
   katalog_preis_usd_stand?: string | null;
+  // Variante des $-Preises + Herkunft des zuletzt gesetzten Werts (v1.8.2)
+  katalog_preis_usd_variante?: string | null;
+  wert_quelle?: string | null;
 };
 
 export type CardListResponse = {

@@ -3,34 +3,16 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { useI18n } from "@/lib/i18n";
+import {
+  PRICE_SOURCE_COLOR as SOURCE_COLOR, PriceSourceKey as SourceKey,
+  priceSourceKey as sourceKey, priceSourceRate as kursOf,
+} from "@/lib/priceSource";
 
 // quelle kommt seit v1.7.1 auditierbar mit (z. B. "tcgplayer-usd@0.8666") —
 // ein Basiswechsel Cardmarket→TCGplayer sähe sonst wie eine Preisbewegung aus (#65).
 type HistoryEntry = { erfasst_am: string; wert_eur: string | null; quelle?: string | null };
 
 type Props = { history: HistoryEntry[] };
-
-type SourceKey = "cardmarket" | "oauth" | "tcgplayer" | "unbekannt";
-
-const SOURCE_COLOR: Record<SourceKey, string> = {
-  cardmarket: "#FFCA28",   // Haus-Gelb (bisherige Linienfarbe)
-  oauth: "#FFA000",
-  tcgplayer: "#42A5F5",    // Blau = $-Basis
-  unbekannt: "#9ca3af",
-};
-
-function sourceKey(quelle?: string | null): SourceKey {
-  if (!quelle) return "unbekannt";
-  if (quelle.startsWith("tcgplayer-usd")) return "tcgplayer";
-  if (quelle.startsWith("cardmarket-oauth")) return "oauth";
-  return "cardmarket";
-}
-
-function kursOf(quelle?: string | null): string | null {
-  // "tcgplayer-usd@0.8666" → "0.8666"
-  const at = quelle?.indexOf("@") ?? -1;
-  return at >= 0 ? quelle!.slice(at + 1) : null;
-}
 
 export default function PriceChart({ history }: Props) {
   const { t } = useI18n();

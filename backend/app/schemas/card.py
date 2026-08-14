@@ -117,6 +117,12 @@ class CardResponse(CardBase):
     # toleranter Katalog-Lookup, v1.7.3); Listen nicht.
     katalog_preis_usd: Optional[Decimal] = None
     katalog_preis_usd_stand: Optional[str] = None
+    # Welche Variante der $-Preis bepreist (pokeball/masterball/holo/reverse/
+    # normal) + woher wert_eur zuletzt stammte (Quelle des jüngsten Verlaufs-
+    # eintrags, z. B. „tcgplayer-usd@0.867"). Beides nur Anzeige-Wahrheit:
+    # das Label darf nicht „Cardmarket" behaupten, wenn TCGplayer zahlte (v1.8.2).
+    katalog_preis_usd_variante: Optional[str] = None
+    wert_quelle: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

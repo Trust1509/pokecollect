@@ -16,10 +16,11 @@ from app.services.card_images import (
 )
 from app.services.stats import collect_stats
 from app.domain.search import parse_kurzcode
-from app.models.card import PokemonCard
+from app.models.card import PokemonCard, PreisHistorie
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
 from app.services.catalog_lookup import catalog_row_for
+from app.services.pricing import variant_usd
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
@@ -185,9 +186,26 @@ def _card_response(db: Session, card: PokemonCard) -> CardResponse:
     """
     resp = CardResponse.model_validate(card)
     row = catalog_row_for(db, card.tcgdex_card_id)
-    if row is not None and row.price_usd is not None:
-        resp.katalog_preis_usd = row.price_usd
-        resp.katalog_preis_usd_stand = row.price_usd_updated
+    if row is not None:
+        # NUR den $-Preis der tatsächlichen Variante zeigen (v1.8.2) — sonst
+        # stünde bei einer Pokéball-Karte der Basispreis, aus dem sich ihr
+        # €-Wert nicht nachrechnen lässt. KEIN Ersatz-Fallback auf den
+        # Basispreis (Panel-Fund): eine Holo-Karte ohne Holo-Preis bekäme sonst
+        # eine Variante angezeigt, die die Bewertung nie verwendet. Lieber
+        # keinen $-Preis als den einer fremden Variante.
+        val, variante = variant_usd(row, card.folierung, card.muster)
+        if val is not None:
+            resp.katalog_preis_usd = val
+            resp.katalog_preis_usd_variante = variante
+            resp.katalog_preis_usd_stand = row.price_usd_updated
+    # Herkunft des zuletzt gesetzten Werts (jüngster Verlaufseintrag) — das UI
+    # beschriftet den Wert damit statt pauschal „Cardmarket" zu behaupten.
+    resp.wert_quelle = db.scalar(
+        select(PreisHistorie.quelle)
+        .where(PreisHistorie.karte_id == card.id)
+        .order_by(PreisHistorie.erfasst_am.desc(), PreisHistorie.id.desc())
+        .limit(1)
+    )
     return resp
 
 
