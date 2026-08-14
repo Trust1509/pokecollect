@@ -21,6 +21,7 @@ import logging
 import re
 from typing import Optional
 
+from app.schemas._validators import strip_control_chars
 from app.schemas.scan import ScanRawRead
 
 log = logging.getLogger(__name__)
@@ -86,8 +87,11 @@ def _parse(text: str) -> dict:
             name = line
             break
 
-    return {"name": name, "set_code": set_code, "number": number,
-            "language": _guess_language(text)}
+    # Steuerzeichen entfernen (#55): Tesseract liefert regelmäßig Seiten-
+    # vorschübe (\x0c) — ScanRawRead lehnt sie als Client-Eingabe ab, hier
+    # wäre das ein Absturz im letzten Fallback (kein Ausweichen mehr möglich).
+    return {"name": strip_control_chars(name), "set_code": strip_control_chars(set_code),
+            "number": strip_control_chars(number), "language": _guess_language(text)}
 
 
 def extract(

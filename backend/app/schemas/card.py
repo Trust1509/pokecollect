@@ -2,7 +2,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.schemas._validators import reject_control_chars, reject_explicit_null
 
 
 SELTENHEIT_VALUES = [
@@ -66,7 +68,10 @@ class CardBase(BaseModel):
 
 
 class CardCreate(CardBase):
-    pass
+    # NUR auf dem SCHREIB-Weg prüfen: CardResponse erbt ebenfalls von CardBase,
+    # dort würde die Sperre Bestandsdaten mit Steuerzeichen unlesbar machen
+    # (Panel-Fund: GET /cards/{id} lieferte 500 statt der Karte).
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
 
 
 class CardUpdate(BaseModel):
@@ -92,8 +97,27 @@ class CardUpdate(BaseModel):
     zustand: Optional[str] = None
     bild_pokedex_url: Optional[str] = None
 
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
+    # Diese Felder dürfen nie null werden: `kartenname`/`erste_edition` liegen
+    # auf NOT-NULL-Spalten, die Flags sind es seit der #55-Light-Migration —
+    # und die Antwort typisiert sie als bool. Ein ausdrückliches `null` endete
+    # als 500. Weglassen = unverändert bleibt unangetastet.
+    _v_null = field_validator(
+        "kartenname", "erste_edition", "besessen", "wunschliste", "im_pokedex",
+    )(reject_explicit_null)
+
 
 class CardResponse(CardBase):
+    # Gürtel UND Hosenträger (#55): die Flags sind seit der Light-Migration
+    # NOT NULL — ein Alt-Backup-Restore könnte aber NULLs zurückbringen, und
+    # ein einziges davon machte die ganze Liste unlesbar. Beim LESEN daher
+    # tolerant auf False abbilden statt die Antwort zu sprengen.
+    @field_validator("besessen", "wunschliste", "im_pokedex", "erste_edition",
+                     mode="before")
+    @classmethod
+    def _null_flag_als_false(cls, v):
+        return False if v is None else v
+
     id: int
     wert_aktualisiert: Optional[datetime] = None
     bild_karte_url: Optional[str] = None

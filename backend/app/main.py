@@ -274,6 +274,18 @@ def _run_light_migrations():
         # ebenfalls case-tolerant über upper().
         "CREATE INDEX IF NOT EXISTS ix_pokemon_cards_tcgdex_card_id_upper "
         "ON pokemon_cards (upper(tcgdex_card_id))",
+        # #55: Die Ja/Nein-Flags waren nullable — ein einziges NULL (durch einen
+        # fehlerhaften Client oder einen Alt-Import) machte die GANZE Karten-
+        # liste unlesbar (Response-Validierung erwartet bool). Erst reparieren,
+        # dann festziehen; idempotent, additiv im Sinne der Semantik (NULL war
+        # nie ein gültiger Zustand).
+        "UPDATE pokemon_cards SET besessen = FALSE WHERE besessen IS NULL",
+        "UPDATE pokemon_cards SET wunschliste = FALSE WHERE wunschliste IS NULL",
+        "UPDATE pokemon_cards SET im_pokedex = FALSE WHERE im_pokedex IS NULL",
+        "ALTER TABLE pokemon_cards ALTER COLUMN besessen SET DEFAULT FALSE",
+        "ALTER TABLE pokemon_cards ALTER COLUMN wunschliste SET DEFAULT FALSE",
+        "ALTER TABLE pokemon_cards ALTER COLUMN besessen SET NOT NULL",
+        "ALTER TABLE pokemon_cards ALTER COLUMN wunschliste SET NOT NULL",
         # v1.7.3: Nummern-Suffix („… - 032/063", ggf. + Klammerzusatz) aus
         # TCGplayer-übernommenen EN-Namen schneiden — Bestand in Katalog UND
         # Karten, idempotent (Guard-Regex), nie leerend (btrim-Ergebnis <> '').

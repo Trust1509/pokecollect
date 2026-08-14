@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.schemas._validators import reject_control_chars
 
 ScanMode = Literal["single", "multi", "binder"]
 
@@ -19,6 +21,9 @@ class ScanRawRead(BaseModel):
     confidence: Optional[float] = None   # Roh-Sicherheit der Engine (0..1)
     bbox: Optional[list[float]] = None   # [x,y,w,h] als Anteil 0..1 des Bildes
     quad: Optional[list[list[float]]] = None  # 4 Eckpunkte [[x,y]…] (0..1) TL,TR,BR,BL
+
+    # POST /scan/resolve nimmt diese Struktur direkt vom Client entgegen
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
 
 
 class ScanMatch(BaseModel):
@@ -90,6 +95,10 @@ class ScanCommitItem(BaseModel):
     position: Optional[int] = None         # Binder-Slot (0-basiert) für die Ablage
     im_pokedex: bool = False               # je Karte: als Pokédex-Vertreter setzen
     prioritaet: Optional[str] = None       # nur für Wunschliste
+
+    # Scan-Commit legt Karten an → dieselbe Steuerzeichen-Sperre wie CardBase
+    # (ein NUL im erkannten Namen endete sonst als 500, #55).
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
 
 
 class ScanCommitRequest(BaseModel):

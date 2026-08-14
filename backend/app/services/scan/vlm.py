@@ -30,6 +30,7 @@ from typing import Any, Optional
 
 import httpx
 
+from app.schemas._validators import strip_control_chars
 from app.schemas.scan import ScanRawRead
 
 log = logging.getLogger(__name__)
@@ -230,7 +231,10 @@ def _looks_like_card(d: dict) -> bool:
 def _str(v) -> Optional[str]:
     if v is None:
         return None
-    s = str(v).strip()
+    # Steuerzeichen aus der Modell-Antwort ENTFERNEN (#55): ScanRawRead lehnt
+    # sie als Client-Eingabe ab — aus einem LLM-JSON („") wäre das ein
+    # Absturz mitten im Scan statt eines sauberen OCR-Rückfalls.
+    s = strip_control_chars(str(v)).strip()
     return s or None
 
 

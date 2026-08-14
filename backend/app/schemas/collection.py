@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
+from app.schemas._validators import reject_control_chars, reject_explicit_null
 from app.schemas.card import CardResponse
 
 BINDER_LAYOUTS = ["1x1", "2x2", "3x3", "4x3", "3x4", "4x4"]
@@ -18,6 +19,9 @@ class CollectionBase(BaseModel):
 
 
 class CollectionCreate(CollectionBase):
+    # nur Schreib-Weg (CollectionResponse erbt ebenfalls von CollectionBase)
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
+
     typ: CollectionTyp = "frei"
     ziel_set_id: Optional[str] = None      # Pflicht bei typ="set_ziel"
     ziel_folierung: Optional[str] = None   # NULL = egal
@@ -30,6 +34,10 @@ class CollectionUpdate(BaseModel):
     beschreibung: Optional[str] = None
     binder_layout: Optional[str] = None
     binder_slots: Optional[int] = None
+
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
+    # name liegt auf einer NOT-NULL-Spalte (#55)
+    _v_null = field_validator("name")(reject_explicit_null)
 
 
 class ProgressResponse(BaseModel):

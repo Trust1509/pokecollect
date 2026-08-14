@@ -1,5 +1,7 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+from app.schemas._validators import reject_control_chars, reject_explicit_null
 
 
 DEFAULTS: dict[str, str] = {
@@ -74,10 +76,13 @@ class SettingsResponse(BaseModel):
 
 class SettingsUpdate(BaseModel):
     placeholder_images_enabled: Optional[bool] = None
-    cards_per_page: Optional[int] = None
+    # Grenzen (#55, Panel-Fund): unbegrenzt konnte man sich die Startseite
+    # dauerhaft lahmlegen — die Listen-API akzeptiert nur limit 1..5000, ein
+    # gespeichertes 999999 hätte jede Kartenliste mit 422 beantwortet.
+    cards_per_page: Optional[int] = Field(default=None, ge=1, le=500)
     default_sort: Optional[str] = None
     price_update_enabled: Optional[bool] = None
-    price_update_hour: Optional[int] = None
+    price_update_hour: Optional[int] = Field(default=None, ge=0, le=23)
     price_source: Optional[str] = None
     default_language: Optional[str] = None
     default_condition: Optional[str] = None
@@ -87,7 +92,7 @@ class SettingsUpdate(BaseModel):
     cardmarket_access_secret: Optional[str] = None
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
-    gemini_daily_limit: Optional[int] = None
+    gemini_daily_limit: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     # Scan-Stufe B (Issue #57)
     scan_reader_provider: Optional[str] = None
     openai_api_key: Optional[str] = None
@@ -95,7 +100,17 @@ class SettingsUpdate(BaseModel):
     openrouter_api_key: Optional[str] = None
     openrouter_model: Optional[str] = None
 
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
+    # Alle Einstellungen landen als Text in der DB; ein ausdrückliches `null`
+    # wurde zu "None" und sprengte danach int(...) → 500 (#55). Weglassen =
+    # unverändert bleibt (Defaults werden nicht validiert).
+    _v_null = field_validator("*")(reject_explicit_null)
+
 
 class PasswordChange(BaseModel):
+    # BEWUSST ohne Steuerzeichen-Sperre (Panel-Fund): Passwörter landen nur als
+    # bcrypt-Hash in der DB — die Sperre schützt hier nichts, würde aber ein
+    # bestehendes Passwort mit exotischem Zeichen unänderbar machen (Login
+    # akzeptiert es ja weiterhin).
     current_password: str
     new_password: str

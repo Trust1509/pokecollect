@@ -1,4 +1,6 @@
+import logging
 import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -7,6 +9,7 @@ from app.database import get_db
 from app.models.setting import AppSetting
 from app.schemas.setting import DEFAULTS, SECRET_KEYS, PasswordChange, SettingsResponse, SettingsUpdate
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/settings", tags=["settings"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -24,6 +27,20 @@ def _set(db: Session, key: str, value: str):
         db.add(AppSetting(key=key, value=value))
 
 
+def _int_or(value: str, default: int) -> int:
+    """
+    Zahl aus einer Einstellung lesen — unlesbare Werte fallen auf den Default
+    zurück (#55). Die Tabelle hält alles als Text; lag dort je Müll (Restore
+    eines Alt-Backups, manueller DB-Eingriff, ein früherer 500er-Pfad), starb
+    sonst JEDER Settings-Aufruf inklusive der Einstellungs-Seite.
+    """
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        log.warning("Einstellung unlesbar (%r) – nutze Default %s", value, default)
+        return default
+
+
 def _mask(value: str) -> str:
     """Maske für Secrets: "•••• " + letzte 4 Zeichen, leer wenn nicht gesetzt."""
     return f"•••• {value[-4:]}" if value else ""
@@ -38,15 +55,15 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         secret_fields[f"{key}_masked"] = _mask(value)
     return SettingsResponse(
         placeholder_images_enabled=raw["placeholder_images_enabled"] == "true",
-        cards_per_page=int(raw["cards_per_page"] or 48),
+        cards_per_page=_int_or(raw["cards_per_page"], 48),
         default_sort=raw["default_sort"] or "pokedex_nr",
         price_update_enabled=raw["price_update_enabled"] == "true",
-        price_update_hour=int(raw["price_update_hour"] or 3),
+        price_update_hour=_int_or(raw["price_update_hour"], 3),
         price_source=raw["price_source"] or "30d_avg",
         default_language=raw["default_language"] or "DE",
         default_condition=raw["default_condition"] or "",
         gemini_model=raw["gemini_model"] or "gemini-2.5-flash",
-        gemini_daily_limit=int(raw["gemini_daily_limit"] or 0),
+        gemini_daily_limit=_int_or(raw["gemini_daily_limit"], 0),
         scan_reader_provider=raw["scan_reader_provider"] or "gemini",
         openai_model=raw["openai_model"] or "gpt-4o-mini",
         openrouter_model=raw["openrouter_model"] or "google/gemini-2.5-flash",

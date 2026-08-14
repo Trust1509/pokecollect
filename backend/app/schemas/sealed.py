@@ -4,6 +4,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas._validators import reject_control_chars, reject_explicit_null
+
 # Fester Typ-Katalog (Issue #35). Interne ASCII-tauglichen Werte = zugleich
 # Anzeige-Label (kurz gehalten); das Frontend darf eigene Label-Maps ergänzen.
 SEALED_TYP_VALUES = [
@@ -87,6 +89,7 @@ class SealedProductBase(BaseModel):
     # Grenze (≤ MAX_SET_CODES eindeutige) prüft _normalize_set_codes.
     set_codes: list[str] = Field(default=[], max_length=MAX_SET_CODES_RAW)
 
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
     _v_name = field_validator("name")(_validate_name)
     _v_typ = field_validator("typ")(_validate_typ)
     _v_zustand = field_validator("zustand")(_validate_zustand)
@@ -113,6 +116,7 @@ class SealedProductUpdate(BaseModel):
     # None = Zuordnung unverändert lassen; [] = alle Sets entfernen.
     set_codes: Optional[list[str]] = Field(default=None, max_length=MAX_SET_CODES_RAW)
 
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
     _v_name = field_validator("name")(_validate_name)
     _v_typ = field_validator("typ")(_validate_typ)
     _v_zustand = field_validator("zustand")(_validate_zustand)
