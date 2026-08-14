@@ -1,3 +1,6 @@
 # Nur für Tests/CI – nicht im Prod-Image installieren
 -r requirements.txt
 pytest==8.3.2
+# Property-based Tests auf die Rechenkerne (#53): erzeugt Eingaben selbst und
+# schrumpft Gegenbeispiele — findet Randfälle, die Beispieltests nicht treffen.
+hypothesis==6.112.1
