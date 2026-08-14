@@ -1,8 +1,8 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { API_BASE, SealedEnums, SealedProduct, sealedApi } from "@/lib/api";
+import { API_BASE, SealedCatalogItem, SealedEnums, SealedProduct, sealedApi } from "@/lib/api";
 import { CurrencyField, DateField, SelectField, TextareaField } from "@/components/CardFormFields";
 import SearchableSelect from "@/components/SearchableSelect";
 import { useSets } from "@/lib/useSets";
@@ -47,12 +47,41 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoVersion, setPhotoVersion] = useState(0);
 
+  // Sealed-Katalog-Picker (#46): Suche gegen echte TCGplayer-Produkte.
+  // linkId = aktuelle Verknüpfung (0 = beim Speichern lösen).
+  const [linkId, setLinkId] = useState<number | null>(product?.tcgplayer_product_id ?? null);
+  const [linkImage, setLinkImage] = useState<string | null>(product?.bild_url ?? null);
+  const [catSearch, setCatSearch] = useState("");
+  const [catResults, setCatResults] = useState<SealedCatalogItem[]>([]);
+  useEffect(() => {
+    const q = catSearch.trim();
+    if (q.length < 2) { setCatResults([]); return; }
+    let alive = true;   // späte Antwort einer alten Suche nicht übernehmen
+    const timer = setTimeout(() => {
+      sealedApi.catalog(q)
+        .then((r) => { if (alive) setCatResults(r.data); })
+        .catch(() => { if (alive) setCatResults([]); });
+    }, 300);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [catSearch]);
+
+  const pickCatalog = (item: SealedCatalogItem) => {
+    setLinkId(item.product_id);
+    setLinkImage(item.image_url);
+    if (!name.trim()) setName(item.name);
+    setCatSearch("");
+    setCatResults([]);
+  };
+
   const setLabel = (code: string) => setOptions.find((o) => o.value === code)?.label ?? code;
 
+  // Eigenes Foto (hochgeladen/gewählt) vs. CDN-Bild aus dem Katalog — die
+  // Foto-Aktionen (ersetzen/löschen) gelten NUR fürs eigene Foto (Panel-Fund).
+  const hatEigenesFoto = Boolean(current?.bild_thumbnail_pfad || photoPreview);
   const imgSrc =
     current?.bild_thumbnail_pfad
       ? imageUrl(current.bild_thumbnail_pfad, API_BASE, photoVersion)
-      : photoPreview;
+      : (photoPreview ?? (linkId ? linkImage : null));
 
   const gv = wert != null && kaufpreis != null ? parseFloat(wert) - parseFloat(kaufpreis) : null;
 
@@ -110,6 +139,9 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
     kaufdatum,
     wert_eur: wert,
     notizen,
+    // Verknüpfung (#46): id = verknüpfen, null = lösen (Server-Semantik:
+    // explizit gesetztes leeres Feld löst; weggelassen = unverändert)
+    tcgplayer_product_id: linkId,
   });
 
   const handleSave = async () => {
@@ -160,7 +192,9 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
           <div className="shrink-0 w-full sm:w-40 mx-auto sm:mx-0">
             <div className="aspect-square relative bg-gray-800 rounded-lg overflow-hidden">
               {imgSrc ? (
-                <Image src={imgSrc} alt={name || "Sealed"} fill className="object-cover" />
+                // TCGplayer-CDN funktioniert auch mit next/Image (remotePatterns "**")
+                <Image src={imgSrc} alt={name || "Sealed"} fill
+                  className={hatEigenesFoto ? "object-cover" : "object-contain"} />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-600 text-4xl">📦</div>
               )}
@@ -180,7 +214,7 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
                 {imgSrc ? t.detail_replace_photo : t.detail_upload_photo}
               </button>
             </div>
-            {imgSrc && (
+            {hatEigenesFoto && (
               <button type="button" onClick={handleDeletePhoto}
                 className="w-full mt-1 text-xs bg-red-950 text-red-400 hover:text-red-200 rounded px-2 py-1.5">
                 {t.detail_delete_photo}
@@ -190,6 +224,41 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
 
           {/* Felder */}
           <div className="flex-1 min-w-0 grid grid-cols-2 gap-3">
+            {/* Sealed-Katalog-Picker (#46): echte TCGplayer-Produkte statt Freitext */}
+            <div className="col-span-2">
+              <label htmlFor="sealed-cat" className="text-gray-400 text-xs block mb-1">{t.sealed_catalog_search}</label>
+              {linkId ? (
+                <div className="flex items-center justify-between bg-gray-800/60 border border-green-900 rounded px-2 py-1.5 text-sm">
+                  <span className="text-green-400 text-xs">{t.sealed_catalog_linked(linkId)}</span>
+                  <button type="button" onClick={() => { setLinkId(null); setLinkImage(null); }}
+                    className="text-gray-400 hover:text-red-300 text-xs">{t.sealed_catalog_unlink}</button>
+                </div>
+              ) : (
+                <>
+                  <input id="sealed-cat" type="text" value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                    placeholder={t.sealed_catalog_placeholder}
+                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm" />
+                  {catResults.length > 0 && (
+                    <div className="mt-1 max-h-44 overflow-y-auto border border-gray-700 rounded divide-y divide-gray-800 bg-gray-900">
+                      {catResults.map((item) => (
+                        <button key={item.product_id} type="button" onClick={() => pickCatalog(item)}
+                          className="w-full text-left px-2 py-1.5 hover:bg-gray-800 flex items-center justify-between gap-2">
+                          <span className="text-white text-xs truncate">
+                            {item.name}
+                            {item.region === "ja" && <span className="ml-1 text-[9px] uppercase text-gray-500">JP</span>}
+                          </span>
+                          {item.price_usd != null && (
+                            <span className="text-gray-400 text-xs shrink-0">$ {item.price_usd.toFixed(2)}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-gray-600 text-xs mt-1">{t.sealed_catalog_hint}</p>
+                </>
+              )}
+            </div>
             <div className="col-span-2">
               <label htmlFor="sealed-name" className="text-gray-400 text-xs block mb-1">{t.sealed_name} *</label>
               <input id="sealed-name" type="text" value={name}
@@ -233,7 +302,12 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
 
             <div className="col-span-2">
               <CurrencyField label={t.sealed_value} value={wert} onChange={setWert} />
-              <p className="text-gray-600 text-xs mt-1">{t.sealed_value_hint}</p>
+              <p className="text-gray-600 text-xs mt-1">
+                {linkId ? t.sealed_value_auto_hint : t.sealed_value_hint}
+                {current?.wert_aktualisiert && !isNaN(new Date(current.wert_aktualisiert).getTime()) && (
+                  <> · {t.detail_value_updated}: {new Date(current.wert_aktualisiert).toLocaleDateString(t.date_locale)}</>
+                )}
+              </p>
             </div>
 
             {/* G/V-Anzeige (nur wenn Kaufpreis + Wert gesetzt) */}

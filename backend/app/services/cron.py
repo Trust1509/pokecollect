@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, run_with_session
 from app.models.card import PokemonCard
 from app.models.setting import AppSetting
-from app.services.pricing import refresh_prices_for_cards
+from app.services.pricing import refresh_prices_for_cards, refresh_sealed_prices
 
 log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
@@ -33,6 +33,8 @@ async def _daily_price_update(db: Session):
         await refresh_prices_for_cards(db, ids)
     else:
         log.info("Keine besessenen Karten – nichts zu aktualisieren.")
+    # Sealed: Auto-Wert für katalog-verknüpfte Produkte (#46).
+    await refresh_sealed_prices(db)
 
 
 async def _daily_catalog_sync(db: Session):

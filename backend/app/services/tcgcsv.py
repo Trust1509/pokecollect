@@ -181,6 +181,15 @@ def is_card_product(product: dict) -> bool:
     return product_number(product) is not None
 
 
+def is_sealed_product(product: dict) -> bool:
+    """
+    Sealed = das Number-Feld FEHLT ganz (#46, Panel-Fund): eine Karte mit
+    nicht-numerischer Nummer („TG01/TG30", „SVP001") liefert product_number
+    None, ist aber KEIN Sealed-Produkt — nur das rohe extendedData zählt.
+    """
+    return _ext(product, "Number") is None
+
+
 async def get_prices(category: int, group_id: int, *, sleep=asyncio.sleep) -> list[dict]:
     """Preis-Sätze einer Gruppe: {productId, subTypeName, marketPrice, lowPrice, …}.
     Ein Produkt kann mehrere Sätze haben (Normal / 1st Edition / Holofoil …)."""

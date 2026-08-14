@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -352,6 +353,61 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
                  price_source, updated, len(card_ids))
     except Exception as exc:
         log.error("Fehler beim Preisupdate: %s", exc)
+        db.rollback()
+
+
+async def refresh_sealed_prices(db: Session) -> None:
+    """
+    Auto-Wert für KATALOG-VERKNÜPFTE Sealed-Produkte (#46, Owner-Entscheid):
+    TCGplayer-$ aus dem Sealed-Katalog × EZB-Tageskurs → wert_eur +
+    wert_aktualisiert. Unverknüpfte (Freitext-)Produkte bleiben manuell.
+    Dieselben Schutzplanken wie bei Karten: Frische-Guard, nie 0/negativ,
+    Wertebereich, Kurs nur einmal je Lauf.
+    """
+    from app.models.sealed import SealedCatalog, SealedProduct
+
+    linked = db.scalars(
+        select(SealedProduct).where(SealedProduct.tcgplayer_product_id.isnot(None))
+    ).all()
+    if not linked:
+        return
+    # Katalogzeilen in EINER Query (kein N+1 je Produkt, Panel-Fund).
+    rows_by_id = {r.product_id: r for r in db.scalars(
+        select(SealedCatalog).where(SealedCatalog.product_id.in_(
+            {p.tcgplayer_product_id for p in linked}))
+    ).all()}
+    usd_rate: Optional[Decimal] = None
+    usd_rate_geholt = False
+    updated = 0
+    try:
+        for product in linked:
+            row = rows_by_id.get(product.tcgplayer_product_id)
+            if row is None or row.price_usd is None:
+                continue
+            if not _usd_stand_frisch(row.price_usd_updated):
+                log.debug("Sealed %s: $-Datenstand zu alt – übersprungen.", product.id)
+                continue
+            usd = Decimal(str(row.price_usd))
+            if usd <= 0:
+                continue
+            if not usd_rate_geholt:
+                usd_rate = await fx.usd_eur_rate()
+                usd_rate_geholt = True
+            if usd_rate is None:
+                return  # ohne Kurs diesen Lauf auslassen (nächster Lauf holt nach)
+            kandidat = convert_usd_eur(usd, usd_rate)
+            if not _wert_plausibel(kandidat):
+                log.warning("Sealed %s: umgerechneter $-Preis %s außerhalb des "
+                            "Wertebereichs – übersprungen.", product.id, kandidat)
+                continue
+            product.wert_eur = kandidat
+            product.wert_aktualisiert = datetime.utcnow()
+            updated += 1
+        db.commit()
+        log.info("Sealed-Preisupdate: %d/%d verknüpfte Produkte aktualisiert.",
+                 updated, len(linked))
+    except Exception as exc:
+        log.error("Fehler beim Sealed-Preisupdate: %s", exc)
         db.rollback()
 
 

@@ -216,6 +216,13 @@ def _run_light_migrations():
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd NUMERIC(10,2)",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur_updated TEXT",
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_usd_updated TEXT",
+        # #46: Sealed-Katalog-Verknüpfung + Auto-Wert (Tabelle sealed_catalog
+        # legt create_all an; hier nur die additiven Bestandsspalten).
+        "ALTER TABLE sealed_products ADD COLUMN IF NOT EXISTS tcgplayer_product_id INTEGER",
+        "ALTER TABLE sealed_products ADD COLUMN IF NOT EXISTS bild_url TEXT",
+        "ALTER TABLE sealed_products ADD COLUMN IF NOT EXISTS wert_aktualisiert TIMESTAMP",
+        "CREATE INDEX IF NOT EXISTS ix_sealed_products_tcgplayer_product_id "
+        "ON sealed_products (tcgplayer_product_id)",
         # #63: Muster als eigene Dimension (Expand-Contract Schritt 1) + die
         # Varianten-$-Preisspalten am Katalog.
         "ALTER TABLE pokemon_cards ADD COLUMN IF NOT EXISTS muster TEXT",

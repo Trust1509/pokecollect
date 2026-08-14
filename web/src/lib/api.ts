@@ -134,6 +134,10 @@ export type SealedProduct = {
   set_codes: string[];
   bild_pfad: string | null;
   bild_thumbnail_pfad: string | null;
+  // Sealed-Katalog (#46): TCGplayer-Verknüpfung + CDN-Bild + Auto-Wert-Stand
+  tcgplayer_product_id?: number | null;
+  bild_url?: string | null;
+  wert_aktualisiert?: string | null;
   hinzugefuegt_am: string | null;
   unrealisierter_gv_eur: string | null;
 };
@@ -141,6 +145,16 @@ export type SealedProduct = {
 export type SealedEnums = {
   typ: string[];
   zustand: string[];
+};
+
+export type SealedCatalogItem = {
+  product_id: number;
+  region: string;
+  set_code: string | null;
+  name: string;
+  image_url: string | null;
+  price_usd: number | null;
+  price_usd_updated: string | null;
 };
 
 export type CollectionProgress = {
@@ -357,6 +371,8 @@ export const sealedApi = {
     api.put<SealedProduct>(`/sealed/${id}`, data),
   delete: (id: number) => api.delete(`/sealed/${id}`),
   enums: () => api.get<SealedEnums>("/sealed/meta/enums"),
+  catalog: (search: string, region?: string) =>
+    api.get<SealedCatalogItem[]>("/sealed/catalog", { params: { search, ...(region ? { region } : {}) } }),
   uploadImage: (id: number, file: File) => {
     const form = new FormData();
     form.append("file", file);

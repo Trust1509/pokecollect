@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.8.1] – 2026-08-13 (Sealed-Katalog: echte Produkte, Bilder, automatische Preise)
+
+### Neu (#46)
+- **Sealed-Produkte aus dem TCGplayer-Katalog verknüpfen statt Freitext:** Die
+  Anlage bietet eine Produktsuche über echte TCGplayer-Produkte (West **und**
+  japanisch) — mit **Produktbild vom CDN** und **$-Marktpreis**. Der Katalog
+  füllt sich im täglichen Sync aus denselben Abrufen wie die Kartenpreise
+  (keine zusätzlichen Requests). Freitext bleibt als Fallback für Exoten.
+- **Automatischer Wert für verknüpfte Produkte** (Owner-Entscheid): täglich
+  TCGplayer-$ × EZB-Kurs → Wert, mit Stand-Anzeige — dieselben Schutzplanken
+  wie bei Karten (Frische-Guard, nie 0, Wertebereich). Unverknüpfte Produkte
+  bleiben manuell bewertet wie bisher.
+- Produktbild erscheint auch ohne eigenes Foto (eigenes Foto behält Vorrang).
+
+### Hinweise
+- Additive Spalten + neue Katalog-Tabelle, keine destruktive Migration. Der
+  Sealed-Katalog füllt sich mit dem nächsten Katalog-Sync (04:00 oder manuell).
+
 ## [v1.8.0] – 2026-08-12 (Folierung & Muster getrennt + Pokéball-/Masterball-Marktpreise)
 
 ### Neu

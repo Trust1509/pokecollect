@@ -16,10 +16,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.sealed import SealedProduct, sealed_product_sets
+from app.models.sealed import SealedCatalog, SealedProduct, sealed_product_sets
 from app.schemas.sealed import (
     SEALED_TYP_VALUES,
     SEALED_ZUSTAND_VALUES,
+    SealedCatalogItem,
     SealedEnumsResponse,
     SealedProductCreate,
     SealedProductResponse,
@@ -94,10 +95,46 @@ def _response(product: SealedProduct, set_codes: list[str]) -> SealedProductResp
         notizen=product.notizen,
         bild_pfad=product.bild_pfad,
         bild_thumbnail_pfad=product.bild_thumbnail_pfad,
+        tcgplayer_product_id=product.tcgplayer_product_id,
+        bild_url=product.bild_url,
+        wert_aktualisiert=product.wert_aktualisiert,
         hinzugefuegt_am=product.hinzugefuegt_am,
         set_codes=set_codes,
         unrealisierter_gv_eur=gv,
     )
+
+
+def _unlink_catalog(product: SealedProduct) -> None:
+    """Verknüpfung vollständig lösen: auch CDN-Bild + Auto-Wert-Stand räumen —
+    sonst sähe der eingefrorene Wert weiter „gepflegt" aus (Panel-Fund)."""
+    product.tcgplayer_product_id = None
+    product.bild_url = None
+    product.wert_aktualisiert = None
+
+
+def _apply_catalog_link(db: Session, product: SealedProduct, *, strict: bool = True) -> None:
+    """
+    Verknüpfung in den Sealed-Katalog anwenden (#46): CDN-Bild übernehmen,
+    leeren Namen aus dem Katalog füllen. Den Wert setzt der (tägliche bzw.
+    manuell angestoßene) Preislauf — nicht dieser Handler (er bräuchte sonst
+    den async-FX-Kurs). Ein explizit „leeres" Feld (null oder 0) LÖST die
+    Verknüpfung (Panel-Fund: exclude_unset unterscheidet weggelassen von null —
+    der frühere 0-Sonderwert war unnötig; 0 bleibt kompatibel gültig).
+    strict=False: unbekannte productId nicht als 404 werfen (verwaister
+    Bestands-Link darf normale Edits nicht blockieren), sondern Link lösen.
+    """
+    if not product.tcgplayer_product_id:   # None ODER 0 → lösen
+        _unlink_catalog(product)
+        return
+    row = db.get(SealedCatalog, product.tcgplayer_product_id)
+    if row is None:
+        if strict:
+            raise HTTPException(status_code=404, detail="Katalog-Produkt nicht gefunden")
+        _unlink_catalog(product)
+        return
+    product.bild_url = row.image_url
+    if not (product.name or "").strip():
+        product.name = row.name
 
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
@@ -105,6 +142,30 @@ def _response(product: SealedProduct, set_codes: list[str]) -> SealedProductResp
 @router.get("/meta/enums", response_model=SealedEnumsResponse)
 def get_enums():
     return SealedEnumsResponse(typ=SEALED_TYP_VALUES, zustand=SEALED_ZUSTAND_VALUES)
+
+
+# ── Sealed-Katalog (#46, Picker-Quelle) ──────────────────────────────────────
+# WICHTIG: vor GET /{product_id} registriert — sonst versuchte FastAPI,
+# „catalog" als product_id zu parsen (422).
+
+@router.get("/catalog", response_model=list[SealedCatalogItem])
+def search_sealed_catalog(
+    search: Optional[str] = None,
+    region: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
+    """TCGplayer-Sealed-Produkte suchen (Name-Teilstring, optional Region)."""
+    q = select(SealedCatalog)
+    if search and search.strip():
+        # %/_ als LITERALE suchen — sonst wären sie LIKE-Wildcards (Panel-Fund)
+        term = (search.strip().replace("\\", "\\\\")
+                .replace("%", "\\%").replace("_", "\\_"))
+        q = q.where(SealedCatalog.name.ilike(f"%{term}%", escape="\\"))
+    if region:
+        q = q.where(SealedCatalog.region == region)
+    q = q.order_by(SealedCatalog.name).limit(max(1, min(limit, 100)))
+    return list(db.scalars(q).all())
 
 
 # ── Liste ─────────────────────────────────────────────────────────────────────
@@ -143,6 +204,7 @@ def create_sealed(data: SealedProductCreate, db: Session = Depends(get_db)):
     payload = data.model_dump()
     set_codes = payload.pop("set_codes", []) or []
     product = SealedProduct(**payload)
+    _apply_catalog_link(db, product)   # Bild/Name aus dem Katalog (#46)
     db.add(product)
     db.flush()  # id für die Join-Zeilen
     _replace_sets(db, product.id, set_codes)
@@ -168,8 +230,14 @@ def update_sealed(product_id: int, data: SealedProductUpdate, db: Session = Depe
         raise HTTPException(status_code=422, detail="Name darf nicht leer sein")
     # set_codes getrennt behandeln: None = unverändert, [] = alle entfernen.
     new_sets = updated.pop("set_codes", None)
+    vorherige_link_id = product.tcgplayer_product_id
     for field, value in updated.items():
         setattr(product, field, value)
+    if "tcgplayer_product_id" in updated:
+        # Nur bei ECHTER Änderung streng prüfen (404) — ein verwaister
+        # Bestands-Link darf normale Edits nicht blockieren (Panel-Fund).
+        geaendert = updated["tcgplayer_product_id"] != vorherige_link_id
+        _apply_catalog_link(db, product, strict=geaendert)
     if new_sets is not None:
         _replace_sets(db, product_id, new_sets)
     db.commit()

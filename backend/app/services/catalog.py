@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.models.card import PokemonCard
 from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
+from app.models.sealed import SealedCatalog
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.services import tcgcsv, tcgdex
 from app.services.card_creation import create_owned_card
@@ -383,7 +384,7 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
     # Timezone-aware UTC („+00:00") — sonst liest JS den Zeitstempel als Lokalzeit
     # und der angezeigte „Stand" kann um einen Tag danebenliegen (Panel-Fund).
     stamp = datetime.now(timezone.utc).isoformat()
-    images = prices = sets_done = rejected = 0
+    images = prices = sets_done = rejected = sealed_neu = 0
     for (set_code, set_id), rows in by_set.items():
         # Ein kaputtes Set (Netz/Datenmüll) darf die übrigen nicht abbrechen
         # (Panel-Fund M3) — je Set isolieren, Zähler laufen weiter.
@@ -408,10 +409,18 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
             # Je Nummer die Produkt-SLOTS sammeln (#63): Grundform (Dubletten →
             # Klammerzusatz verliert, Panel-Fund) + Muster-Produkte separat
             # („(Poke Ball Pattern)"/„(Master Ball Pattern)" = eigene Produkte).
+            # Produkte OHNE Nummer sind SEALED (#46) → in den Sealed-Katalog.
             num_to_slots: dict[str, dict[str, dict]] = {}
+            sealed_products: list[dict] = []
             for p in products:
                 num = tcgcsv.product_number(p)
                 if not num:
+                    # NUR echte Sealed (Number-Feld fehlt ganz) — Karten mit
+                    # nicht-numerischer Nummer (TG01/…, SVP001) sind KEINE
+                    # Sealed-Produkte (Panel-Fund #46).
+                    if (tcgcsv.is_sealed_product(p)
+                            and p.get("productId") is not None and p.get("name")):
+                        sealed_products.append(p)
                     continue
                 slots = num_to_slots.setdefault(num, {})
                 pattern = tcgcsv.product_pattern(p)
@@ -491,8 +500,34 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
                     if "price_usd" in vals:
                         prices += 1
                     touched = True
+            karten_touched = touched
+            # Sealed-Katalog (#46): Produkte ohne Nummer upserten — echte
+            # Produkte für den Picker, mit CDN-Bild + täglichem Marktpreis.
+            for sp in sealed_products:
+                spid = sp["productId"]
+                row_s = db.get(SealedCatalog, spid)
+                if row_s is None:
+                    row_s = SealedCatalog(product_id=spid, region=region,
+                                          name=str(sp["name"]).strip())
+                    db.add(row_s)
+                    sealed_neu += 1
+                row_s.region = region
+                row_s.set_code = set_code
+                row_s.set_id = set_id
+                row_s.name = str(sp["name"]).strip()
+                img_s = tcgcsv.hires_image_url(sp)
+                if img_s:
+                    row_s.image_url = img_s
+                usd_s = tcgcsv.market_usd_for(price_rows, spid)
+                if usd_s is not None:
+                    row_s.price_usd = usd_s
+                    row_s.price_usd_updated = stamp
+                touched = True
             if touched:
                 db.commit()
+            if karten_touched:
+                # Abdeckungs-Kennzahl zählt nur KARTEN-Treffer — reine
+                # Sealed-Schreiber würden sie sonst aufblähen (Panel-Fund).
                 sets_done += 1
         except Exception as exc:  # noqa: BLE001 — ein Set darf den Lauf nicht kippen
             db.rollback()
@@ -501,9 +536,9 @@ async def fill_region_from_tcgplayer(db: Session, region: str = "ja") -> dict:
 
     # Abdeckung sichtbar machen (Panel-Fund M1): ungematchte Sets sind sonst
     # eine unsichtbare Lücke.
-    log.info("TCGplayer-Übernahme %s: %d Bilder, %d Preise — %d/%d Sets gematcht, "
-             "%d als unplausibel verworfen.",
-             region, images, prices, sets_done, len(by_set), rejected)
+    log.info("TCGplayer-Übernahme %s: %d Bilder, %d Preise, %d neue Sealed — "
+             "%d/%d Sets gematcht, %d als unplausibel verworfen.",
+             region, images, prices, sealed_neu, sets_done, len(by_set), rejected)
     return {"images": images, "prices": prices, "sets": sets_done}
 
 

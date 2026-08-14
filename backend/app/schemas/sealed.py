@@ -78,6 +78,9 @@ class SealedProductBase(BaseModel):
     kaufpreis_eur: Optional[Decimal] = MONEY_FIELD
     kaufdatum: Optional[date] = None
     wert_eur: Optional[Decimal] = MONEY_FIELD
+    # Sealed-Katalog-Verknüpfung (#46): TCGplayer-productId. Gesetzt →
+    # Auto-Wert + CDN-Bild; None = Freitext-Produkt (manuell bewertet).
+    tcgplayer_product_id: Optional[int] = None
     notizen: Optional[str] = None
     # n:m-Set-Zuordnung (0..N Set-Kürzel). Leer erlaubt (Bundles ohne Bezug).
     # max_length kappt die ROH-Liste (Missbrauchsschutz, #38); die inhaltliche
@@ -103,6 +106,9 @@ class SealedProductUpdate(BaseModel):
     kaufpreis_eur: Optional[Decimal] = MONEY_FIELD
     kaufdatum: Optional[date] = None
     wert_eur: Optional[Decimal] = MONEY_FIELD
+    # Weggelassen = unverändert (exclude_unset); explizit null ODER 0 =
+    # Verknüpfung lösen; id = (neu) verknüpfen.
+    tcgplayer_product_id: Optional[int] = None
     notizen: Optional[str] = None
     # None = Zuordnung unverändert lassen; [] = alle Sets entfernen.
     set_codes: Optional[list[str]] = Field(default=None, max_length=MAX_SET_CODES_RAW)
@@ -125,6 +131,10 @@ class SealedProductResponse(BaseModel):
     set_codes: list[str] = []
     bild_pfad: Optional[str] = None
     bild_thumbnail_pfad: Optional[str] = None
+    # Sealed-Katalog (#46): Verknüpfung + CDN-Bild + Stand des Auto-Werts
+    tcgplayer_product_id: Optional[int] = None
+    bild_url: Optional[str] = None
+    wert_aktualisiert: Optional[datetime] = None
     hinzugefuegt_am: Optional[datetime] = None
     # Unrealisierter G/V = wert_eur − kaufpreis_eur (nur wenn BEIDE gesetzt).
     unrealisierter_gv_eur: Optional[Decimal] = None
@@ -135,3 +145,16 @@ class SealedProductResponse(BaseModel):
 class SealedEnumsResponse(BaseModel):
     typ: list[str]
     zustand: list[str]
+
+
+class SealedCatalogItem(BaseModel):
+    """Ein Eintrag des TCGplayer-Sealed-Katalogs (#46, Picker-Quelle)."""
+    product_id: int
+    region: str
+    set_code: Optional[str] = None
+    name: str
+    image_url: Optional[str] = None
+    price_usd: Optional[float] = None
+    price_usd_updated: Optional[str] = None
+
+    model_config = {"from_attributes": True}

@@ -64,9 +64,40 @@ class SealedProduct(Base):
     # Persönlicher Einstand (analog Karten #26): beide optional.
     kaufpreis_eur = Column(Numeric(8, 2), nullable=True)
     kaufdatum = Column(Date, nullable=True)
-    # Manuell gepflegter aktueller Wert (keine automatische Preisquelle).
+    # Aktueller Wert. Mit Katalog-Verknüpfung (#46) täglich automatisch aus dem
+    # TCGplayer-$ × EZB-Kurs gesetzt (Owner-Entscheid 2026-08-13); ohne
+    # Verknüpfung manuell gepflegt wie bisher.
     wert_eur = Column(Numeric(8, 2), nullable=True)
+    wert_aktualisiert = Column(DateTime, nullable=True)   # Stand des Auto-Werts
+    # Verknüpfung in den Sealed-Katalog (#46): TCGplayer-productId. NULL =
+    # Freitext-Produkt (bleibt manuell bewertet).
+    tcgplayer_product_id = Column(Integer, nullable=True, index=True)
     bild_pfad = Column(Text, nullable=True)
     bild_thumbnail_pfad = Column(Text, nullable=True)
+    # Produktbild vom TCGplayer-CDN (aus dem Katalog, #46) — eigenes Foto
+    # (bild_pfad) hat in der Anzeige Vorrang.
+    bild_url = Column(Text, nullable=True)
     notizen = Column(Text, nullable=True)
     hinzugefuegt_am = Column(DateTime, default=datetime.utcnow)
+
+
+class SealedCatalog(Base):
+    """
+    TCGplayer-Sealed-Katalog (#46): Nachschlagewerk für den Produkt-Picker —
+    echte Produkte statt Freitext, mit CDN-Bild und $-Marktpreis. Wird im
+    täglichen Katalog-Sync mitbefüllt (dieselben Produkt-Abrufe wie die
+    Karten-Preise, Kat. 3 West + Kat. 85 JP — null Zusatz-Requests).
+    Read-only fürs UI; kein FK von sealed_products (lose Kopplung wie
+    tcgdex_catalog ↔ pokemon_cards).
+    """
+
+    __tablename__ = "sealed_catalog"
+
+    product_id = Column(Integer, primary_key=True)          # TCGplayer productId
+    region = Column(Text, nullable=False, default="west", index=True)  # west|ja
+    set_code = Column(Text, index=True, nullable=True)      # Set der Gruppe (z. B. WHT)
+    set_id = Column(Text, nullable=True)
+    name = Column(Text, nullable=False, index=True)
+    image_url = Column(Text, nullable=True)                 # TCGplayer-CDN (hires)
+    price_usd = Column(Numeric(10, 2), nullable=True)       # Marktpreis, täglich
+    price_usd_updated = Column(Text, nullable=True)         # ISO-Datenstand

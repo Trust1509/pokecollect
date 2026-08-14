@@ -6,4 +6,4 @@ from app.models.pokemon_set import PokemonSet  # noqa: F401
 from app.models.collection import Collection, CollectionSoll, collection_cards  # noqa: F401
 from app.models.gemini_usage import GeminiUsage  # noqa: F401
 from app.models.tcgdex_catalog import TcgdexCatalog  # noqa: F401
-from app.models.sealed import SealedProduct, sealed_product_sets  # noqa: F401
+from app.models.sealed import SealedCatalog, SealedProduct, sealed_product_sets  # noqa: F401

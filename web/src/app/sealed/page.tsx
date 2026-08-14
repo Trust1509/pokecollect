@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import { API_BASE, SealedEnums, SealedProduct, sealedApi } from "@/lib/api";
 import SearchableSelect from "@/components/SearchableSelect";
 import SealedFormModal from "@/components/sealed/SealedFormModal";
@@ -33,6 +34,9 @@ function SealedTile({
       <div className="aspect-square relative bg-gray-800">
         {src ? (
           <Image src={src} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 45vw, 20vw" />
+        ) : product.bild_url ? (
+          // TCGplayer-CDN (#46): next/Image geht auch extern (remotePatterns "**")
+          <Image src={product.bild_url} alt={product.name} fill className="object-contain" sizes="(max-width: 640px) 45vw, 20vw" />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-600 text-5xl">📦</div>
         )}
@@ -92,8 +96,14 @@ export default function SealedPage() {
     if (typ) params.typ = typ;
     if (setFilter) params.set = setFilter;
     if (zustand) params.zustand = zustand;
-    sealedApi.list(params).then((r) => setItems(r.data)).finally(() => setLoading(false));
-  }, [typ, setFilter, zustand]);
+    // .catch mit Toast: schlägt der Abruf fehl (z. B. API mitten im Deploy),
+    // blieb die Liste sonst STILL alt — „gespeichert, aber nicht angezeigt"
+    // (Owner-Fund 2026-08-13).
+    sealedApi.list(params)
+      .then((r) => setItems(r.data))
+      .catch(() => toast.error(t.sealed_load_error))
+      .finally(() => setLoading(false));
+  }, [typ, setFilter, zustand, t]);
 
   useEffect(() => { load(); }, [load]);
 

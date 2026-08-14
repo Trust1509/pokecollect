@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db, run_with_session
 from app.models.card import PokemonCard, PreisHistorie
 from app.schemas.card import PreisHistorieResponse
-from app.services.pricing import refresh_prices_for_cards
+from app.services.pricing import refresh_prices_for_cards, refresh_sealed_prices
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
@@ -21,6 +21,8 @@ async def trigger_price_refresh(
     # Eigene Session für den Hintergrund-Job — die Request-Session ist beim
     # Ausführen der BackgroundTask bereits geschlossen.
     background_tasks.add_task(run_with_session, refresh_prices_for_cards, ids)
+    # Sealed: Auto-Wert für katalog-verknüpfte Produkte (#46).
+    background_tasks.add_task(run_with_session, refresh_sealed_prices)
     return {"message": f"Preisupdate für {len(ids)} Karten gestartet"}
 
 
