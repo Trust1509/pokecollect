@@ -138,6 +138,49 @@ def test_detail_zeigt_keinen_fremden_variantenpreis(db, client):
     assert body["katalog_preis_usd_variante"] is None
 
 
+def test_quelle_traegt_die_variante_des_bewertungszeitpunkts(db, client, monkeypatch):
+    """Panel-MAJOR: die Variante gehört in den VERLAUF, nicht ins Formular.
+    Stellt der Nutzer die Folierung nach der Bewertung um, muss das Label
+    weiter die Variante nennen, die den Wert erzeugt hat."""
+    import asyncio
+    from app.services import pricing
+
+    async def kein_eur(db_, card, price_source="30d_avg"):
+        return None, True
+    monkeypatch.setattr(pricing, "_price_for_card", kein_eur)
+    monkeypatch.setattr(pricing, "_cardmarket_oauth_fallback", lambda db_, card: None)
+
+    async def kurs():
+        return Decimal("0.90")
+    monkeypatch.setattr(pricing.fx, "usd_eur_rate", kurs)
+
+    db.add(TcgdexCatalog(card_id="test182-hist", region="west",
+                         price_usd=Decimal("0.25"),
+                         price_usd_pokeball=Decimal("0.60"),
+                         price_usd_updated=datetime.now(timezone.utc).isoformat()))
+    card = PokemonCard(kartenname=_TESTNAME, besessen=True,
+                       folierung="Reverse Holo", muster="Pokéball",
+                       tcgdex_card_id="test182-hist")
+    db.add(card)
+    db.flush()
+    cid = card.id
+    db.commit()
+
+    asyncio.run(pricing.refresh_prices_for_cards(db, [cid]))
+    db.expire_all()
+    assert db.get(PokemonCard, cid).wert_eur == Decimal("0.54")   # 0.60 × 0.90
+    body = client.get(f"/api/v1/cards/{cid}").json()
+    assert body["wert_quelle"] == "tcgplayer-usd@0.90/pokeball"
+
+    # Nutzer stellt auf Normal um → Muster fällt weg, WERT bleibt stehen.
+    client.put(f"/api/v1/cards/{cid}", json={"folierung": "Normal"})
+    body = client.get(f"/api/v1/cards/{cid}").json()
+    assert body["muster"] is None
+    assert body["katalog_preis_usd_variante"] == "normal"     # $-Zeile: heutiger Stand
+    # …die Quelle des Werts nennt weiter die Pokéball-Variante:
+    assert body["wert_quelle"] == "tcgplayer-usd@0.90/pokeball"
+
+
 def test_detail_zeigt_juengste_quelle(db, client):
     card = PokemonCard(kartenname=_TESTNAME, besessen=True, wert_eur=Decimal("1.00"))
     db.add(card)

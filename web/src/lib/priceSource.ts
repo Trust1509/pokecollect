@@ -23,8 +23,26 @@ export function priceSourceKey(quelle?: string | null): PriceSourceKey {
   return "unbekannt";
 }
 
-/** Umrechnungskurs aus "tcgplayer-usd@0.8666" → "0.8666"; sonst null. */
+/**
+ * Umrechnungskurs aus "tcgplayer-usd@0.8666" bzw. "…@0.8666/pokeball" → "0.8666".
+ * Der Teil hinter "/" ist die Variante (v1.8.2) und gehört NICHT zum Kurs.
+ */
 export function priceSourceRate(quelle?: string | null): string | null {
   const at = quelle?.indexOf("@") ?? -1;
-  return at >= 0 ? quelle!.slice(at + 1) : null;
+  if (at < 0) return null;
+  const rest = quelle!.slice(at + 1);
+  const slash = rest.indexOf("/");
+  return slash >= 0 ? rest.slice(0, slash) : rest;
+}
+
+/**
+ * Variante zum BEWERTUNGSZEITPUNKT aus "…@0.8666/pokeball" → "pokeball".
+ * Ältere Verlaufseinträge tragen sie nicht → null (Label zeigt dann nur die
+ * Quelle, statt die heutige Karteneinstellung zu behaupten).
+ */
+export function priceSourceVariant(quelle?: string | null): string | null {
+  const at = quelle?.indexOf("@") ?? -1;
+  if (at < 0) return null;
+  const slash = quelle!.indexOf("/", at);
+  return slash >= 0 ? quelle!.slice(slash + 1) || null : null;
 }

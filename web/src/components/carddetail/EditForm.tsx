@@ -10,7 +10,7 @@ import { useCardForm } from "@/lib/useCardForm";
 import { formatEur } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { fetchPokemonNames, PokemonNames } from "@/lib/pokedex";
-import { priceSourceKey, priceSourceRate } from "@/lib/priceSource";
+import { priceSourceKey, priceSourceRate, priceSourceVariant } from "@/lib/priceSource";
 
 // Detail-/Edit-Spalte der Kartendetailseite (Issue #14): Anzeige aller Felder,
 // Edit-Modus über die gemeinsame Formular-Logik (CardFormFields/useCardForm,
@@ -305,7 +305,9 @@ export default function EditForm({
             <div className="flex items-baseline justify-between text-sm">
               <span className="text-gray-400">
                 {t.detail_tcgplayer_usd}
-                {card.katalog_preis_usd_variante && (
+                {/* Variante nur nennen, wenn sie vom Normalfall abweicht —
+                    sonst stünde an jeder gewöhnlichen Karte „· Normal". */}
+                {card.katalog_preis_usd_variante && card.katalog_preis_usd_variante !== "normal" && (
                   <span className="text-gray-500 text-xs ml-1">
                     · {t.detail_usd_variant(card.katalog_preis_usd_variante)}
                   </span>
@@ -342,8 +344,10 @@ export default function EditForm({
                   Cardmarket-Behauptung (Panel-Fund). */}
               {t.detail_value_from(
                 priceSourceKey(card.wert_quelle),
-                priceSourceKey(card.wert_quelle) === "tcgplayer" && card.katalog_preis_usd_variante
-                  ? t.detail_usd_variant(card.katalog_preis_usd_variante)
+                // Variante aus dem VERLAUFSEINTRAG (Stand der Bewertung) —
+                // NICHT aus der heutigen Karteneinstellung (Panel-Fund).
+                priceSourceVariant(card.wert_quelle)
+                  ? t.detail_usd_variant(priceSourceVariant(card.wert_quelle)!)
                   : null,
                 priceSourceRate(card.wert_quelle))}
               {card.wert_aktualisiert && (

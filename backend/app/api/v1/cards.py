@@ -203,7 +203,10 @@ def _card_response(db: Session, card: PokemonCard) -> CardResponse:
     resp.wert_quelle = db.scalar(
         select(PreisHistorie.quelle)
         .where(PreisHistorie.karte_id == card.id)
-        .order_by(PreisHistorie.erfasst_am.desc(), PreisHistorie.id.desc())
+        # nulls_last: erfasst_am ist nullable — in Postgres stünde NULL bei
+        # DESC sonst VORNE und gewönne die Abfrage (Panel-Fund).
+        .order_by(PreisHistorie.erfasst_am.desc().nulls_last(),
+                  PreisHistorie.id.desc())
         .limit(1)
     )
     return resp

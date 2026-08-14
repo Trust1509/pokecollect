@@ -37,7 +37,9 @@ def get_price_history(
     rows = db.scalars(
         select(PreisHistorie)
         .where(PreisHistorie.karte_id == card_id)
-        .order_by(PreisHistorie.erfasst_am.desc())
+        # id als Tiebreak (gleicher Zeitstempel) — sonst könnten Chart und
+        # Wert-Label auf verschiedene Einträge zeigen (Panel-Fund v1.8.2).
+        .order_by(PreisHistorie.erfasst_am.desc(), PreisHistorie.id.desc())
         .limit(limit)
     ).all()
     return list(reversed(rows))

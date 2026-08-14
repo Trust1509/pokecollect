@@ -205,6 +205,16 @@ def _wert_plausibel(price: Decimal) -> bool:
     return _WERT_MIN <= price <= _WERT_MAX
 
 
+def _usd_quelle(rate: Optional[Decimal], variante: Optional[str]) -> str:
+    """
+    Quellen-String für den Preisverlauf: „tcgplayer-usd@<kurs>[/<variante>]".
+    Kurs UND Variante gehören zum BEWERTUNGSZEITPUNKT — das UI liest sie von
+    hier, statt die inzwischen am Formular eingestellte Variante zu behaupten
+    (v1.8.2, Panel-Fund).
+    """
+    return f"tcgplayer-usd@{rate}" + (f"/{variante}" if variante else "")
+
+
 # Maximalalter des gecachten $-Preises für den Fallback. JP-Preise frischt der
 # tägliche Sync auf; West-$ entsteht bislang nur beim Einmal-Enrich und kann
 # beliebig alt sein — ein Monate alter Preis darf nicht als heutiger Wert in
@@ -237,7 +247,7 @@ def _hat_muster_preisprodukt(card: PokemonCard) -> bool:
     return "masterball" in m or "pokeball" in m or "pokéball" in m
 
 
-def variant_usd(row, folierung: Optional[str], muster: Optional[str]
+def variant_usd(row: "TcgdexCatalog", folierung: Optional[str], muster: Optional[str]
                 ) -> tuple[Optional[Decimal], str]:
     """
     Welcher gecachte TCGplayer-$-Preis gehört zur (Folierung, Muster)-Kombi?
@@ -271,19 +281,29 @@ def variant_usd(row, folierung: Optional[str], muster: Optional[str]
     return (Decimal(str(val)) if val is not None else None), key
 
 
-def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
+def _usd_from_catalog_mit_variante(
+    db: Session, card: PokemonCard
+) -> tuple[Optional[Decimal], Optional[str]]:
     """
     TCGplayer-$-Marktpreis aus dem Katalog-Cache, passend zur Variante der
-    Karte (#63, Wahl siehe `variant_usd`). None ohne Katalog-Referenz/-Preis
+    Karte (#63, Wahl siehe `variant_usd`) — plus deren Schlüssel, damit der
+    Preisverlauf festhalten kann, WELCHE Variante den Wert erzeugt hat
+    (v1.8.2, Panel-Fund: sonst behauptet das Label später die inzwischen am
+    Kartenformular eingestellte Variante). None ohne Katalog-Referenz/-Preis
     oder wenn der Datenstand älter als _MAX_USD_STAND_TAGE ist.
     Case-toleranter Lookup (v1.7.3).
     """
     row = catalog_row_for(db, card.tcgdex_card_id)
     if row is None:
-        return None
+        return None, None
     if not _usd_stand_frisch(row.price_usd_updated):
-        return None
-    return variant_usd(row, card.folierung, card.muster)[0]
+        return None, None
+    return variant_usd(row, card.folierung, card.muster)
+
+
+def _usd_from_catalog(db: Session, card: PokemonCard) -> Optional[Decimal]:
+    """Nur der Preis (siehe `_usd_from_catalog_mit_variante`)."""
+    return _usd_from_catalog_mit_variante(db, card)[0]
 
 
 async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
@@ -308,11 +328,14 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
     usd_rate: Optional[Decimal] = None
     usd_rate_geholt = False  # Kurs nur einmal je Lauf holen (nicht je Karte)
 
+    variante_zuletzt: Optional[str] = None   # Variante des letzten $-Treffers
+
     async def usd_in_eur(card: PokemonCard) -> Optional[Decimal]:
         """Varianten-$ der Karte in € (Kurs je Lauf gecacht); None wenn nicht
-        bepreisbar (kein $/kein Kurs/außerhalb des Wertebereichs)."""
-        nonlocal usd_rate, usd_rate_geholt
-        usd = _usd_from_catalog(db, card)
+        bepreisbar (kein $/kein Kurs/außerhalb des Wertebereichs). Merkt die
+        verwendete Variante für die Quellen-Angabe im Verlauf."""
+        nonlocal usd_rate, usd_rate_geholt, variante_zuletzt
+        usd, variante_zuletzt = _usd_from_catalog_mit_variante(db, card)
         # 0/negativ = Datenfehler in der Quelle, kein Preis (nie 0 schreiben)
         if usd is None or usd <= 0:
             return None
@@ -341,8 +364,10 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
             if _hat_muster_preisprodukt(card):
                 price = await usd_in_eur(card)
                 if price is not None:
-                    # Kurs im Verlauf dokumentieren → $-Basis bleibt auditierbar
-                    quelle = f"tcgplayer-usd@{usd_rate}"
+                    # Kurs UND Variante im Verlauf dokumentieren → die $-Basis
+                    # bleibt auditierbar, auch wenn die Karte später umgestellt
+                    # wird („tcgplayer-usd@0.8666/pokeball", v1.8.2).
+                    quelle = _usd_quelle(usd_rate, variante_zuletzt)
             if price is None:
                 price, eur_geprueft = await _price_for_card(db, card, price_source)
             if price is None:
@@ -355,7 +380,7 @@ async def refresh_prices_for_cards(db: Session, card_ids: list[int]) -> None:
             if price is None and eur_geprueft:
                 price = await usd_in_eur(card)
                 if price is not None:
-                    quelle = f"tcgplayer-usd@{usd_rate}"
+                    quelle = _usd_quelle(usd_rate, variante_zuletzt)
             if price is None:
                 continue
             card.wert_eur = price

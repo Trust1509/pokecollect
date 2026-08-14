@@ -101,8 +101,10 @@ def test_usd_fallback_schreibt_wert_und_verlauf(db, keine_eur_quelle, fester_kur
     hist = list(card.preis_historie)
     assert len(hist) == 1
     assert hist[0].wert_eur == Decimal("9.00")
-    # Herkunft inkl. Kurs auditierbar markiert (Panel-Fund)
-    assert hist[0].quelle == "tcgplayer-usd@0.90"
+    # Herkunft inkl. Kurs UND Variante auditierbar markiert (Panel-Funde;
+    # die Variante kam in v1.8.2 dazu, damit das Label nicht die spätere
+    # Formular-Einstellung behauptet).
+    assert hist[0].quelle == "tcgplayer-usd@0.90/normal"
 
 
 def test_ohne_katalog_preis_bleibt_karte_unveraendert(db, keine_eur_quelle, fester_kurs):
