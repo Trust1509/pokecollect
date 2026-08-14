@@ -30,9 +30,20 @@ on:
     paths-ignore:
       - '*.md'
       - '.github/**/*.md'
-  pull_request:
+  # `pull_request` ENTFERNT (Notbremse 14.08.): In diesem Trunk-Workflow gibt es
+  # keine menschlichen PRs — der Trigger bediente ausschließlich Dependabot und
+  # verdoppelte dessen Kosten (Lauf am PR, danach Lauf am Push nach dem Merge).
+  # Schlimmer noch: Jeder Rebase eines offenen Bot-PRs löste einen weiteren Lauf
+  # aus. Kommt je ein menschlicher PR-Workflow dazu, gehört der Trigger zurück.
+  workflow_dispatch:   # Verifikation der CI-Konfiguration, ohne dafür zu pushen
 
 jobs:
+  # Die volle Suite läuft GENAU EINMAL, gegen die echte Zieldatenbank. Kein
+  # zweiter, DB-loser pytest-Job (Notbremse-Prüfung 14.08.: gab es hier nie).
+  # Falls jemand einen "schnellen Lauf ohne DB" nachrüsten will: Ein Lauf gegen
+  # eine Ersatz-Datenbank prüft das Ziel nicht (conftest.py schließt SQLite
+  # ausdrücklich aus — keine FKs, kennt die Light-Migrations-Syntax nicht), und
+  # zwei Läufe derselben Suite sind kein doppeltes Netz, sondern doppelte Kosten.
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
