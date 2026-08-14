@@ -1,0 +1,12 @@
+{
+  "name": "pokecollect-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright-Rauchtest fuer die kritischen Flows (#52) - laeuft nicht bei jedem Push, siehe scripts/smoke.sh",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

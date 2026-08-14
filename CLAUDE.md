@@ -53,6 +53,16 @@ passende ADRs unter `docs/adr/`.
   Schemathesis 4.x; ausgehende Netz-Endpunkte ausgeschlossen). Bewusst
   nicht-blockierend: ein fremdes Upstream-CVE oder eine Fuzz-Welle darf den
   Trunk nicht blocken → Funde triagieren wie Panel-Funde.
+- **Rauchtest** (`sh scripts/smoke.sh`, #52): Playwright fährt 12 kritische
+  Flows (Anmeldung, Karte anlegen/bearbeiten/löschen, Liste, Katalog, Sealed,
+  Sammlung, Einstellungen, Scan, Statistik, Versions-Gleichstand) gegen einen
+  **eigenen Wegwerf-Stapel** (`docker-compose.smoke.yml`, eigene DB, keine
+  veröffentlichten Ports — läuft parallel zum Teststand, rührt dessen Daten
+  nie an). **Kein Push-Gate** (~3–5 min, zwei Image-Builds): gehört vor jedes
+  Release und in den Wochen-Job (`.github/workflows/smoke.yml`, Montag +
+  `workflow_dispatch`). Bericht bei Rot: `e2e/playwright-report/index.html`.
+  Test-Texte gebündelt in `e2e/tests/helfer.ts` (`T`) — Formulierungsänderung
+  in der UI = eine Zeile dort.
 - **Kein Alembic → kein `alembic heads`-Gate / Migrations-Roundtrip** (das
   Wagner-Muster): Schema-Änderungen sind additive Light-Migrations (Fallstrick 5),
   der Rückweg ist Backup + altes Image, Alt-Downgrades sind nie begangener Pfad.

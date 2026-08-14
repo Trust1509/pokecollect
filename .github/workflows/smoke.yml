@@ -1,0 +1,47 @@
+# Rauchtest (#52): Playwright gegen einen frisch gebauten Wegwerf-Stapel
+# (docker-compose.smoke.yml — DB + API + Web + Läufer, alles im selben Netz).
+#
+# BEWUSST KEIN PUSH-GATE. Ein Lauf baut zwei Images und kostet ~5–8 CI-Minuten;
+# bei jedem Push wäre das die halbe Monatsration eines privaten Repos (vgl.
+# CI-Minuten-Diät in ci.yml). Deshalb wie der Security-Scan: wöchentlich +
+# von Hand startbar. Vor einem Release gehört der Lauf ohnehin lokal gefahren
+# (`sh scripts/smoke.sh`) — dort ist er Teil der Verifikation, nicht der CI.
+name: Rauchtest
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Montags 04:17 UTC — versetzt zum Security-Scan, damit sich die beiden
+    # nicht um dieselben Runner drängeln.
+    - cron: "17 4 * * 1"
+
+jobs:
+  smoke:
+    name: Playwright-Rauchtest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4 (SHA-gepinnt)
+
+      - name: Stapel bauen und Rauchtest fahren
+        run: >-
+          docker compose -p pokecollect-smoke -f docker-compose.smoke.yml
+          up --build --abort-on-container-exit --exit-code-from smoke
+
+      - name: Bericht sichern
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4 (SHA-gepinnt)
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Stapel abräumen
+        if: always()
+        run: docker compose -p pokecollect-smoke -f docker-compose.smoke.yml down -v --remove-orphans

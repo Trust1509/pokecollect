@@ -14,3 +14,9 @@ build/
 
 # Claude-Code-Arbeitsverzeichnis (Agent-Worktrees etc.)
 .claude/
+
+# Rauchtest-Artefakte (#52): Bericht, Spuren und der Anmelde-Zustand entstehen
+# je Lauf neu — der Token-Stand gehört ohnehin nie ins Repo.
+e2e/playwright-report/
+e2e/test-results/
+e2e/.auth/

@@ -1,0 +1,81 @@
+# Rauchtest-Stapel (#52) — Compose-Projekt "pokecollect-smoke".
+#   Start:  sh scripts/smoke.sh          (baut, fährt, räumt ab)
+#
+# BEWUSST EIGENER STAPEL, nicht der Teststand: der Teststand trägt die echte
+# Sammlung des Owners samt Gemini-Key — ein Test, der Karten anlegt und löscht,
+# hat dort nichts verloren. Hier startet jeder Lauf mit leerer DB (kein
+# benanntes Volume) und ist danach spurlos weg.
+#
+# Warum nicht einfach der Browser gegen localhost:3021? Die API-URL wird beim
+# Web-Build eingebacken (NEXT_PUBLIC_API_URL). Im Container ist „localhost"
+# der Container selbst — deshalb baut dieser Stapel das Web-Image gegen
+# http://api:8000 und alles läuft im selben Compose-Netz.
+# Test-Secrets, hier liegt nichts Echtes.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pokecollect
+      POSTGRES_PASSWORD: pokecollect
+      POSTGRES_DB: pokecollect
+    # Kein Volume: die DB lebt nur im Container-Layer und stirbt mit ihm.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pokecollect"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql://pokecollect:pokecollect@db:5432/pokecollect
+      - JWT_SECRET=smoke-secret
+      - CORS_ORIGINS=http://web:3000
+      # Login: admin / teststand (bcrypt-Hash; $ wegen Compose-Interpolation
+      # als $$ escaped). Start-Guard verlangt ein Passwort (Issue #1).
+      - APP_PASSWORD_HASH=$$2b$$12$$DeEohIVnaJLbl/RfAGZYjONLbnSdt4h0PByR61DSe87ZU3tmaJb9G
+      # Kein Gemini-Key: der Rauchtest prüft, dass die Scan-Seite mit dem
+      # lokalen OCR-Fallback hochkommt — kein Fremdaufruf, keine Kosten.
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # Das API-Image hat kein curl (python:3.12-slim) — Python tut es auch.
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # node:20-alpine → wget kommt aus busybox. NICHT gegen localhost prüfen:
+      # der Next-Standalone-Server bindet an $HOSTNAME (= Container-ID → dessen
+      # Netz-IP), nicht an 127.0.0.1 — eine localhost-Prüfung schlägt fehl,
+      # obwohl der Server läuft. Von außen (web:3000) ist er trotzdem erreichbar.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://$$HOSTNAME:3000/login || wget -q -O /dev/null http://127.0.0.1:3000/login"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  smoke:
+    build: ./e2e
+    environment:
+      - BASE_URL=http://web:3000
+      - API_URL=http://api:8000
+      - APP_PASSWORD=teststand
+      - CI=1
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      # Bericht + Spuren fallen auf dem Host an, damit sie den Abriss überleben.
+      - ./e2e/playwright-report:/e2e/playwright-report
+      - ./e2e/test-results:/e2e/test-results
