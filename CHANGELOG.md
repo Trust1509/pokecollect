@@ -1,5 +1,33 @@
 # Changelog
 
+## [v1.8.3] – 2026-08-14 (Groß-/Kleinschreibung, saubere Fehlermeldungen, Sicherheitsnetz)
+
+### Korrigiert (#67)
+- **Karten galten je nach Schreibweise der Karten-ID als nicht besessen.** Wer
+  eine Karte über den Katalog übernahm und eine zweite über den Scan, konnte
+  zwei Schreibweisen derselben ID im Bestand haben (`swsh3-136` vs.
+  `SWSH3-136`) — der grüne Besessen-Punkt im Katalog fehlte dann, und
+  **Set-Sammlungen zählten den Fortschritt zu niedrig**. Der Abgleich
+  vergleicht jetzt schreibweisen-tolerant, auf beiden Seiten.
+
+### Korrigiert (#55)
+- **Ungültige Eingaben liefern jetzt eine klare Ablehnung statt eines
+  Serverfehlers.** Steuerzeichen in Texten (z. B. aus der Zwischenablage) und
+  ein ausdrückliches „null" auf Pflichtfeldern endeten vorher im 500er — bei
+  einem Treffer auf den Einstellungen legte das **jede Einstellungs-Seite
+  lahm**, bei einem Treffer auf einer Karte **die ganze Kartenliste**. Beides
+  wird abgewiesen, und Altbestand mit solchen Zeichen bleibt lesbar.
+- Scan-Texte aus OCR/Lesemodell werden serverseitig gesäubert statt abgelehnt —
+  ein Steuerzeichen im Modell-Ergebnis sprengt den Scan nicht mehr.
+
+### Intern
+- **Property-Tests (#53)** auf die Rechenkerne: erzeugte Eingaben belegen, dass
+  ein angezeigter Preis immer aus den Quelldaten stammt, die Umrechnung monoton
+  und auf Cent gerundet ist und kein Parser an einer Eingabe abstürzt.
+- **Rauchtest (#52)**: 12 kritische Flows laufen vor jedem Release durch die
+  echte Oberfläche (eigener Wegwerf-Stapel, `sh scripts/smoke.sh`) — inklusive
+  der Prüfung, ob API und Oberfläche dieselbe Version melden.
+
 ## [v1.8.2] – 2026-08-14 (Preis-Herkunft ehrlich anzeigen)
 
 ### Korrigiert (Owner-Fund)
