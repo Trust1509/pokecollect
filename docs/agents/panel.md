@@ -44,6 +44,11 @@ melden. Bei `402` (Guthaben leer) gilt der Ausfall-Weg unten.
 
 ## Ablauf
 
+0. **Erreichbarkeit der externen Stimmen prüfen, bevor der Slice fertig gemeldet
+   wird.** Stimme 2 braucht einen gepushten Zweig und einen funktionierenden
+   Sandbox-Aufruf, Stimme 3 Guthaben. Beide Ausfälle sind real getroffen — und
+   wer sie erst am Ende bemerkt, hat die Wahl zwischen Warten und stillem
+   Reduzieren.
 1. Prüf-Zweig pushen (Stimme 2 braucht ihn).
 2. **Alle drei parallel starten**, nicht nacheinander — zusammen 20–40 Minuten,
    sequenziell ein Vielfaches.
@@ -94,7 +99,13 @@ Die Liste ist abschließend, nicht beispielhaft: „Ist das trivial?" ist genau 
 Frage, bei der man sich unter Zeitdruck selbst überzeugt.
 
 **Immer volles Panel** bei: Migrationen, Auth/Berechtigungen, allem, was Geld
-oder Werte berechnet, und allem, was nach außen geht.
+oder Werte berechnet, allem, was nach außen geht — **und allem, was HERKUNFT
+hat**: Code, den niemand aus diesem Projekt gebaut hat (Fremdmodell,
+zugelieferter Zweig, übernommenes Beispiel). Begründung aus der Vorlage: Ein
+zugelieferter Zweig war fachlich unauffällig und tauschte einen dokumentierten
+Endpunkt gegen einen ausdrücklich undokumentierten; alle mitgelieferten Tests
+waren grün — sie stammten vom selben Autor und prüften dessen Annahme. Herkunft
+ist ein Risiko eigener Art, unabhängig vom Thema.
 
 **Sonderfall:** Eine Testinfrastruktur-Scheibe, die als **Sicherheitsnetz**
 gemeldet wird, ist nicht trivial — sie braucht mindestens den Rot-Beweis über

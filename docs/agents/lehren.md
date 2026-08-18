@@ -40,6 +40,20 @@ die angelegte Testkarte keine Pokédex-Nummer hatte — die Startseite fragt mit
 `pokedex_view=true` und zeigt solche Karten nie. Kein Produktfehler, sondern
 Testdaten, die den geprüften Fall gar nicht herstellen.
 
+**Ein Wächter muss seine eigene Reichweite belegen.** Vier Fragen, bevor ein
+Test oder Gate als Schutz gilt (aus der Vorlage §8, hier auf Tests gemünzt —
+einen Produktiv-Wächter haben wir nicht):
+
+- **Prädikat:** Prüft er dieselbe Bedingung wie der Mechanismus, den er
+  absichert — oder eine ähnliche? Eine geliehene Bedingung bricht, sobald sich
+  die andere ändert.
+- **Quelle:** Kennt seine Aufzählung wirklich alle Fälle? Registrierungen und
+  Schreibweisen gibt es meist in mehr als einer Form.
+- **Ausnahmen:** Zählt er eine Ausnahme-Mechanik versehentlich als Schutz?
+- **Echtprobe:** Sieht er den Aufruf überhaupt, den das System wirklich erzeugt?
+  Selbst gebaute Eingaben beweisen nur, dass er auf selbst gebaute Eingaben
+  reagiert.
+
 **Property-Tests dort, wo Geld gerechnet wird** (#53): Beispieltests prüfen die
 Fälle, an die wir gedacht haben. Für die Rechenkerne gilt die Eigenschaft — ein
 angezeigter Preis stammt **immer** aus den Quelldaten, nie aus einer Rechnung.
@@ -178,3 +192,23 @@ der Anfang" unterscheiden.
   ASCII-`"` geschlossen werden. Innere Quotes weglassen oder Backtick-Template.
 - **Next-Hooks sind nullable:** `useSearchParams()`/`useParams()` brauchen
   Optional-Chaining, `useSearchParams()` zusätzlich `<Suspense>`.
+
+---
+
+## 7. Notmaßnahmen ohne Rückdreh-Datum werden dauerhaft
+
+Die Actions-Minuten-Notbremse vom 14.08.2026 hat drei Dinge stillgelegt:
+Dependabot, den `pull_request`-Trigger und neun offene Bot-PRs. Jede einzelne
+Maßnahme war richtig — und jede einzelne wäre still liegen geblieben, weil
+niemand ein Ablaufdatum daran geschrieben hätte.
+
+Deshalb gilt: **Eine Notmaßnahme bekommt beim Setzen ein Datum und einen
+Rückweg**, beides an der Stelle, an der sie steht. Konkret hier:
+
+- ein Rücksetz-Kasten in `.github/dependabot.yml` mit den alten Werten,
+- ein Issue mit Datum (#71) statt einer Notiz im Chat,
+- der Grund im Kommentar, damit der Rückbau nicht als Verschlechterung gelesen
+  wird.
+
+Der Befund ist erst aus der Portfolio-Sicht sichtbar geworden: vier Repos, vier
+Notbremsen, kein Datum. Wer nur das eigene Repo ansieht, hält das für Ordnung.

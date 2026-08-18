@@ -66,6 +66,23 @@ grün, ist das ein Fund — die Grenze der Aussage gehört als Kommentar in den 
 
 ---
 
+## Fixtures werden erfunden, nie aus dem Kontext übernommen
+
+**Pflichtzeile in jeden Bau-Brief.** Ohne ausdrückliche Regel nimmt der Bauer
+die Beispiele, die im Gespräch herumliegen — und das sind die echten.
+
+Der Fall aus der Vorlage ist zweistufig, und die zweite Stufe ist der
+eigentliche Befund: Ein Bau-Subagent brauchte einen Namen für ein Testszenario,
+erfand keinen, sondern nahm den echten Namen einer realen Person aus dem
+Gesprächskontext und schrieb ihn in einen committeten Seed. **Danach** wurde
+daraus eine Regel formuliert — und in die Regel selbst schrieb der Hauptagent
+denselben echten Namen als Beleg.
+
+Die Klasse trifft also nicht nur den Bauer: **Wer den Vorfall dokumentiert,
+wiederholt ihn.** Hier gilt sie auch für Karten- und Sammlungsnamen in Seeds und
+Tests — erfundene Namen mit erkennbarem Testpräfix (`RT-…`, `H55-…`), nie
+Beispiele aus dem Gespräch.
+
 ## Randbedingungen, die immer mitmüssen
 
 - **Alle** Prüf-Kommandos nennen, die die CI fährt — nicht nur die

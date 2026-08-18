@@ -1,11 +1,19 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.3.2** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.7.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.3.2`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.7.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen als Issue in die Vorlage** (Label
 `prozess-vorschlag` / `prozess-lehre`), nicht in einen Alleingang hier.
+
+**Profil: Anwendung mit Datenbank.** Bestimmt, welcher Teil der Vorlage beim
+Abgleich zu prüfen ist: Der **Prozess-Kern** (Panel, Bau-Brief, Lehren,
+Release-Ritual, Betrieb, Rückkanal) gilt immer; die **Stack-Maschine**
+(Migrations-Prüfungen, Schnittstellen-Fuzzing, Sperrdateien,
+Abhängigkeits-Scans) nur, wo sie hier einen Gegenstand hat — ohne
+Migrations-Framework entfällt z. B. der Rückwärts-Roundtrip, **nicht** die
+Datenerhalt-Probe.
 
 Self-hosted Pokémon-TCG-Sammlungs-App. FastAPI (Python 3.12) + PostgreSQL 16 +
 Next.js 14 (einzige Client-Plattform, mobile-first/PWA — ADR-0002). ~1.025
@@ -16,6 +24,15 @@ Preise via TCGdex/Cardmarket.
 real getroffen haben. Kostet fünf Minuten und hat schon mehrfach einen Fund in
 Produktion verhindert. Vor Architektur-/Feature-Arbeit zusätzlich `CONTEXT.md`
 (Grundsätze + Glossar) und die passenden ADRs unter `docs/adr/`.
+
+## Skills
+
+Für die meisten Schritte gibt es fertige Methoden-Anleitungen (Herkunft
+`mattpocock/skills`, global unter `~/.claude/skills/`): `docs/agents/skills.md`
+sagt, welche wann passt. **Skills liegen pro Rechner, nicht im Repo** — auf
+einem frischen Rechner erst `/setup-matt-pocock-skills`. Nur Skills nennen, die
+dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
+*Verbindlichkeit*: Wo beide etwas zum selben Thema sagen, gilt der Prozess.
 
 ## Arbeitsregeln
 
