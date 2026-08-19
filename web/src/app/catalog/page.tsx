@@ -17,19 +17,28 @@ import { useSets } from "@/lib/useSets";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-// Kurzer Datenstand-Stempel fürs schmale Grid (#66): „09.08." ohne Jahr — das
-// Grid ist mobile-first und hat keinen Platz für ein volles Datum. Bewusst
-// sprachunabhängig (wie fmtEur, das den Dezimalpunkt auch immer durch ein
-// Komma ersetzt) statt über toLocaleDateString, sonst würde „en-GB" hier
-// mm/dd andeuten und mit dem festen "€"-Format kollidieren. Liefert den Tag
-// gleich mit — spart einen zweiten Date-Parse fürs ausführlichere title.
+// Kurzer Datenstand-Stempel fürs schmale Grid (#66): „09.08." im laufenden
+// Jahr, sonst zusätzlich das Jahr („09.08.25") — ohne Jahr läse sich ein
+// Stempel aus einem anderen Jahr als Datum DIESES Jahres (Panel-Fund KLEIN 7).
+// Das volle Datum steht zusätzlich im title, aber NICHT NUR dort: das ist auf
+// Touchgeräten unerreichbar, die sichtbare Kurzform muss für sich stehen.
+// UTC-Feldzugriffe (nicht getDate()/getMonth()): TCGdex liefert oft ein
+// reines Datum („2026-08-09", ohne Uhrzeit), das JS als UTC-Mitternacht
+// parst — lokale Getter kippen das westlich von UTC auf den Vortag. Ein
+// Stempel aus der Zukunft (kaputte Quelle) wird verworfen statt angezeigt.
+// Bewusst sprachunabhängig wie fmtEur (das den Dezimalpunkt immer durch ein
+// Komma ersetzt) statt über toLocaleDateString für die Kurzform — die volle,
+// lokalisierte Fassung fürs title baut die Aufruferin mit t.date_locale.
 function fmtCatalogEurStamp(iso?: string | null): { short: string; date: Date } | null {
   if (!iso) return null;
   const dt = new Date(iso);
-  if (isNaN(dt.getTime())) return null;
-  const dd = String(dt.getDate()).padStart(2, "0");
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  return { short: `${dd}.${mm}.`, date: dt };
+  if (isNaN(dt.getTime()) || dt.getTime() > Date.now()) return null;
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const jahr = dt.getUTCFullYear();
+  const laufendesJahr = new Date().getUTCFullYear();
+  const short = jahr === laufendesJahr ? `${dd}.${mm}.` : `${dd}.${mm}.${String(jahr).slice(-2)}`;
+  return { short, date: dt };
 }
 
 export default function CatalogPage() {
@@ -302,7 +311,7 @@ export default function CatalogPage() {
                         </span>
                         {eurStamp && (
                           <span className="text-gray-500 font-normal shrink-0"
-                            title={`${t.catalog_price_asof} ${eurStamp.date.toLocaleDateString(lang === "EN" ? "en-GB" : "de-DE")}`}>
+                            title={`${t.catalog_price_asof} ${eurStamp.date.toLocaleDateString(t.date_locale, { timeZone: "UTC" })}`}>
                             {eurStamp.short}
                           </span>
                         )}

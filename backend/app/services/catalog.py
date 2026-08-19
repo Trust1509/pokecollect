@@ -69,6 +69,12 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
     if pr["usd"] is not None:
         row.price_usd = pr["usd"]
         row.price_usd_updated = pr["usd_updated"]
+    # #66 (Panel-Fund WICHTIG 3): price_eur_checked IMMER mitsetzen, wenn wir
+    # hier waren (tc ist nie None — beide Aufrufer prüfen das vorher) — sonst
+    # bliebe der Stempel für jede frisch angereicherte Zeile NULL, NULLS FIRST
+    # zöge sie sofort wieder in den Repass (refresh_catalog_eur) und sie würde
+    # ein zweites Mal geholt, obwohl der €-Preis gerade erst frisch war.
+    row.price_eur_checked = datetime.utcnow()
 
 
 def catalog_prices(pricing) -> dict:
@@ -586,72 +592,107 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
 
 async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
     """Rollierender €-Repass (#66): _apply_full schreibt price_eur/price_eur_updated
-    NUR bei der Erstanreicherung (enrich_catalog) — danach friert der €-Preis für
-    immer ein, während der $-Preis täglich frisch ist (TCGCSV-Weg). Diese Funktion
-    sieht bei bereits angereicherten Zeilen rollierend erneut nach.
+    bei der Erstanreicherung (enrich_catalog/on-demand) — diese Funktion sieht bei
+    bereits angereicherten Zeilen rollierend erneut nach.
+
+    NUR der €-Preis (Panel-Fund BLOCKER 1): $ hat mit dem TCGCSV-Weg
+    (fill_region_from_tcgplayer) einen eigenen, reicheren täglichen Auffrischer,
+    der zusätzlich die Varianten-Spalten (price_usd_holo/_reverse/_pokeball/
+    _masterball) pflegt und price_usd_updated als GEMEINSAMEN Datenstand für
+    alle $-Spalten führt (Kommentar „Stand gilt für alle $-Spalten" weiter
+    unten in dieser Datei). Dieser Repass sieht die Varianten nie — würde er
+    price_usd/price_usd_updated mitschreiben, verbürgte er Werte, die er nie
+    geprüft hat, und der Frische-Riegel _usd_stand_frisch (pricing.py) hielte
+    eingefrorene TCGCSV-Varianten nach einem TCGCSV-Ausfall fälschlich für
+    frisch — genau der Schutz, den der Panel-Fund bei #63 dort dokumentiert.
 
     Sortiert nach dem EIGENEN price_eur_checked-Stempel (NICHT price_eur_updated —
     das ist der Quell-Stand und würde bei unveränderten Quellwerten denselben
     Wert zurückschreiben, die Zeile stünde beim nächsten Lauf wieder vorne:
     Hunger-Effekt für alle anderen). NULLS FIRST, dann card_id als stabiler
-    Tiebreaker, damit zwei Läufe mit demselben Stempelstand nicht dieselbe
-    Teilmenge in wechselnder DB-Reihenfolge treffen.
+    Tiebreaker.
 
-    Schreibt ausschließlich Preisfelder + Stempel (Muster wie _apply_full) —
-    enriched, Bild, Rarity, Illustrator, Varianten bleiben unangetastet. Bei
+    Zwei kurze Transaktionen statt einer langen (Panel-Fund WICHTIG 5): Die
+    Auswahl liest nur card_id+region und schließt ihre Transaktion sofort. Die
+    TCGdex-Abrufe (bis zu `limit` Karten, ~10 parallel) können Minuten dauern —
+    eine währenddessen offene Transaktion hielte einer zeitgleich startenden
+    Light-Migration (ACCESS EXCLUSIVE) den Weg zu, dieselbe Lock-Klasse wie in
+    docs/agents/lehren.md §2, nur diesmal in Produktion statt im Test.
+
+    Schreibt ausschließlich price_eur/price_eur_updated + den Stempel — enriched,
+    Bild, Rarity, Illustrator, Varianten, $-Preise bleiben unangetastet. Bei
     Quellenausfall/leerem Ergebnis bleibt ein vorhandener Preis stehen (lieber
-    kein Update als ein stiller Wechsel der Bezugsgröße), aber price_eur_checked
-    rückt für JEDE besuchte Zeile vor — sonst wird dieselbe Zeile beim nächsten
-    Lauf wieder zuerst gezogen (derselbe Hunger-Effekt, nur eine Stufe tiefer)."""
-    rows = db.scalars(
-        select(TcgdexCatalog)
+    kein Update als ein stiller Wechsel der Bezugsgröße); liefert die Quelle
+    einen Preis OHNE Datenstand, bleibt der vorhandene Stempel stehen statt auf
+    NULL zu fallen (Panel-Fund WICHTIG 4 — ein Preis ohne Datum darf den
+    Datenstand nicht löschen). price_eur_checked rückt für JEDE besuchte Zeile
+    vor — auch bei Ausfall, leerem Ergebnis oder wenn eine einzelne Karte beim
+    Parsen wirft (abgefangen und wie ein Ausfall behandelt, Panel-Fund
+    BLOCKER 2 — sonst reißt eine einzige kaputte Karte den ganzen Schwung mit,
+    bevor gestempelt wird, und die deterministische Auswahl zieht beim
+    nächsten Lauf dieselbe Karte wieder: Dauerstillstand)."""
+    auswahl = db.execute(
+        select(TcgdexCatalog.card_id, TcgdexCatalog.region)
         .where(TcgdexCatalog.enriched == True)  # noqa: E712
         .order_by(TcgdexCatalog.price_eur_checked.nulls_first(), TcgdexCatalog.card_id)
         .limit(limit)
     ).all()
-    if not rows:
-        return {"visited": 0, "updated": 0, "oldest_checked": None}
+    db.commit()  # Lese-Transaktion sofort schließen (Panel-Fund WICHTIG 5, s. Docstring)
+    if not auswahl:
+        return {"visited": 0, "updated": 0, "never_checked": 0, "oldest_checked": None}
 
     sem = asyncio.Semaphore(_CONC)
     data: dict[str, object] = {}
 
     async def one(cid: str, region: Optional[str]):
         async with sem:
-            tc = await tcgdex.get_card(cid, _catalog_lang(region))
-        data[cid] = tc  # auch None (Ausfall/404) — jede besuchte Zeile bekommt den Stempel
+            try:
+                tc = await tcgdex.get_card(cid, _catalog_lang(region))
+            except Exception as exc:  # noqa: BLE001 — eine kaputte Karte darf den Lauf nicht kippen (Panel-Fund BLOCKER 2)
+                log.warning("Katalog-€-Repass: %s fehlgeschlagen: %s", cid, exc)
+                tc = None
+        data[cid] = tc  # auch None (Ausfall/404/Parse-Fehler) — jede besuchte Zeile bekommt den Stempel
 
-    await asyncio.gather(*(one(r.card_id, r.region) for r in rows))
+    await asyncio.gather(*(one(cid, region) for cid, region in auswahl))
 
     now = datetime.utcnow()
     updated = 0
-    for row in rows:
-        tc = data.get(row.card_id)
+    for cid, _region in auswahl:
+        row = db.get(TcgdexCatalog, cid)  # neue, kurze Schreib-Transaktion (Panel-Fund WICHTIG 5)
+        if row is None:
+            continue  # zwischenzeitlich gelöscht
+        tc = data.get(cid)
         if tc is not None:
             pr = catalog_prices(tc.pricing)
             if pr["eur"] is not None:
                 row.price_eur = pr["eur"]
-                row.price_eur_updated = pr["eur_updated"]
+                if pr["eur_updated"] is not None:
+                    row.price_eur_updated = pr["eur_updated"]
                 updated += 1
-            if pr["usd"] is not None:
-                row.price_usd = pr["usd"]
-                row.price_usd_updated = pr["usd_updated"]
         row.price_eur_checked = now
 
-    # VOR dem commit lesen (Autoflush sieht die obigen Zuweisungen bereits) —
-    # ein Lesezugriff NACH dem commit würde still eine neue Transaktion öffnen,
-    # die bis zum nächsten Zugriff/close offen bliebe und einer nachfolgenden
-    # Light-Migration (ACCESS EXCLUSIVE) im Weg stünde (Lehre docs/agents/lehren.md §2).
+    # SessionLocal läuft mit autoflush=False (Panel-Fund KLEIN 6, database.py) —
+    # ohne den expliziten flush sähen die folgenden Abfragen die obigen
+    # Zuweisungen noch nicht. VOR dem commit, damit die Funktion nie mit einer
+    # offenen Transaktion zurückkehrt (dieselbe Lehre wie oben, nur am Ende).
+    db.flush()
+    never_checked = db.scalar(
+        select(func.count()).select_from(TcgdexCatalog)
+        .where(TcgdexCatalog.enriched == True, TcgdexCatalog.price_eur_checked.is_(None))  # noqa: E712
+    ) or 0
     oldest = db.scalar(
         select(func.min(TcgdexCatalog.price_eur_checked))
         .where(TcgdexCatalog.enriched == True)  # noqa: E712
     )
     db.commit()
 
-    log.info("Katalog-€-Repass: %d besucht, %d mit neuem €-Preis, ältester verbleibender Stempel %s.",
-              len(rows), updated, oldest)
+    log.info("Katalog-€-Repass: %d besucht, %d mit neuem €-Preis, %d noch nie geprüft, "
+              "ältester verbleibender Stempel %s.",
+              len(auswahl), updated, never_checked, oldest)
     return {
-        "visited": len(rows),
+        "visited": len(auswahl),
         "updated": updated,
+        "never_checked": int(never_checked),
         "oldest_checked": oldest.isoformat() if oldest else None,
     }
 
