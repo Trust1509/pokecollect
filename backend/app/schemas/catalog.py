@@ -27,6 +27,9 @@ class CatalogItem(BaseModel):
     # direkt aus der Katalogzeile (kein Live-Fetch), können also None sein.
     price_eur: Optional[float] = None        # € Cardmarket (Cache)
     price_usd: Optional[float] = None        # $ TCGplayer (Cache; JP via TCGCSV)
+    # Datenstand € (#66): Stand DER QUELLE (TCGdex cm.updated) — im Grid dezent
+    # gezeigt, damit ein eingefrorener Cache-Preis nicht als tagesfrisch gilt.
+    price_eur_updated: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

@@ -2,6 +2,8 @@
 Lokaler TCGdex-Katalog: Spiegel aller Karten zum Durchsuchen/Browsen.
 - sync_catalog(): Basisdaten (Name DE/EN, Set, Nummer, Bild) aus den Set-Details.
 - enrich_catalog(): Volldetails (Illustrator, Rarity, dexId, Varianten) je Karte.
+- refresh_catalog_eur(): rollierender Repass des €-Preises bereits angereicherter
+  Zeilen (#66) — der €-Preis wird sonst nur einmal bei enrich_catalog geschrieben.
 - add_to_wishlist()/add_to_collection(): Katalog-Karte übernehmen.
 
 Katalog-Karten zählen NICHT zu besessenen/Pokédex-Karten.
@@ -580,6 +582,78 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
     ) or 0
     log.info("Katalog-Enrichment: %d angereichert, %d verbleibend.", n, remaining)
     return {"enriched": n, "remaining": int(remaining)}
+
+
+async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
+    """Rollierender €-Repass (#66): _apply_full schreibt price_eur/price_eur_updated
+    NUR bei der Erstanreicherung (enrich_catalog) — danach friert der €-Preis für
+    immer ein, während der $-Preis täglich frisch ist (TCGCSV-Weg). Diese Funktion
+    sieht bei bereits angereicherten Zeilen rollierend erneut nach.
+
+    Sortiert nach dem EIGENEN price_eur_checked-Stempel (NICHT price_eur_updated —
+    das ist der Quell-Stand und würde bei unveränderten Quellwerten denselben
+    Wert zurückschreiben, die Zeile stünde beim nächsten Lauf wieder vorne:
+    Hunger-Effekt für alle anderen). NULLS FIRST, dann card_id als stabiler
+    Tiebreaker, damit zwei Läufe mit demselben Stempelstand nicht dieselbe
+    Teilmenge in wechselnder DB-Reihenfolge treffen.
+
+    Schreibt ausschließlich Preisfelder + Stempel (Muster wie _apply_full) —
+    enriched, Bild, Rarity, Illustrator, Varianten bleiben unangetastet. Bei
+    Quellenausfall/leerem Ergebnis bleibt ein vorhandener Preis stehen (lieber
+    kein Update als ein stiller Wechsel der Bezugsgröße), aber price_eur_checked
+    rückt für JEDE besuchte Zeile vor — sonst wird dieselbe Zeile beim nächsten
+    Lauf wieder zuerst gezogen (derselbe Hunger-Effekt, nur eine Stufe tiefer)."""
+    rows = db.scalars(
+        select(TcgdexCatalog)
+        .where(TcgdexCatalog.enriched == True)  # noqa: E712
+        .order_by(TcgdexCatalog.price_eur_checked.nulls_first(), TcgdexCatalog.card_id)
+        .limit(limit)
+    ).all()
+    if not rows:
+        return {"visited": 0, "updated": 0, "oldest_checked": None}
+
+    sem = asyncio.Semaphore(_CONC)
+    data: dict[str, object] = {}
+
+    async def one(cid: str, region: Optional[str]):
+        async with sem:
+            tc = await tcgdex.get_card(cid, _catalog_lang(region))
+        data[cid] = tc  # auch None (Ausfall/404) — jede besuchte Zeile bekommt den Stempel
+
+    await asyncio.gather(*(one(r.card_id, r.region) for r in rows))
+
+    now = datetime.utcnow()
+    updated = 0
+    for row in rows:
+        tc = data.get(row.card_id)
+        if tc is not None:
+            pr = catalog_prices(tc.pricing)
+            if pr["eur"] is not None:
+                row.price_eur = pr["eur"]
+                row.price_eur_updated = pr["eur_updated"]
+                updated += 1
+            if pr["usd"] is not None:
+                row.price_usd = pr["usd"]
+                row.price_usd_updated = pr["usd_updated"]
+        row.price_eur_checked = now
+
+    # VOR dem commit lesen (Autoflush sieht die obigen Zuweisungen bereits) —
+    # ein Lesezugriff NACH dem commit würde still eine neue Transaktion öffnen,
+    # die bis zum nächsten Zugriff/close offen bliebe und einer nachfolgenden
+    # Light-Migration (ACCESS EXCLUSIVE) im Weg stünde (Lehre docs/agents/lehren.md §2).
+    oldest = db.scalar(
+        select(func.min(TcgdexCatalog.price_eur_checked))
+        .where(TcgdexCatalog.enriched == True)  # noqa: E712
+    )
+    db.commit()
+
+    log.info("Katalog-€-Repass: %d besucht, %d mit neuem €-Preis, ältester verbleibender Stempel %s.",
+              len(rows), updated, oldest)
+    return {
+        "visited": len(rows),
+        "updated": updated,
+        "oldest_checked": oldest.isoformat() if oldest else None,
+    }
 
 
 async def _build_card_from_catalog(db: Session, row: TcgdexCatalog) -> dict:

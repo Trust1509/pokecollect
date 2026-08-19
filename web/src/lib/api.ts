@@ -538,6 +538,10 @@ export type CatalogItem = {
   // Gecachte Preise (Epic #41 Slice 4) — auch in Listen, können null sein
   price_eur?: number | null;
   price_usd?: number | null;
+  // Datenstand € (#66): Stand DER QUELLE — im Grid dezent gezeigt, wenn ein
+  // €-Preis angezeigt wird, damit ein eingefrorener Cache-Preis nicht als
+  // tagesfrisch gilt.
+  price_eur_updated?: string | null;
 };
 
 export type CatalogListResponse = {

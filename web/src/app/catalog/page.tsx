@@ -17,6 +17,21 @@ import { useSets } from "@/lib/useSets";
 
 const GENERATIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
+// Kurzer Datenstand-Stempel fürs schmale Grid (#66): „09.08." ohne Jahr — das
+// Grid ist mobile-first und hat keinen Platz für ein volles Datum. Bewusst
+// sprachunabhängig (wie fmtEur, das den Dezimalpunkt auch immer durch ein
+// Komma ersetzt) statt über toLocaleDateString, sonst würde „en-GB" hier
+// mm/dd andeuten und mit dem festen "€"-Format kollidieren. Liefert den Tag
+// gleich mit — spart einen zweiten Date-Parse fürs ausführlichere title.
+function fmtCatalogEurStamp(iso?: string | null): { short: string; date: Date } | null {
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (isNaN(dt.getTime())) return null;
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  return { short: `${dd}.${mm}.`, date: dt };
+}
+
 export default function CatalogPage() {
   const { t, lang } = useI18n();
   const [data, setData] = useState<CatalogListResponse | null>(null);
@@ -243,6 +258,9 @@ export default function CatalogPage() {
             const name = lang === "EN" && c.name_en ? c.name_en : (c.name ?? c.name_en ?? c.card_id);
             const isAdded = added[c.card_id];
             const isSelected = selectedIds.has(c.card_id);
+            // Datenstand € (#66): nur wenn WIRKLICH ein €-Preis gezeigt wird (nicht
+            // beim $-Fallback) — dezenter Kurzstempel, volles Datum im title.
+            const eurStamp = c.price_eur != null ? fmtCatalogEurStamp(c.price_eur_updated) : null;
             return (
               <div key={c.card_id} className={`relative rounded-lg border overflow-hidden bg-pokemon-card ${isSelected ? "border-pokemon-accent ring-2 ring-pokemon-accent" : "border-gray-700"}`}>
                 <button type="button"
@@ -272,12 +290,22 @@ export default function CatalogPage() {
                       <span>{c.local_id ?? ""}</span>
                     </div>
                     {/* Gecachte Preise (#45): € bevorzugt, sonst $ (typisch JP);
-                        Format identisch zum Katalog-Popup (fmtEur/fmtUsd) */}
+                        Format identisch zum Katalog-Popup (fmtEur/fmtUsd). Bei €
+                        zusätzlich der Datenstand (#66, dezent) — der Preis wird
+                        nur beim rollierenden Repass aufgefrischt, nicht täglich. */}
                     {(c.price_eur != null || c.price_usd != null) && (
-                      <div className="text-[10px] text-pokemon-yellow font-medium">
-                        {c.price_eur != null
-                          ? `${c.price_eur.toFixed(2).replace(".", ",")} €`
-                          : `$ ${c.price_usd!.toFixed(2)}`}
+                      <div className="flex items-center gap-1 text-[10px] text-pokemon-yellow font-medium">
+                        <span className="truncate flex-1">
+                          {c.price_eur != null
+                            ? `${c.price_eur.toFixed(2).replace(".", ",")} €`
+                            : `$ ${c.price_usd!.toFixed(2)}`}
+                        </span>
+                        {eurStamp && (
+                          <span className="text-gray-500 font-normal shrink-0"
+                            title={`${t.catalog_price_asof} ${eurStamp.date.toLocaleDateString(lang === "EN" ? "en-GB" : "de-DE")}`}>
+                            {eurStamp.short}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

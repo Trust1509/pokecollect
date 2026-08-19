@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, Numeric, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, Text
 
 from app.database import Base
 
@@ -39,6 +39,13 @@ class TcgdexCatalog(Base):
     price_usd = Column(Numeric(10, 2), nullable=True)
     price_eur_updated = Column(Text, nullable=True)
     price_usd_updated = Column(Text, nullable=True)
+    # #66: EIGENER Stempel für den rollierenden €-Repass — wann WIR zuletzt bei
+    # TCGdex nachgesehen haben. NICHT dasselbe wie price_eur_updated: das ist
+    # der Stand DER QUELLE (TCGdex liefert ihn als cm.updated mit) und würde,
+    # nach ihm rotiert, bei einer seit Monaten unveränderten Quelle täglich
+    # wieder ganz vorne stehen (Hunger-Effekt für andere Zeilen). NULL heißt
+    # „noch nie im Repass geprüft" — sortiert per NULLS FIRST vor jedem Datum.
+    price_eur_checked = Column(DateTime, nullable=True)
     # Varianten-$-Preise (#63): Subtypen des Basisprodukts (Holofoil/Reverse
     # Holofoil) + Muster-PRODUKTE („(Poke Ball Pattern)"/„(Master Ball Pattern)",
     # eigene TCGplayer-Produkte je Karte). Datenstand teilt price_usd_updated.
