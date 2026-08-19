@@ -54,6 +54,24 @@ einen Produktiv-Wächter haben wir nicht):
   Selbst gebaute Eingaben beweisen nur, dass er auf selbst gebaute Eingaben
   reagiert.
 
+**Der Bezugswert einer Messung kann mit dem Fehler mitwachsen.** Der mobile
+Rauchtest (#70) prüfte „kein seitliches Scrollen" als
+`documentElement.scrollWidth <= window.innerWidth`. Grün — auch mit einer
+absichtlich 900 px breiten Seite auf einem 412-px-Schirm. Grund: In der
+Handy-Emulation ist `window.innerWidth` die **visuelle** Ansichtsfläche und
+wächst mit dem Überlauf mit (gemessen: 901 statt 412). Der Vergleich war damit
+immer wahr. Ehrlicher Bezug ist `clientWidth` des scrollenden Elements — die
+Breite, die wirklich da ist. **Frage bei jeder Messung: Bewegt der Fehler, den
+ich suche, auch meinen Maßstab?**
+
+**Eine Mutation, die grün bleibt, muss erst die wirksame Stelle treffen.** Beim
+Rot-Beweis derselben Scheibe wurde der Hintergrund in `globals.css` auf Weiß
+gesetzt — nichts wurde rot. Nicht weil der Test schwach war, sondern weil die
+Farbe aus einer Tailwind-Klasse in `layout.tsx` kommt und der Klassen-Selektor
+den Element-Selektor schlägt. Erst die Mutation an der wirksamen Stelle machte
+genau einen Test rot. **Bevor „bleibt grün" als Aussage über den Test gilt:
+belegen, dass die Mutation überhaupt ankam.**
+
 **Property-Tests dort, wo Geld gerechnet wird** (#53): Beispieltests prüfen die
 Fälle, an die wir gedacht haben. Für die Rechenkerne gilt die Eigenschaft — ein
 angezeigter Preis stammt **immer** aus den Quelldaten, nie aus einer Rechnung.

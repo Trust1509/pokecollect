@@ -44,5 +44,22 @@ export default defineConfig({
       testMatch: /smoke\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], storageState: ".auth/state.json" },
     },
+    // Mobil ist bei dieser PWA die EIGENTLICHE Plattform (ADR-0002) — der
+    // Desktop-Lauf prüft die selten benutzte Hälfte. Bewusst nur die drei
+    // kritischsten Flüsse, nicht alle zwölf doppelt: Laufzeit und Wartung
+    // verdoppeln sich sonst für wenig Zusatzaussage.
+    {
+      name: "smoke-mobil",
+      dependencies: ["setup"],
+      testMatch: /mobil\.spec\.ts/,
+      use: {
+        ...devices["Pixel 7"],
+        storageState: ".auth/state.json",
+        // colorScheme bewusst "light": Die App hat KEIN Hell-Schema — der
+        // Hintergrund steht fest in globals.css. Würde sie je der
+        // System-Vorgabe folgen, fiele genau das hier auf.
+        colorScheme: "light",
+      },
+    },
   ],
 });
