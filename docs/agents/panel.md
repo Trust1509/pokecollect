@@ -77,9 +77,12 @@ Inversionen. Behalten lohnt trotzdem: Konvergenz für Bruchteile eines Cents.
    reproduzieren**. Prüfer-Konvergenz ersetzt keine Reproduktion; Mehrheit
    entscheidet nie allein. **Widersprechen sich Stimmen, entscheidet die
    Reproduktion** — nicht die Mehrheit, nicht die Plausibilität der Begründung.
-4. **Nacharbeit** an denselben Subagenten, der gebaut hat (Kontext bleibt) — mit
-   dem, was **bestätigt** wurde, und mit ausdrücklich **abgeräumten**
-   Fehlbefunden. Der Nacharbeits-Brief trägt **dasselbe Pflicht-Gerüst** wie ein
+4. **Nacharbeit** — wer sie baut, entscheidet das Kriterium in `bau-brief.md`
+   (mechanische Auflage → derselbe Bauer; Auflage, die den Entwurf berührt →
+   frischer Bauer). Hier stand bis zum v1.8.2-Abgleich pauschal „derselbe
+   Subagent" — das widersprach der Nachbardatei, und zwar so, dass es kein
+   Leser beisammen sah. Im Auftrag stehen das **Bestätigte** und die
+   ausdrücklich **abgeräumten** Fehlbefunde. Der Nacharbeits-Brief trägt **dasselbe Pflicht-Gerüst** wie ein
    Erstbau (`bau-brief.md`) plus den Block „Ausdrücklich abgeräumt — hier ist
    nichts zu tun".
 
@@ -136,9 +139,10 @@ Fragen, die hier überdurchschnittlich oft etwas gefunden haben:
 
 ## Verhältnismäßigkeit — abschließende Liste
 
-**Ohne Panel nur:** reine Testinfrastruktur **ohne Verhaltensänderung** (Läufer,
-Konfiguration, Hilfsmittel), Doku, Typisierung ohne Verhaltensänderung.
-**Alles andere bekommt das Panel; im Zweifel das Panel.**
+**Die verbindliche, abschließende Liste steht in `CLAUDE.md`** — dort wird
+entschieden (v1.8.2: Schwellen gehören dorthin, wo man sich sonst in der Lücke
+freispricht). Hier steht, warum sie so aussieht, damit sie beim nächsten
+Abgleich nicht aufgeweicht wird.
 
 **Ein neuer Test ist KEINE reine Testinfrastruktur** (v1.8.0). Er behauptet
 etwas über das Verhalten — und kann falsch behaupten. Für dieses Repo heißt das
