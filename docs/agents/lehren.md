@@ -54,6 +54,15 @@ die angelegte Testkarte keine Pokédex-Nummer hatte — die Startseite fragt mit
 `pokedex_view=true` und zeigt solche Karten nie. Kein Produktfehler, sondern
 Testdaten, die den geprüften Fall gar nicht herstellen.
 
+**Ein Widerspruch zwischen zwei Dateien ist unsichtbarer als einer in einer.**
+Beim Übernehmen einer neuen Regel habe ich die eine Fundstelle geändert und die
+andere stehen lassen: Der Bau-Brief trug das neue Kriterium für die
+Nacharbeits-Besetzung, `panel.md` daneben weiter die alte Pauschalregel. In
+einem Dokument fällt so etwas beim Lesen auf; über zwei Dateien verteilt sieht
+sie kein Leser beisammen — jeder befolgt die, die er zuerst findet. **Nach jeder
+übernommenen Regel prüfen, wo dasselbe Thema sonst noch steht** (`grep` über
+`docs/`), nicht nur die Stelle ändern, die im Abgleich benannt war.
+
 **Geliehene Autorität tarnt einen ungeprüften Befund.** Ein Bericht, der eine
 Abweichung mit einer Quellenangabe mildert („bekannter Flake, siehe §X"), ist
 gefährlicher als einer ohne Quelle — er liest sich wie nachgeschlagen und wird
