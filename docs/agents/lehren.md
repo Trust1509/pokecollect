@@ -54,6 +54,14 @@ die angelegte Testkarte keine Pokédex-Nummer hatte — die Startseite fragt mit
 `pokedex_view=true` und zeigt solche Karten nie. Kein Produktfehler, sondern
 Testdaten, die den geprüften Fall gar nicht herstellen.
 
+**Geliehene Autorität tarnt einen ungeprüften Befund.** Ein Bericht, der eine
+Abweichung mit einer Quellenangabe mildert („bekannter Flake, siehe §X"), ist
+gefährlicher als einer ohne Quelle — er liest sich wie nachgeschlagen und wird
+leichter durchgewunken. Auch die **mildere Erklärung** einer Abweichung braucht
+einen Beleg, sonst verdeckt sie den Fehler. Zitate nachschlagen, Flakes
+reproduzieren; die Frage lautet nicht „hast du geprüft", sondern „was genau hast
+du ausgeführt, und was kam heraus".
+
 **Eine Prüfung, die ausgibt statt abzubrechen, ist keine Prüfung.** Vor einem
 Doku-Commit habe ich korrekt festgestellt, dass fremder Code im Arbeitsbaum
 liegt — die Zeile gab es aus und lief weiter, weil sie mit `&&` an den Commit

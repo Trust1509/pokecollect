@@ -13,6 +13,11 @@ weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
 
 Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
 
+**Die acht Themen sind die Pflicht, die Gliederung ist ein Vorschlag** (v1.8.1).
+Das Skript sucht die Themen im ganzen Dokument und meldet ein Fehlen als *Fund,
+kein Urteil* — ob ein Thema hier gegenstandslos ist, entscheidet weiterhin der
+Kopf.
+
 ```markdown
 ## 1 Auftrag            was gebaut wird, in zwei Sätzen
 ## 2 Befund             bereits verifiziert — NICHT neu recherchieren
@@ -160,10 +165,41 @@ benutzte Hälfte. Neue Tabellen als responsive Karten, nicht als rohe Tabelle.
 
 ## Nacharbeit nach dem Panel
 
-Denselben Subagenten weiterbeauftragen, nicht einen neuen — er hat den Kontext.
+**Wer nacharbeitet, entscheidet ein Kriterium, keine Vorliebe** (v1.8.2):
+
+- **Mechanische Auflage** — benannter Fix an benannter Stelle: **derselbe
+  Bauer**. Sein Kontext spart die Einarbeitung.
+- **Auflage, die den ENTWURF berührt** — Transaktionsgrenzen, Fehlerbehandlung,
+  Datenfluss, Schnittstellenzuschnitt: **frischer Bauer**. Der bisherige
+  verteidigt seine eigene Konstruktion, auch ohne es zu merken.
+
+Selbstprüfung an unserem Fall: Die zweite #66-Runde hat aus einer langen
+Transaktion zwei kurze gemacht und die Fehlerbehandlung umgebaut — das berührt
+den Entwurf und hätte nach diesem Kriterium einen frischen Bauer gebraucht. Es
+ging gut, war aber nicht abgesichert.
+
 Im Nachtrag:
 
 - **Was bestätigt wurde**, nicht nur was zu tun ist.
 - **Widerlegte Befunde ausdrücklich abräumen.** Prüfer irren; ein
   unkommentierter Fehlbefund kostet eine Runde.
 - Je Punkt: Schwere, Fundstelle, **Nachweis**. „Wirkt unsauber" ist kein Auftrag.
+- Nacharbeits-Briefe tragen **dasselbe Pflicht-Gerüst** plus den Block
+  „Ausdrücklich abgeräumt — hier ist nichts zu tun".
+
+## Der Bericht des Bauers ist eine Absichtserklärung, kein Nachweis
+
+Die Frage an einen Bericht lautet nicht „hast du geprüft", sondern **„was genau
+hast du ausgeführt, und was kam heraus"** (v1.8.1). Zwei Muster, die anderswo
+teuer waren:
+
+- **Zitate nachschlagen.** Ein Bericht belegte drei rote Läufe als bekannte
+  Flakes — mit Quellenangabe auf einen Abschnitt, der etwas völlig anderes
+  behandelt. Geliehene Autorität tarnt einen ungeprüften Befund, und eine
+  erfundene Quelle ist gefährlicher als gar keine: Sie liest sich wie ein
+  nachgeschlagener Fakt.
+- **Flakes reproduzieren.** „Vorbestehend, ordnungsabhängig" ist eine These, bis
+  sie mit mehreren Läufen belegt ist.
+
+Praktisch heißt das hier: Gate-Ergebnisse aus einem Bericht mindestens einmal
+selbst nachfahren — sie sind billig zu wiederholen.

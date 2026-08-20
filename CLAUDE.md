@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.8.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.8.2** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.8.0`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.8.2`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen als Issue in die Vorlage** (Label
 `prozess-vorschlag` / `prozess-lehre`), nicht in einen Alleingang hier.
@@ -158,10 +158,19 @@ vollständiges oder vermerkt-verkürztes Panel gilt als **nicht geprüft**.
 3. **Drittstimme (DeepSeek) bis 2 $/Monat ohne Rückfrage** (Owner, 15.08.2026),
    darüber melden. Bei `402` zweistimmig weiterarbeiten, im Panel-Kommentar
    vermerken **und** den Owner informieren.
-4. **Wann ein Panel Pflicht ist**, steht als abschließende Liste in
-   `panel.md` — hier nur die Auslöse-Frage: **Im Zweifel Panel.** Ein neuer
-   Test ist keine reine Testinfrastruktur, und Code fremder Herkunft bekommt
-   das Panel unabhängig vom Thema.
+4. **Wann ein Panel Pflicht ist — abschließend, hier und nicht nebenan**
+   (v1.8.2: Verfahren verweisen, Schwellen stehen dort, wo entschieden wird):
+
+   **Ohne Panel nur:** reine Testinfrastruktur *ohne* Verhaltensänderung
+   (Läufer, Konfiguration, Hilfsmittel), Doku, Typisierung ohne
+   Verhaltensänderung. **Ein neuer Test gehört NICHT dazu** — er behauptet
+   etwas über das Verhalten und kann falsch behaupten.
+
+   **Immer volles Panel** bei: Migrationen, Auth/Berechtigungen, allem was
+   Werte berechnet, allem was nach außen geht — **und allem, was Herkunft
+   hat** (Code, den niemand aus diesem Projekt gebaut hat).
+
+   Im Zweifel Panel. Ablauf, Prüfaufträge und Begründungen: `panel.md`.
 5. **Bau-Briefe** nach `docs/agents/bau-brief.md`, Pflicht-Gerüst aus acht
    Blöcken. Vor dem Absenden: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
    Ein Brief ohne Block 3 (Konsumenten) ist die teuerste Auslassung.
