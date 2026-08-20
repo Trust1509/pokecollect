@@ -48,14 +48,29 @@ async def _daily_catalog_sync(db: Session):
     # scheiterte die Anreicherung, lief der €-Repass in derselben Nacht gar nicht
     # mehr, obwohl er mit dem Fehler nichts zu tun hat. Gemessen an einer
     # einzelnen kaputten Karte: „€-Repass überhaupt gelaufen = False".
-    async def schritt(name: str, coro):
+    async def schritt(name: str, coro) -> bool:
         try:
             await coro
+            return True
         except Exception as exc:  # noqa: BLE001 — ein Schritt darf die folgenden nicht mitreißen
             log.error("Katalog-Sync, Schritt %s fehlgeschlagen: %s", name, exc)
+            # Panel-Fund BLOCKER: Alle Schritte teilen SICH DIESELBE Session.
+            # Ohne rollback() steht sie nach einem DB-Fehler auf „aborted", und
+            # jeder Folgeschritt scheitert an InFailedSqlTransaction — der Fang
+            # hülfe dann nur gegen Fehler, die die Session gar nicht berühren.
+            # Schlimmer noch: Ohne rollback() schreibt das commit() des NÄCHSTEN
+            # Schritts die halbfertige Arbeit des abgebrochenen mit.
+            db.rollback()
+            return False
 
-    await schritt("Sets", sync_sets())
-    await schritt("Katalog-Basis", sync_catalog(db))
+    sets_ok = await schritt("Sets", sync_sets())
+    if sets_ok:
+        await schritt("Katalog-Basis", sync_catalog(db))
+    else:
+        # Die Katalog-Basis liest die Set-Metadaten; ohne frische Sets schriebe
+        # sie für brandneue Sets NULL-Codes in den Katalog (Panel-Fund KLEIN).
+        # Sie heilt in der nächsten Nacht, der halbe Zustand entsteht gar nicht erst.
+        log.warning("Katalog-Basis übersprungen — die Sets sind nicht aktuell.")
     await schritt("Anreicherung", enrich_catalog(db, limit=2000))
     # #66: eigenes, kleineres Budget — die Erstanreicherung behält mit 2000
     # Vorrang, aber der €-Repass läuft NEBENHER mit; sonst kämen die schon

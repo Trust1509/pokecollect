@@ -105,6 +105,126 @@ def test_gescheiterter_schritt_stoppt_den_nachtlauf_nicht(db, monkeypatch):
 
     asyncio.run(cron_svc._daily_catalog_sync(db))   # darf NICHT werfen
 
+    # Panel-Fund KLEIN: Ohne diese beiden Zusicherungen liessen sich die ersten
+    # zwei Schritte ersatzlos aus dem Nachtlauf entfernen, ohne dass ein Test
+    # faellt — die Fakes schrieben brav mit, niemand las es.
+    assert gelaufen[0] == "sets"
+    assert gelaufen[1] == "basis"
     assert "anreicherung" in gelaufen               # der Schritt lief und starb
     assert "repass" in gelaufen                     # und der nächste lief trotzdem
     assert gelaufen.index("repass") > gelaufen.index("anreicherung")
+
+
+def test_db_fehler_vergiftet_die_folgeschritte_nicht(db, monkeypatch):
+    """Panel-Fund BLOCKER: Alle Schritte teilen dieselbe Session. Ohne rollback()
+    im Fang steht sie nach einem DB-Fehler auf „aborted", und jeder Folgeschritt
+    scheitert an InFailedSqlTransaction — der Fang haelfe dann nur gegen Fehler,
+    die die Session gar nicht beruehren."""
+    from sqlalchemy import text
+    gelaufen: list[str] = []
+
+    async def fake_sync_sets():
+        gelaufen.append("sets")
+
+    async def fake_sync_catalog(session):
+        gelaufen.append("basis")                     # hier bewusst davor: der Schritt SOLL scheitern
+        session.execute(text("SELECT 1/0"))          # echter DB-Fehler
+
+    # WICHTIG: Erst das SQL, DANN anhaengen. Andersherum stuende der Name auch
+    # dann in der Liste, wenn die Anweisung scheitert — der Test pruefte dann
+    # nur, dass der Schritt AUFGERUFEN wurde, nicht dass er FUNKTIONIERTE.
+    async def fake_enrich(session, limit=0):
+        session.execute(text("SELECT 1"))            # muss WIEDER gehen
+        gelaufen.append("anreicherung")
+
+    async def fake_repass(session, limit=0):
+        session.execute(text("SELECT 1"))
+        gelaufen.append("repass")
+
+    monkeypatch.setattr("app.services.set_sync.sync_sets", fake_sync_sets)
+    monkeypatch.setattr(catalog_svc, "sync_catalog", fake_sync_catalog)
+    monkeypatch.setattr(catalog_svc, "enrich_catalog", fake_enrich)
+    monkeypatch.setattr(catalog_svc, "refresh_catalog_eur", fake_repass)
+
+    asyncio.run(cron_svc._daily_catalog_sync(db))
+
+    assert gelaufen == ["sets", "basis", "anreicherung", "repass"]
+
+
+def test_abgebrochener_schritt_wird_nicht_vom_naechsten_mitcommittet(db, monkeypatch):
+    """Panel-Fund BLOCKER, zweite Haelfte: Ohne rollback() schreibt das commit()
+    des NAECHSTEN Schritts die halbfertige Arbeit des abgebrochenen mit."""
+    async def fake_sync_sets():
+        pass
+
+    async def fake_sync_catalog(session):
+        session.add(TcgdexCatalog(card_id="test75-halbfertig", region="west",
+                                  set_id="test75set", set_code="T75",
+                                  local_id="9", enriched=False))
+        session.flush()                    # in der Session, NICHT committet
+        raise RuntimeError("Abbruch mitten drin")
+
+    async def fake_enrich(session, limit=0):
+        session.commit()                   # committet, was in der Session liegt
+
+    async def fake_repass(session, limit=0):
+        pass
+
+    monkeypatch.setattr("app.services.set_sync.sync_sets", fake_sync_sets)
+    monkeypatch.setattr(catalog_svc, "sync_catalog", fake_sync_catalog)
+    monkeypatch.setattr(catalog_svc, "enrich_catalog", fake_enrich)
+    monkeypatch.setattr(catalog_svc, "refresh_catalog_eur", fake_repass)
+
+    asyncio.run(cron_svc._daily_catalog_sync(db))
+
+    # Unabhaengige Sitzung: liegt die abgebrochene Arbeit in der Datenbank?
+    pruef = SessionLocal()
+    try:
+        assert pruef.get(TcgdexCatalog, "test75-halbfertig") is None
+    finally:
+        pruef.close()
+
+
+def test_ohne_frische_sets_wird_die_katalog_basis_uebersprungen(db, monkeypatch):
+    """Panel-Fund KLEIN: Scheitern die Sets, schriebe die Katalog-Basis für
+    brandneue Sets NULL-Codes in den Katalog — ein halber Zustand, den es vor
+    dem Schritt-für-Schritt-Fang nicht gab. Die folgenden Schritte laufen
+    trotzdem, sie hängen nicht an den Sets."""
+    gelaufen: list[str] = []
+
+    async def fake_sync_sets():
+        gelaufen.append("sets")
+        raise RuntimeError("Set-Quelle down")
+
+    async def fake_sync_catalog(_db):
+        gelaufen.append("basis")
+
+    async def fake_enrich(_db, limit=0):
+        gelaufen.append("anreicherung")
+
+    async def fake_repass(_db, limit=0):
+        gelaufen.append("repass")
+
+    monkeypatch.setattr("app.services.set_sync.sync_sets", fake_sync_sets)
+    monkeypatch.setattr(catalog_svc, "sync_catalog", fake_sync_catalog)
+    monkeypatch.setattr(catalog_svc, "enrich_catalog", fake_enrich)
+    monkeypatch.setattr(catalog_svc, "refresh_catalog_eur", fake_repass)
+
+    asyncio.run(cron_svc._daily_catalog_sync(db))
+
+    assert "basis" not in gelaufen                  # uebersprungen
+    assert gelaufen == ["sets", "anreicherung", "repass"]
+
+
+def test_leerpfad_liefert_den_fehlzaehler(db, monkeypatch):
+    """Panel-Fund KLEIN: Wer `failed` liest, bekam auf dem haeufigsten Pfad
+    (nichts anzureichern) einen KeyError."""
+    async def nie_aufgerufen(card_id, lang="en"):
+        raise AssertionError("darf nicht abrufen, es gibt nichts zu tun")
+
+    monkeypatch.setattr(tcgdex, "get_card", nie_aufgerufen)
+    # limit=0 statt die Tabelle leerzuräumen: Der Leerpfad ist derselbe, aber
+    # der Test fasst keine fremden Zeilen an (Panel-Fund zur tabellenweiten
+    # Kopplung — ein Test, der global löscht, ist eine Mine für jede andere Datei).
+    ergebnis = asyncio.run(catalog_svc.enrich_catalog(db, limit=0))
+    assert ergebnis == {"enriched": 0, "failed": 0, "remaining": 0}

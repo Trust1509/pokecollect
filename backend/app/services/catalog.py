@@ -563,7 +563,9 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
         select(TcgdexCatalog).where(TcgdexCatalog.enriched == False).limit(limit)  # noqa: E712
     ).all()
     if not rows:
-        return {"enriched": 0, "remaining": 0}
+        # `failed` MUSS auch hier stehen: Wer den Schlüssel liest, bekäme sonst
+        # ausgerechnet auf dem haeufigsten Pfad einen KeyError (Panel-Fund).
+        return {"enriched": 0, "failed": 0, "remaining": 0}
 
     sem = asyncio.Semaphore(_CONC)
     data: dict[str, object] = {}
@@ -659,8 +661,11 @@ async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
 
     Die Aufruferin muss ihre eigene, noch nicht committete Arbeit auf `db` VOR
     diesem Aufruf abgeschlossen haben: Das frühe commit() nach der Auswahl
-    committet sie mit (heute nicht auslösbar — `_daily_catalog_sync` ruft
-    `enrich_catalog` davor auf, das selbst bereits committet)."""
+    committet sie mit. Das ist AUSLÖSBAR — die frühere Entwarnung („enrich_catalog
+    läuft davor und committet selbst") gilt nicht, weil enrich_catalog auf dem
+    Leerpfad gar nicht committet, also gerade im angestrebten Dauerzustand des
+    Katalogs. Der Nachtlauf rollt deshalb nach einem gescheiterten Schritt
+    ausdrücklich zurück (cron.py)."""
     auswahl = db.execute(
         select(TcgdexCatalog.card_id, TcgdexCatalog.region)
         .where(TcgdexCatalog.enriched == True)  # noqa: E712
