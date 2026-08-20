@@ -4,8 +4,14 @@
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
 Titel `Abgleich v1.8.2`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
-**Prozess-Erkenntnisse gehen als Issue in die Vorlage** (Label
-`prozess-vorschlag` / `prozess-lehre`), nicht in einen Alleingang hier.
+**Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
+Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
+Beobachtung/Reibung/Messzahl/Bestätigung als Kommentar im Rückmeldungs-Issue
+der jeweiligen Version. Im Zweifel Kommentar. **Jede Meldung beginnt mit der
+Kennung dieses Projekts: `P2 · Anwendung mit Datenbank`** — alle Projekte
+melden unter demselben Konto, ohne Kennung ist nicht unterscheidbar, ob drei
+Projekte dieselbe Lücke fanden oder eines sie dreimal meldete. Die Kennung
+ersetzt die Anonymisierung nicht: kein Repo-Name, keine Kundendaten.
 
 **Profil: Anwendung mit Datenbank.** Bestimmt, welcher Teil der Vorlage beim
 Abgleich zu prüfen ist: Der **Prozess-Kern** (Panel, Bau-Brief, Lehren,
