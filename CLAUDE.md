@@ -99,6 +99,22 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   `pull_request`-Trigger** (Minuten-Notbremse 14.08.2026) — es gibt keine
   menschlichen PRs. Dependabot (`.github/dependabot.yml`) ist bis zum 01.09.
   stillgelegt; Rücksetz-Anweisung steht in der Datei.
+- **NOTMASSNAHME bis 01.09.2026 — CI ausgesetzt (Owner, 20.08.2026):** Das
+  Actions-Kontingent ist aufgebraucht. Jeder Push erzeugt einen sofort roten
+  Lauf mit Quota-Fehler — **das ist kein Code-Befund**: nicht debuggen, nicht
+  als CI-Ergebnis werten, nicht zum Prüfen erneut pushen. Die Regel „CI grün
+  auf main" ist bis dahin **ersetzt** durch: volle lokale Gates auf dem
+  **finalen** Baumzustand, Ergebnis im Issue vermerkt
+  (`Gates lokal grün auf <SHA>, CI ausgesetzt wegen Quota`). Deshalb tragen bis
+  01.09. auch Code-Commits `[skip ci]` — ein Lauf, der nur am Kontingent
+  scheitert, beweist nichts.
+  **Keine Tags und Releases** bis dahin, außer der Owner gibt nach eigener
+  Teststand-Prüfung ausdrücklich frei. Wochen-Scans und Zeitplan-Läufe fallen
+  aus und werden **nicht** nachgeholt.
+  **Rückdreh am 01.09.2026** (Datum UND Bedingung, lehren.md §7): `[skip ci]`
+  aus den Code-Commits nehmen, einen `workflow_dispatch` auf dem dann aktuellen
+  Head fahren, Grün abwarten — erst danach gilt „CI grün auf main" wieder. Der
+  Rückbau hängt am selben Termin wie #71 (Pins + Dependabot).
 - **Ein Push kostet Minuten.** Reine Doku-/Konfigurations-Commits, die keine
   Prüfung beweisen können, mit `[skip ci]` pushen; Verifikation einmal per
   `workflow_dispatch`, nicht durch wiederholtes Pushen.
