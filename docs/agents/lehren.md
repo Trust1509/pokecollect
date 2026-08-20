@@ -54,6 +54,16 @@ die angelegte Testkarte keine Pokédex-Nummer hatte — die Startseite fragt mit
 `pokedex_view=true` und zeigt solche Karten nie. Kein Produktfehler, sondern
 Testdaten, die den geprüften Fall gar nicht herstellen.
 
+**Eine Prüfung, die ausgibt statt abzubrechen, ist keine Prüfung.** Vor einem
+Doku-Commit habe ich korrekt festgestellt, dass fremder Code im Arbeitsbaum
+liegt — die Zeile gab es aus und lief weiter, weil sie mit `&&` an den Commit
+gekettet war statt davor zu stehen. Ergebnis: unbewiesene Nacharbeit landete in
+einem `[skip ci]`-Doku-Commit auf `main` und musste zurückgenommen werden.
+Dieselbe Klasse wie ein grüner Wächter, nur eine Stufe früher: Der Befund war
+richtig, die Konsequenz fehlte. **Wer prüft, muss auch abbrechen können** —
+sonst ist die Prüfung Dekoration. Praktisch: vor jedem Commit `git status`
+lesen und Pfade einzeln adden, statt `git add -A` mit einer Sichtprüfung davor.
+
 **Ein Wächter muss seine eigene Reichweite belegen.** Vier Fragen, bevor ein
 Test oder Gate als Schutz gilt (aus der Vorlage §8, hier auf Tests gemünzt —
 einen Produktiv-Wächter haben wir nicht):
