@@ -625,12 +625,27 @@ async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
     kein Update als ein stiller Wechsel der Bezugsgröße); liefert die Quelle
     einen Preis OHNE Datenstand, bleibt der vorhandene Stempel stehen statt auf
     NULL zu fallen (Panel-Fund WICHTIG 4 — ein Preis ohne Datum darf den
-    Datenstand nicht löschen). price_eur_checked rückt für JEDE besuchte Zeile
-    vor — auch bei Ausfall, leerem Ergebnis oder wenn eine einzelne Karte beim
-    Parsen wirft (abgefangen und wie ein Ausfall behandelt, Panel-Fund
-    BLOCKER 2 — sonst reißt eine einzige kaputte Karte den ganzen Schwung mit,
-    bevor gestempelt wird, und die deterministische Auswahl zieht beim
-    nächsten Lauf dieselbe Karte wieder: Dauerstillstand)."""
+    Datenstand nicht löschen). price_eur_checked rückt für JEDE tatsächlich
+    besuchte Zeile vor — auch bei Ausfall, leerem Ergebnis oder wenn eine
+    einzelne Karte beim Parsen wirft (abgefangen und wie ein Ausfall behandelt,
+    Panel-Fund BLOCKER 2 — sonst reißt eine einzige kaputte Karte den ganzen
+    Schwung mit, bevor gestempelt wird, und die deterministische Auswahl zieht
+    beim nächsten Lauf dieselbe Karte wieder: Dauerstillstand).
+
+    Zwischen Auswahl und Schreiben liegen die Netzabrufe (Sekunden bis
+    Minuten) — in dieser Zeit kann ein anderer Schreiber die Zeile löschen
+    oder ihr `enriched` auf False setzen (z. B. ein Reset). Die Schreibschleife
+    liest deshalb jede Zeile per PK neu und überspringt sie in beiden Fällen,
+    ohne den fremden (ggf. frischeren) Stand zu überschreiben; `visited`/
+    `updated` zählen nur, was WIRKLICH geschrieben wurde, nicht die
+    ursprüngliche Auswahlgröße. `updated` heißt „Preis aus der Quelle
+    übernommen", nicht zwingend „Preis hat sich geändert" — liefert die Quelle
+    denselben Wert erneut, zählt das mit.
+
+    Die Aufruferin muss ihre eigene, noch nicht committete Arbeit auf `db` VOR
+    diesem Aufruf abgeschlossen haben: Das frühe commit() nach der Auswahl
+    committet sie mit (heute nicht auslösbar — `_daily_catalog_sync` ruft
+    `enrich_catalog` davor auf, das selbst bereits committet)."""
     auswahl = db.execute(
         select(TcgdexCatalog.card_id, TcgdexCatalog.region)
         .where(TcgdexCatalog.enriched == True)  # noqa: E712
@@ -657,10 +672,17 @@ async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
 
     now = datetime.utcnow()
     updated = 0
+    visited = 0
     for cid, _region in auswahl:
         row = db.get(TcgdexCatalog, cid)  # neue, kurze Schreib-Transaktion (Panel-Fund WICHTIG 5)
-        if row is None:
-            continue  # zwischenzeitlich gelöscht
+        # Panel-Fund (Nacharbeit-Runde 3): zwischen Auswahl und Schreiben liegen
+        # die Netzabrufe — ein anderer Schreiber kann die Zeile in dieser Zeit
+        # gelöscht oder ihr enriched auf False gesetzt haben (z. B. ein Reset).
+        # Beides übergehen wir, statt einen fremden (ggf. frischeren) Stand zu
+        # überschreiben — und zählen es NICHT als besucht/aktualisiert.
+        if row is None or not row.enriched:
+            continue
+        visited += 1
         tc = data.get(cid)
         if tc is not None:
             pr = catalog_prices(tc.pricing)
@@ -686,11 +708,11 @@ async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
     )
     db.commit()
 
-    log.info("Katalog-€-Repass: %d besucht, %d mit neuem €-Preis, %d noch nie geprüft, "
+    log.info("Katalog-€-Repass: %d besucht, %d mit €-Preis aus der Quelle, %d noch nie geprüft, "
               "ältester verbleibender Stempel %s.",
-              len(auswahl), updated, never_checked, oldest)
+              visited, updated, never_checked, oldest)
     return {
-        "visited": len(auswahl),
+        "visited": visited,
         "updated": updated,
         "never_checked": int(never_checked),
         "oldest_checked": oldest.isoformat() if oldest else None,
