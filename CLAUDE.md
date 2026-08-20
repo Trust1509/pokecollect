@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.8.2** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.9.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.8.2`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.9.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -12,6 +12,10 @@ Kennung dieses Projekts: `P2 · Anwendung mit Datenbank`** — alle Projekte
 melden unter demselben Konto, ohne Kennung ist nicht unterscheidbar, ob drei
 Projekte dieselbe Lücke fanden oder eines sie dreimal meldete. Die Kennung
 ersetzt die Anonymisierung nicht: kein Repo-Name, keine Kundendaten.
+**Kennungen gelten beidseitig** (seit 20.08.2026): Eine Rückfrage aus dem
+Vorlagen-Repo trägt `[Prozess-Agent]` (kollegiale Frage) oder `[Owner]`
+(Entscheidungsanfrage) — beides läuft über dasselbe Konto, ohne Kennung ist es
+nicht unterscheidbar.
 
 **Profil: Anwendung mit Datenbank.** Bestimmt, welcher Teil der Vorlage beim
 Abgleich zu prüfen ist: Der **Prozess-Kern** (Panel, Bau-Brief, Lehren,
@@ -53,8 +57,10 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    laufen **einmal auf dem finalen Baumzustand**, egal von wem: dieselbe Suite
    von Bauer, Arbiter und CI dreimal zu fahren ist Leerlauf. Bei Datei-
    Überlappung mehrerer Arbeitspakete sequenziell statt parallel (Git-Race).
-   Jeder Bau-Commit trägt `Built-With: <modell> (<datum>)` — ohne das ist nach
-   vier Wochen nicht mehr feststellbar, wer was gebaut hat.
+   Jeder Bau-Commit trägt den Modell-Stempel, mehrteilig, wenn mehrere Modelle
+   beteiligt waren: `Built-With: bau=<m>; nacharbeit=<m>; arbitriert=<m>
+   (<datum>)`. Ohne ihn ist nach vier Wochen nicht feststellbar, wer was gebaut
+   hat — und jede Aussage über Modellverhalten bleibt Anekdote.
 4. **Riskant-Gate:** Datenverlust-/Migrations-/Security-/Auth-Änderungen →
    bauen + grüner Report + **Owner-OK vor Release**. Gefahrloses + alle Gates
    grün + real im Teststand verifiziert → Release autonom.

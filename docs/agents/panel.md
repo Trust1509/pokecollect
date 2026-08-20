@@ -152,17 +152,20 @@ Behauptungen — der Querscroll-Wächter war vakant, und eine Farb-Mutation blie
 grün, weil sie an der unwirksamen Stelle saß. Aufgefallen ist beides nur durch
 den Rot-Beweis, nicht durch ein Panel, das es nicht gab.
 
-Die Liste ist abschließend, nicht beispielhaft: „Ist das trivial?" ist genau die
+Warum sie abschließend ist, nicht beispielhaft: „Ist das trivial?" ist genau die
 Frage, bei der man sich unter Zeitdruck selbst überzeugt.
 
-**Immer volles Panel** bei: Migrationen, Auth/Berechtigungen, allem, was Geld
-oder Werte berechnet, allem, was nach außen geht — **und allem, was HERKUNFT
-hat**: Code, den niemand aus diesem Projekt gebaut hat (Fremdmodell,
-zugelieferter Zweig, übernommenes Beispiel). Begründung aus der Vorlage: Ein
-zugelieferter Zweig war fachlich unauffällig und tauschte einen dokumentierten
-Endpunkt gegen einen ausdrücklich undokumentierten; alle mitgelieferten Tests
-waren grün — sie stammten vom selben Autor und prüften dessen Annahme. Herkunft
-ist ein Risiko eigener Art, unabhängig vom Thema.
+Warum **Herkunft** ein eigener Pflichtfall ist: Ein zugelieferter Zweig war
+fachlich unauffällig und tauschte einen dokumentierten Endpunkt gegen einen
+ausdrücklich undokumentierten; alle mitgelieferten Tests waren grün — sie
+stammten vom selben Autor und prüften dessen Annahme. Das Risiko hängt an der
+Herkunft, nicht am Thema.
+
+> **Nachtrag 20.08.2026:** Hier stand bis eben die zweite Hälfte der Pflichtliste
+> („Immer volles Panel bei …") — ich hatte beim Verschieben nach `CLAUDE.md` nur
+> die erste Hälfte mitgenommen. Damit stand die Schwelle zwei Stunden lang in
+> zwei Dateien (v1.9.0 §17 / „eine Schwelle hat genau einen Eigentümer").
+> Gefunden durch die Suche, zu der das Rückmeldungs-Issue aufgefordert hat.
 
 **Sonderfall:** Eine Testinfrastruktur-Scheibe, die als **Sicherheitsnetz**
 gemeldet wird, ist nicht trivial — sie braucht mindestens den Rot-Beweis über

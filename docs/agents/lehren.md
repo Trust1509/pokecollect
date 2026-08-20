@@ -63,6 +63,18 @@ sie kein Leser beisammen — jeder befolgt die, die er zuerst findet. **Nach jed
 übernommenen Regel prüfen, wo dasselbe Thema sonst noch steht** (`grep` über
 `docs/`), nicht nur die Stelle ändern, die im Abgleich benannt war.
 
+**Beim Beheben zählt die Sorte der Datei** (v1.9.1): Eine **anleitende** Datei
+(Skript, Checkliste, Anweisung) wird umgeschrieben. Eine **dokumentierende**
+Datei (ADR, Protokoll, Panel-Kommentar) bekommt einen **datierten Nachtrag** —
+wer sie umschreibt, löscht die Historie und damit den Grund, aus dem die
+Entscheidung damals richtig war.
+
+**Eine Messung, die der Vorlage widerspricht, ist zuerst ein Befund über die
+Vorlage** (v1.9.0 §18). Zwei Projekte machten dieselbe Messung; eines schloss
+„das Werkzeug ist falsch", das andere „dann heißen meine Überschriften eben
+falsch". Die Vorlage ist gemeinsamer Stand, nicht Wahrheit — sie irrt
+regelmäßig, und genau dafür gibt es den Rückkanal.
+
 **Geliehene Autorität tarnt einen ungeprüften Befund.** Ein Bericht, der eine
 Abweichung mit einer Quellenangabe mildert („bekannter Flake, siehe §X"), ist
 gefährlicher als einer ohne Quelle — er liest sich wie nachgeschlagen und wird
@@ -228,6 +240,10 @@ der Anfang" unterscheiden.
   Abbild kaputt.
 - **CI-Läufe run-id-gepinnt beobachten** (`gh run watch <id> --exit-status`),
   nie über eine Listenposition — sonst wartet man auf den falschen Lauf.
+  Verschärfung (v1.9.1): `gh run list --limit 1` **unmittelbar nach dem Push**
+  liefert den Lauf des VORGÄNGER-Commits, weil der eigene noch nicht angelegt
+  ist. Über den eigenen `headSha` filtern. Anderswo wurde so ein Issue gegen
+  fremdes Grün geschlossen.
 - **Gepinnte Actions altern still.** SHA-Pins sind sicher, aber unsere lagen im
   August 2026 drei Hauptversionen zurück (Node-20-Abkündigung in den
   Lauf-Annotationen). Beim Übernehmen prüfen, ob die Hauptversion noch aktuell

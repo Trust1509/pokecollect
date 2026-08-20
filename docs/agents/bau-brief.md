@@ -13,6 +13,12 @@ weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
 
 Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
 
+**Baut der Hauptagent selbst, entfällt der Empfänger — nicht das Gerüst**
+(v1.9.0). Die acht Themen werden dann vor dem ersten Commit durchgegangen. Für
+dieses Repo ist das der Regelfall bei kleinen Scheiben; #52, #53, #55 und #67
+sind ohne jeden Brief entstanden, und bei #52 hat genau das gefehlt, was Block 5
+verlangt hätte.
+
 **Die acht Themen sind die Pflicht, die Gliederung ist ein Vorschlag** (v1.8.1).
 Das Skript sucht die Themen im ganzen Dokument und meldet ein Fehlen als *Fund,
 kein Urteil* — ob ein Thema hier gegenstandslos ist, entscheidet weiterhin der
