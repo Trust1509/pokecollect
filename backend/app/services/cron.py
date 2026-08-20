@@ -40,19 +40,27 @@ async def _daily_price_update(db: Session):
 async def _daily_catalog_sync(db: Session):
     """Sets + Katalog-Basis aktualisieren, einen Schwung anreichern und die
     €-Preise bereits angereicherter Zeilen rollierend nachsehen (#66)."""
-    try:
-        from app.services.set_sync import sync_sets
-        from app.services.catalog import sync_catalog, enrich_catalog, refresh_catalog_eur
-        log.info("Starte täglichen Katalog-Sync …")
-        await sync_sets()
-        await sync_catalog(db)
-        await enrich_catalog(db, limit=2000)  # in Etappen über mehrere Tage vollständig
-        # #66: eigenes, kleineres Budget — die Erstanreicherung behält mit 2000
-        # Vorrang, aber der €-Repass läuft NEBENHER mit; sonst kämen die schon
-        # angereicherten ~11,8k Zeilen erst nach Abschluss der Anreicherung dran.
-        await refresh_catalog_eur(db, limit=1000)
-    except Exception as exc:
-        log.error("Katalog-Sync fehlgeschlagen: %s", exc)
+    from app.services.set_sync import sync_sets
+    from app.services.catalog import sync_catalog, enrich_catalog, refresh_catalog_eur
+    log.info("Starte täglichen Katalog-Sync …")
+
+    # Je Schritt ein eigener Fang (#75): Vorher lagen alle in EINEM try/except —
+    # scheiterte die Anreicherung, lief der €-Repass in derselben Nacht gar nicht
+    # mehr, obwohl er mit dem Fehler nichts zu tun hat. Gemessen an einer
+    # einzelnen kaputten Karte: „€-Repass überhaupt gelaufen = False".
+    async def schritt(name: str, coro):
+        try:
+            await coro
+        except Exception as exc:  # noqa: BLE001 — ein Schritt darf die folgenden nicht mitreißen
+            log.error("Katalog-Sync, Schritt %s fehlgeschlagen: %s", name, exc)
+
+    await schritt("Sets", sync_sets())
+    await schritt("Katalog-Basis", sync_catalog(db))
+    await schritt("Anreicherung", enrich_catalog(db, limit=2000))
+    # #66: eigenes, kleineres Budget — die Erstanreicherung behält mit 2000
+    # Vorrang, aber der €-Repass läuft NEBENHER mit; sonst kämen die schon
+    # angereicherten ~11,8k Zeilen erst nach Abschluss der Anreicherung dran.
+    await schritt("€-Repass", refresh_catalog_eur(db, limit=1000))
 
 
 def _price_update_hour(db: Session) -> int:

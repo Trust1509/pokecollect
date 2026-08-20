@@ -568,9 +568,21 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
     sem = asyncio.Semaphore(_CONC)
     data: dict[str, object] = {}
 
+    fehler: list[str] = []
+
     async def one(cid: str, region: Optional[str]):
         async with sem:
-            tc = await tcgdex.get_card(cid, _catalog_lang(region))
+            try:
+                tc = await tcgdex.get_card(cid, _catalog_lang(region))
+            except Exception as exc:  # noqa: BLE001 — #75: eine kaputte Karte darf den Schwung nicht kippen
+                # tcgdex.get_card fängt HTTP/404/Nicht-200/kaputtes JSON ab, aber
+                # NICHT die Schema-Prüfung dahinter: Eine 200-Antwort, die nicht
+                # zum Modell passt, wirft. Ohne diesen Fang reißt sie über
+                # asyncio.gather den GANZEN Schwung mit, bevor irgendetwas
+                # geschrieben ist — und der nächste Lauf zieht dieselben Zeilen.
+                log.warning("Katalog-Enrichment: %s fehlgeschlagen: %s", cid, exc)
+                fehler.append(cid)
+                return
         if tc:
             data[cid] = tc
 
@@ -586,8 +598,11 @@ async def enrich_catalog(db: Session, limit: int = 500) -> dict:
     remaining = db.scalar(
         select(func.count()).select_from(TcgdexCatalog).where(TcgdexCatalog.enriched == False)  # noqa: E712
     ) or 0
-    log.info("Katalog-Enrichment: %d angereichert, %d verbleibend.", n, remaining)
-    return {"enriched": n, "remaining": int(remaining)}
+    # Fehlzahl mitloggen und zurückgeben: Ein systematischer Schema-Bruch der
+    # Quelle wäre sonst unsichtbar — der Lauf meldete brav „0 angereichert".
+    log.info("Katalog-Enrichment: %d angereichert, %d fehlgeschlagen, %d verbleibend.",
+             n, len(fehler), remaining)
+    return {"enriched": n, "failed": len(fehler), "remaining": int(remaining)}
 
 
 async def refresh_catalog_eur(db: Session, limit: int = 500) -> dict:
