@@ -1,8 +1,48 @@
 # Bau-Brief: Vorlage für Aufträge an Bau-Subagenten
 
+> **Der Bau-Brief ist die einzige Leitplanke, die den Bauer erreicht.** Regeln im
+> Repo erreichen ihn nicht: Ein Bau-Subagent arbeitet den Brief ab, nicht
+> `docs/agents/`. In fünf Projekten gemeldet; zweimal ist genau daran eine
+> Pflichtregel gescheitert — sie stand im Repo und fehlte im Brief.
+
 Ein Bau-Brief ist der Unterschied zwischen einem Slice, der beim ersten Panel
 durchgeht, und einem, der drei Runden braucht. Die Punkte unten stehen alle,
 weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
+
+## Pflicht-Gerüst (alle acht Blöcke, keiner leer)
+
+Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
+
+```markdown
+## 1 Auftrag            was gebaut wird, in zwei Sätzen
+## 2 Befund             bereits verifiziert — NICHT neu recherchieren
+## 3 Konsumenten        WER RUFT DEN GEÄNDERTEN CODE AUF? Jeden nennen.
+## 4 Sichtbares         ändert der Slice sichtbares Verhalten? CHANGELOG-Folge?
+## 5 Nachweis           Rot-Beweis je neuem Test, inkl. Verdrahtung;
+                        bei ganzen Suiten zwei Mutationen
+## 6 Prüf-Kommandos     ALLE, die die CI fährt — nicht nur die naheliegenden
+## 7 Fixtures           erfunden, nie aus dem Kontext übernommen
+## 8 Randbedingungen    Vordergrund, lokal committen, nicht pushen,
+                        Umfang nicht erweitern
+```
+
+**Block 3 ist der teuerste, wenn er fehlt** — in vier von fünf Projekten kam
+darüber ein Fund, den sonst niemand hatte. Hier ebenfalls: Die Frage nach den
+Aufrufern hat im #55-Slice den schwersten Fund gebracht (dasselbe Schema wird
+serverseitig aus OCR-Text gebaut).
+
+**Block 5 hat immer einen Gegenstand** — dieses Projekt führt eine Testsuite
+(`backend/tests/`, 437 Tests) und einen Rauchtest. Ein Brief, der ihn leer lässt,
+ist unfertig, nicht „nicht zutreffend".
+
+**Was NICHT in den Brief gehört: Bewegungsverbote.** Ein Brief liefert Befunde,
+keine gesperrten Zonen. Real hier passiert: Mein Brief zu #66 verbot, `_apply_full`
+anzufassen — genau dort saß die Ein-Zeilen-Behebung eines Panel-Funds, und die
+Nacharbeit musste das Verbot ausdrücklich aufheben.
+
+Ist eine Abgrenzung nötig, gehört sie als **Befund mit Ziel** in den Brief, nicht
+als Verbot: „`enrich_catalog` trägt dieselbe Klasse, wird aber in #75 eigens
+behandelt" sagt dem Bauer, warum er es stehen lässt — und wo die Arbeit hingeht.
 
 ---
 

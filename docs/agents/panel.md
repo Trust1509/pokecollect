@@ -9,6 +9,16 @@ Verbindlich nach **jedem nicht-trivialen Slice**, vor dem Landen. Zweck ist
 > Datei ist die **Anleitung**: Sie muss auch dann gelten, wenn die Werkzeuge
 > einmal anders heißen.
 
+## Modell und Stand gehören ins Ergebnis
+
+Je Stimme in der Überschrift des Panel-Kommentars
+(`### Stimme 2 — GPT über Codex (gpt-5.x, 2026-08-20)`). Das Gegenstück am
+Commit (`Built-With:`) steht als Commit-Regel in `CLAUDE.md`. Zwei Gründe: Die Herkunfts-Regel
+ist sonst nach vier Wochen nicht mehr durchsetzbar — „wer hat das gebaut" steht
+nirgends. Und jede Aussage über Modellverhalten bleibt Anekdote, solange das
+Ergebnis den Modellstand nicht trägt. Anbieter ziehen still nach, deshalb das
+Datum.
+
 ## Die drei Stimmen
 
 **Stimme 1 — blinde Erststimme (Claude, Subagent, `model: opus`).**
@@ -42,6 +52,17 @@ liest gelegentlich die Vorher-Seite eines Diffs; die Treffer sind echt.
 **Budget: bis 2 $/Monat ohne Rückfrage** (Owner-Freigabe 15.08.2026), darüber
 melden. Bei `402` (Guthaben leer) gilt der Ausfall-Weg unten.
 
+**Sie zählt mit ihren Funden, nie mit ihrer Freigabe** (v1.8.0, über fünf
+Projekte gemessen: ein exklusiver bestätigter Fund gegen rund ein Dutzend Fehl-
+und Überbefunde). Der Grund ist strukturell: Die schweren Funde liegen in der
+Beziehung zwischen Diff und Umgebung — für eine diff-only-Sicht prinzipiell
+unsichtbar. Hier bestätigt: Im #66-Panel gab sie „keine Funde, landen" und
+begründete das ausgerechnet an der Stelle des Blockers.
+
+Zuschnitt daraus: **große Diffs schneiden** (nur die tragenden Dateien), und
+**bei reinen Konfigurations-Diffs gar nicht einsetzen** — dort produziert sie
+Inversionen. Behalten lohnt trotzdem: Konvergenz für Bruchteile eines Cents.
+
 ## Ablauf
 
 0. **Erreichbarkeit der externen Stimmen prüfen, bevor der Slice fertig gemeldet
@@ -54,11 +75,35 @@ melden. Bei `402` (Guthaben leer) gilt der Ausfall-Weg unten.
    sequenziell ein Vielfaches.
 3. **Arbitrieren.** Jeden Blocker **am Code oder an der laufenden App
    reproduzieren**. Prüfer-Konvergenz ersetzt keine Reproduktion; Mehrheit
-   entscheidet nie allein.
+   entscheidet nie allein. **Widersprechen sich Stimmen, entscheidet die
+   Reproduktion** — nicht die Mehrheit, nicht die Plausibilität der Begründung.
 4. **Nacharbeit** an denselben Subagenten, der gebaut hat (Kontext bleibt) — mit
    dem, was **bestätigt** wurde, und mit ausdrücklich **abgeräumten**
-   Fehlbefunden.
+   Fehlbefunden. Der Nacharbeits-Brief trägt **dasselbe Pflicht-Gerüst** wie ein
+   Erstbau (`bau-brief.md`) plus den Block „Ausdrücklich abgeräumt — hier ist
+   nichts zu tun".
+
+   **Die Prüfpflicht hängt am GELANDETEN ZUSTAND, nicht am Slice** (v1.8.0): Was
+   am Ende auf `main` liegt, ist geprüft — egal in wie vielen Anläufen es dorthin
+   kam. Nacharbeit ist damit automatisch erfasst. Eine verkürzte zweite Runde
+   (nur die blinde Stimme, zugeschnittener Auftrag) reicht; hier fand genau die
+   sechs weitere Punkte, alle exklusiv.
 5. **Panel-Kommentar** am Issue, Form nach `panel-kommentar.md`.
+
+### Die Sonde, die verwirft, braucht den stärkeren Nachweis
+
+Ein bestätigter Fund wird gefixt und nachgeprüft — ein **verworfener verschwindet
+für immer**. Die Ad-hoc-Sonde des Arbiters ist damit die gefährlichste Prüfung im
+Verfahren und hatte bisher kein Gegenstück zum Rot-Beweis.
+
+- **Gegenfrage vor jedem Verwerfen: „Welche Eingabe würde der Stimme recht
+  geben?"** Wer sie nicht beantworten kann, hat nicht widerlegt, sondern nicht
+  reproduziert.
+- **Drittes Urteil neben bestätigt/verworfen: „richtiger Instinkt, falsche
+  Begründung."** Der Fund bleibt, die Begründung wird ersetzt. Ohne diese
+  Kategorie werden echte Befunde als Fehlbefunde abgeräumt.
+- **Schwere-Umstufung durch den Arbiter ist erlaubt und wird gekennzeichnet**
+  (`KLEIN → WICHTIG (arb.)`), sonst ist sie stille Meinung.
 
 **Sonden-Falle:** Erwartungswerte **vor** der Sonde fixieren. Eine Sonde kann
 ihre eigenen Befunde erzeugen — am Teststand ist das schon passiert (ein
@@ -91,9 +136,17 @@ Fragen, die hier überdurchschnittlich oft etwas gefunden haben:
 
 ## Verhältnismäßigkeit — abschließende Liste
 
-**Ohne Panel nur:** reine Testinfrastruktur **ohne Verhaltensänderung**, Doku,
-Typisierung ohne Verhaltensänderung. **Alles andere bekommt das Panel; im
-Zweifel das Panel.**
+**Ohne Panel nur:** reine Testinfrastruktur **ohne Verhaltensänderung** (Läufer,
+Konfiguration, Hilfsmittel), Doku, Typisierung ohne Verhaltensänderung.
+**Alles andere bekommt das Panel; im Zweifel das Panel.**
+
+**Ein neuer Test ist KEINE reine Testinfrastruktur** (v1.8.0). Er behauptet
+etwas über das Verhalten — und kann falsch behaupten. Für dieses Repo heißt das
+rückwirkend: Die Scheiben #52 (Rauchtest) und #70 (mobil) sind unter der alten,
+weicheren Lesart ohne Panel gelandet. Beide trugen tatsächlich falsche
+Behauptungen — der Querscroll-Wächter war vakant, und eine Farb-Mutation blieb
+grün, weil sie an der unwirksamen Stelle saß. Aufgefallen ist beides nur durch
+den Rot-Beweis, nicht durch ein Panel, das es nicht gab.
 
 Die Liste ist abschließend, nicht beispielhaft: „Ist das trivial?" ist genau die
 Frage, bei der man sich unter Zeitdruck selbst überzeugt.

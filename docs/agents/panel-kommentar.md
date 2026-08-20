@@ -7,6 +7,15 @@ ausgefallen ist.
 
 Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Stimme weglassen.
 
+**Modell und Stand gehören in jede Überschrift** (v1.8.0). Ohne sie ist die
+Herkunfts-Regel nach vier Wochen nicht durchsetzbar, und jede Aussage über
+Modellverhalten bleibt Anekdote — Anbieter ziehen still nach.
+
+**Eine Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.** Ein „keine
+Funde" beschreibt die Reichweite dieser Stimme, es ist kein Argument fürs
+Landen. In der Arbitrierung wird begründet, was geprüft und widerlegt wurde —
+nie „zwei von drei Stimmen sahen nichts".
+
 > Warum das hier steht: In diesem Repo lief das Panel bereits **zweistimmig**,
 > ohne dass es jemandem auffiel — der Kommentar war Fließtext plus Fund-Tabelle
 > und las sich vollständig (siehe #38). Eine Regel ohne Form hält nicht; diese
@@ -19,21 +28,24 @@ Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Stimme weglassen.
 
 Basis: `⟨commit-a⟩..⟨commit-b⟩` · Umfang: ⟨was geprüft wurde⟩
 
-### Stimme 1 — Claude, blinde Erststimme (frischer Subagent)
+### Stimme 1 — Claude, blinde Erststimme (⟨modell⟩, ⟨datum⟩)
 ⟨Nur Diff + Repo, kein Bau-Brief, kein Bericht des Bauers. Je Fund: Schwere,
 Datei:Zeile, Nachweis. „Keine Funde" ist ein gültiges Ergebnis und wird
 hingeschrieben.⟩
 
-### Stimme 2 — GPT (Codex, read-only, Prüf-Zweig)
+### Stimme 2 — GPT über Codex (⟨modell⟩, ⟨datum⟩)
 ⟨Über denselben Diff, Zweig `review/⟨issue⟩-⟨kurzname⟩`.⟩
 
-### Stimme 3 — DeepSeek V4 Pro (diff-only)
+### Stimme 3 — DeepSeek (⟨modell⟩, ⟨datum⟩, diff-only)
 ⟨Kurz. Bekanntes Muster: irrt Richtung zu-streng, liest gelegentlich die
 Vorher-Seite eines Diffs.⟩
 
 ### Arbitrierung
-⟨Je Fund: reproduziert oder verworfen — und WIE reproduziert (Kommando, Test,
-Messung). Dazu die Attribution: welche Stimme hatte ihn, welche nicht.
+⟨Je Fund eines von DREI Urteilen: reproduziert · verworfen · richtiger Instinkt,
+falsche Begründung. Dazu WIE reproduziert (Kommando, Test, Messung) und die
+Attribution: welche Stimme hatte ihn, welche nicht. Vor jedem Verwerfen die
+Gegenfrage beantworten: „Welche Eingabe würde der Stimme recht geben?"
+Schwere-Umstufungen kennzeichnen (`KLEIN → WICHTIG (arb.)`).
 Prüfer-Konvergenz ersetzt keine Reproduktion.⟩
 
 **Urteil:** ⟨landen / nacharbeiten⟩
@@ -46,7 +58,7 @@ Prüfer-Konvergenz ersetzt keine Reproduktion.⟩
 Überschrift **stehen lassen**, Grund darunter:
 
 ```markdown
-### Stimme 3 — DeepSeek V4 Pro (diff-only)
+### Stimme 3 — DeepSeek (⟨modell⟩, ⟨datum⟩, diff-only)
 Ausgefallen: 402, Guthaben leer. Owner informiert am ⟨Datum⟩. Nachzuholen,
 solange der Slice nicht ausgeliefert ist.
 ```

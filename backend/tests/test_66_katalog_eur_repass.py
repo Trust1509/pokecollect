@@ -6,14 +6,24 @@ Repass für bereits angereicherte Zeilen — mit einem EIGENEN Nachsehe-Stempel
 (price_eur_checked), NICHT price_eur_updated (das ist der Stand DER QUELLE und
 würde bei unveränderten Quellwerten sofort wieder vorne stehen: Hunger-Effekt).
 
-Panel-Nacharbeit (bestätigte Funde, am Code reproduziert): der Repass darf die
-$-Pipeline nicht anfassen (BLOCKER 1), eine einzelne kaputte Karte darf den
-Schwung nicht kippen (BLOCKER 2), _apply_full muss den Stempel mitsetzen
-(WICHTIG 3), ein Preis ohne Datenstand darf den vorhandenen Stempel nicht
-löschen (WICHTIG 4), die Kennzahl braucht einen expliziten flush + einen
+Panel-Nacharbeit Runde 2 (bestätigte Funde, am Code reproduziert): der Repass
+darf die $-Pipeline nicht anfassen (BLOCKER 1), eine einzelne kaputte Karte
+darf den Schwung nicht kippen (BLOCKER 2), _apply_full muss den Stempel
+mitsetzen (WICHTIG 3), ein Preis ohne Datenstand darf den vorhandenen Stempel
+nicht löschen (WICHTIG 4), die Kennzahl braucht einen expliziten flush + einen
 never_checked-Zähler (KLEIN 6). WICHTIG 5 (zwei kurze statt einer langen
-Transaktion) steckt in der Funktion selbst, nicht in einem eigenen Test —
-Begründung im Baubericht.
+Transaktion) steckt in der Funktion selbst.
+
+Panel-Nacharbeit Runde 3 (eng geschnitten, blinde Stimme): Preis-Erhalt war
+nur für "Karte nicht gefunden" bewiesen, nicht für "Karte gefunden, aber ohne
+Cardmarket-Daten" (PFLICHT 1); der _apply_full-Stempel war nur für Karten MIT
+Preis bewiesen (PFLICHT 2); visited zählte die Auswahlgröße statt der
+tatsächlich geschriebenen Zeilen, oldest_checked war nur auf "nicht None"
+geprüft, enriched wird beim Schreiben jetzt erneut geprüft (ein anderer
+Schreiber kann die Zeile zwischen Auswahl und Schreiben gelöscht oder
+de-enriched haben); WICHTIG 5 hat jetzt zusätzlich einen deterministischen
+Test (db.in_transaction()) statt nur der pg_stat_activity-Sonde aus dem
+Baubericht.
 
 Netzfrei: tcgdex.get_card gemockt (wie test_catalog_detail.py).
 """
@@ -86,6 +96,12 @@ def test_reihenfolge_null_dann_aeltester_zuerst(db, monkeypatch):
     assert old_row.price_eur_checked > now - timedelta(days=5)   # gerade neu gestempelt
     new_row = db.get(TcgdexCatalog, "test66-new")
     assert new_row.price_eur_checked == now - timedelta(hours=1)  # war noch nicht dran
+    # oldest_checked auf den echten Wert festgenagelt, nicht nur "nicht None"
+    # (Panel-Fund, Runde 3): "new" ist nach den zwei Läufen der einzige noch
+    # unberührte, älteste Stempel unter den angereicherten Zeilen — würde
+    # func.min() versehentlich zu func.max() (Sabotage), käme hier der
+    # deutlich jüngere Stempel von "old" oder "null" zurück statt diesem.
+    assert stats2["oldest_checked"] == (now - timedelta(hours=1)).isoformat()
 
     # nicht angereicherte Zeile bleibt in jedem Fall außen vor (kein Stempel)
     assert db.get(TcgdexCatalog, "test66-unenriched").price_eur_checked is None
@@ -130,6 +146,31 @@ def test_vorhandener_preis_bleibt_bei_leerer_quelle(db, monkeypatch):
     row = db.get(TcgdexCatalog, "test66-behalten")
     assert row.price_eur == Decimal("3.50")
     assert row.price_eur_updated == "2026-01-01"
+    assert row.price_eur_checked is not None  # der Nachsehe-Stempel rückt trotzdem vor
+
+
+# ── Preis-Erhalt auch wenn die Karte GEFUNDEN wird, aber ohne Cardmarket-Daten
+# (Panel-Fund PFLICHT 1, Runde 3): der Test oben deckt nur "Karte nicht
+# gefunden" (tc=None) ab. Realistischer zweiter Fall: die Karte wird
+# gefunden, aber pricing/cardmarket ist leer (JP-Karten oft, oder eine Lücke
+# bei Cardmarket selbst — catalog_prices hat nicht ohne Grund einen
+# Holo-Fallback). pr["eur"] ist dann AUCH None — ein vorhandener Preis darf
+# trotzdem nicht verschwinden.
+
+def test_preis_bleibt_wenn_gefundene_karte_kein_pricing_hat(db, monkeypatch):
+    _zeile(db, "test66-gefunden-leer", price_eur_checked=None,
+           price_eur=Decimal("4.20"), price_eur_updated="2026-02-02")
+    db.commit()
+
+    async def fake_get_card(card_id, lang="en"):
+        return TcgdexCard(id=card_id)  # gefunden, aber ohne pricing-Feld
+    monkeypatch.setattr(tcgdex, "get_card", fake_get_card)
+
+    asyncio.run(catalog_svc.refresh_catalog_eur(db, limit=10))
+    db.expire_all()
+    row = db.get(TcgdexCatalog, "test66-gefunden-leer")
+    assert row.price_eur == Decimal("4.20")
+    assert row.price_eur_updated == "2026-02-02"
     assert row.price_eur_checked is not None  # der Nachsehe-Stempel rückt trotzdem vor
 
 
@@ -285,6 +326,86 @@ def test_zwei_laeufe_besuchen_verschiedene_zeilen(db, monkeypatch):
     assert erster_lauf.isdisjoint(zweiter_lauf)  # kein Hunger: unterschiedliche Zeilen
 
 
+# ── Ein anderer Schreiber greift während der Netzabrufe ein (Panel-Fund
+# Runde 3, Einzeiler + Zählwerte): Auswahl und Schreiben laufen in ZWEI
+# Transaktionen (WICHTIG 5) — dazwischen liegen die TCGdex-Abrufe. In dieser
+# Zeit kann ein anderer Schreiber die Zeile löschen (vorher: StaleDataError;
+# jetzt sauber übersprungen) oder ihr enriched auf False setzen und einen
+# frischeren Preis eintragen (der Repass darf ihn NICHT mit seinem eigenen,
+# älteren Abruf überschreiben). Beide Zweige waren bisher ungetestet;
+# `visited` darf nur zählen, was wirklich geschrieben wurde.
+
+def test_zeile_geloescht_oder_de_enriched_waehrend_der_netzabrufe(db, monkeypatch):
+    _zeile(db, "test66-geloescht", price_eur_checked=None)
+    _zeile(db, "test66-de-enriched", price_eur_checked=None,
+           price_eur=Decimal("9.00"), price_eur_updated="2026-03-03")
+    _zeile(db, "test66-normal", price_eur_checked=None)
+    db.commit()
+
+    async def fake_get_card(card_id, lang="en"):
+        # Simuliert einen ZWEITEN Schreiber, der genau während dieses
+        # (gemockten) Netzabrufs eingreift — das Zeitfenster, das die
+        # Zwei-Transaktionen-Umstellung offen lässt.
+        if card_id == "test66-geloescht":
+            andere_session = SessionLocal()
+            andere_session.query(TcgdexCatalog).filter(
+                TcgdexCatalog.card_id == "test66-geloescht").delete()
+            andere_session.commit()
+            andere_session.close()
+        elif card_id == "test66-de-enriched":
+            andere_session = SessionLocal()
+            fremde_zeile = andere_session.get(TcgdexCatalog, "test66-de-enriched")
+            fremde_zeile.enriched = False
+            fremde_zeile.price_eur = Decimal("1.11")
+            fremde_zeile.price_eur_updated = "2026-08-19"
+            andere_session.commit()
+            andere_session.close()
+        return TcgdexCard(id=card_id,
+                          pricing=Pricing(cardmarket=CardMarketPricing(avg=5.00, updated="2026-08-19")))
+    monkeypatch.setattr(tcgdex, "get_card", fake_get_card)
+
+    stats = asyncio.run(catalog_svc.refresh_catalog_eur(db, limit=10))
+
+    db.expire_all()
+    assert db.get(TcgdexCatalog, "test66-geloescht") is None  # bleibt weg, kein Crash
+
+    # de-enriched: der fremde (frischere) Stand bleibt unangetastet
+    row_d = db.get(TcgdexCatalog, "test66-de-enriched")
+    assert row_d.enriched is False
+    assert row_d.price_eur == Decimal("1.11")
+    assert row_d.price_eur_updated == "2026-08-19"
+
+    # normal: ganz gewöhnlich gestempelt
+    row_n = db.get(TcgdexCatalog, "test66-normal")
+    assert row_n.price_eur == Decimal("5.00")
+    assert row_n.price_eur_checked is not None
+
+    # visited/updated zählen NUR die tatsächlich geschriebene Zeile (1 von 3
+    # ausgewählten) — nicht die ursprüngliche Auswahlgröße.
+    assert stats["visited"] == 1
+    assert stats["updated"] == 1
+
+
+# ── Keine offene Transaktion während der Netzabrufe (Panel-Fund WICHTIG 5,
+# Runde 3 — deterministischer Nachweis statt der pg_stat_activity-Sonde aus
+# dem Baubericht): eine offene Transaktion während der TCGdex-Abrufe würde
+# eine zeitgleich startende Light-Migration (ACCESS EXCLUSIVE) blockieren.
+
+def test_keine_offene_transaktion_waehrend_der_netzabrufe(db, monkeypatch):
+    _zeile(db, "test66-txn-check", price_eur_checked=None)
+    db.commit()
+
+    beobachtet = {}
+
+    async def fake_get_card(card_id, lang="en"):
+        beobachtet["in_transaction"] = db.in_transaction()
+        return None
+    monkeypatch.setattr(tcgdex, "get_card", fake_get_card)
+
+    asyncio.run(catalog_svc.refresh_catalog_eur(db, limit=10))
+    assert beobachtet["in_transaction"] is False
+
+
 # ── Kennzahl: never_checked + korrekter ältester Stempel (Panel-Fund KLEIN 6) ─
 # SessionLocal läuft mit autoflush=False (database.py) — ohne expliziten
 # flush vor der MIN-Abfrage sähe sie die gerade gesetzten Stempel dieses
@@ -323,6 +444,20 @@ def test_apply_full_setzt_den_nachsehe_stempel():
                     pricing=Pricing(cardmarket=CardMarketPricing(avg=0.50, updated="2026-08-19")))
     catalog_svc._apply_full(row, tc)
     assert row.price_eur == 0.50          # unverändertes Verhalten: Preis kommt weiter an
+    assert row.price_eur_checked is not None
+
+
+# ── _apply_full setzt den Stempel AUCH ohne Preisdaten (Panel-Fund PFLICHT 2,
+# Runde 3): der Test oben füttert nur eine Karte MIT Cardmarket-Preis. Eine
+# Karte ohne Preisdaten (häufig bei JP) käme sonst mit NULL-Stempel aus der
+# Anreicherung und würde von NULLS FIRST sofort wieder in den Repass gezogen
+# — derselbe Doppelabruf, den WICHTIG 3 der letzten Runde beseitigen sollte.
+
+def test_apply_full_setzt_den_stempel_auch_ohne_preisdaten():
+    row = TcgdexCatalog(card_id="test66-ohne-preis", region="west")
+    tc = TcgdexCard(id="test66-ohne-preis", rarity="Common")  # kein pricing-Feld
+    catalog_svc._apply_full(row, tc)
+    assert row.price_eur is None
     assert row.price_eur_checked is not None
 
 

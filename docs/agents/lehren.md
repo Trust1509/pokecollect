@@ -13,6 +13,20 @@ Fällt hier eine Lehre an, die **nicht am eigenen Stack klebt**, gehört sie als
 Issue dorthin (Label `prozess-lehre`) — nicht nur in diese Datei, sonst erfahren
 die anderen Projekte nie davon.
 
+## Vor jedem Slice: fünf Fragen
+
+Sieben Abschnitte liest man einmal. Die Kurzfassung, die tatsächlich vor den
+Slice gehört — wer sie beantwortet, hat die teuersten Klassen unten abgedeckt:
+
+1. **Womit beweist dieser Slice, dass er wirkt** — und war dieser Beweis je rot?
+2. **Wer ruft den geänderten Code auf?** Jeden Aufrufer, auch den serverseitigen.
+3. **Welche Aussage im Repo wird durch diesen Diff falsch?** (Doku, Kommentare,
+   Docstrings, Anweisungen für später.)
+4. **Beruht ein Schutz hier auf einer Angabe, die das Geprüfte über sich selbst
+   macht?** (Ein Datenstand, den der Schreiber selbst setzt, ist keine Prüfung.)
+5. **Was kann ich nicht prüfen** — und wo steht das, damit es nicht still zur
+   Schuldenliste wird?
+
 ---
 
 ## 1. Grün heißt nicht bewiesen

@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.7.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.8.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.7.1`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.8.0`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen als Issue in die Vorlage** (Label
 `prozess-vorschlag` / `prozess-lehre`), nicht in einen Alleingang hier.
@@ -41,9 +41,14 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
 2. **Direkt-Push auf `main` ist autorisiert** (Trunk-Workflow, Pipeline ersetzt
    PRs). Releases nur per Tag — Ritual und Risiko-Stufen in
    `docs/agents/release-ritual.md`.
-3. **Je Issue ein Commit; Gates je Commit:** Tests + Typecheck + Build lokal
-   grün (`scripts/gates.sh`), CI auf main grün. Bei Datei-Überlappung mehrerer
-   Arbeitspakete sequenziell statt parallel arbeiten (Git-Race).
+3. **Je Issue ein Commit; Gates je CODE-Commit:** Tests + Typecheck + Build
+   lokal grün (`scripts/gates.sh`), CI auf main grün. Reine Doku-Commits
+   brauchen kein Gate — sie können keines bestehen (`[skip ci]`). Die Prüfungen
+   laufen **einmal auf dem finalen Baumzustand**, egal von wem: dieselbe Suite
+   von Bauer, Arbiter und CI dreimal zu fahren ist Leerlauf. Bei Datei-
+   Überlappung mehrerer Arbeitspakete sequenziell statt parallel (Git-Race).
+   Jeder Bau-Commit trägt `Built-With: <modell> (<datum>)` — ohne das ist nach
+   vier Wochen nicht mehr feststellbar, wer was gebaut hat.
 4. **Riskant-Gate:** Datenverlust-/Migrations-/Security-/Auth-Änderungen →
    bauen + grüner Report + **Owner-OK vor Release**. Gefahrloses + alle Gates
    grün + real im Teststand verifiziert → Release autonom.
@@ -56,10 +61,10 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
 8. **Lehren verankern:** Fehlerklassen nach `docs/agents/lehren.md`, Fachliches
    nach `CONTEXT.md`/ADRs. Ist die Lehre **übertragbar** (klebt nicht am Stack),
    zusätzlich als Issue in die Vorlage.
-9. **Versionierung:** eine Projektversion je Dev-Stand, an ZWEI Stellen bumpen:
-   `web/src/lib/version.ts` (`APP_VERSION`) + `backend/app/config.py`
-   (`app_version`). Sichtbare Auslieferungen bekommen einen CHANGELOG-Eintrag
-   **mit Risiko-Stufe** (`gefahrlos` / `backup` / `breaking`).
+9. **Versionierung und Auslieferung:** `docs/agents/release-ritual.md` — dort
+   stehen die zwei Versionsstellen, die Risiko-Stufen und der Ablauf. Hier
+   bewusst kein Auszug: Die Doppelpflege Kurzfassung/Langfassung war in zwei
+   Projekten die Ursache, dass eine Pflichtregel unwirksam blieb (v1.8.0).
 
 ## Build, Gates, Teststand
 
@@ -98,10 +103,9 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   Bericht bei Rot: `e2e/playwright-report/index.html`. Test-Texte gebündelt in
   `e2e/tests/helfer.ts` (`T`).
 - **Kein Alembic:** Schema-Änderungen sind additive, idempotente
-  Light-Migrations in `backend/app/main.py::_run_light_migrations`. Damit
-  entfallen `alembic heads`-Gate und Rückwärts-Roundtrip — **nicht** die
-  Datenerhalt-Probe (`docs/agents/lehren.md` §2). **Expand–Contract ist Pflicht**
-  bei Semantik-Änderungen.
+  Light-Migrations in `backend/app/main.py::_run_light_migrations`. Was daraus
+  folgt — Datenerhalt-Probe statt Roundtrip, Expand–Contract, die
+  Transaktions-Falle beim Testen — steht in `docs/agents/lehren.md` §2.
 - **Android:** ausgemustert (ADR-0002) — keine native App mehr; `android-dev`
   bleibt als Archiv-Branch.
 
@@ -154,11 +158,13 @@ vollständiges oder vermerkt-verkürztes Panel gilt als **nicht geprüft**.
 3. **Drittstimme (DeepSeek) bis 2 $/Monat ohne Rückfrage** (Owner, 15.08.2026),
    darüber melden. Bei `402` zweistimmig weiterarbeiten, im Panel-Kommentar
    vermerken **und** den Owner informieren.
-4. **Arbitrierung (die wichtigste Regel):** Der Hauptagent REPRODUZIERT jeden
-   Blocker am Code / an der laufenden App, bevor er ihn übernimmt oder verwirft.
-   Prüfer-Konvergenz ersetzt keine Reproduktion, Mehrheit entscheidet nie allein.
-5. **Bau-Briefe** nach `docs/agents/bau-brief.md` — inklusive Rot-Beweis und der
-   Frage „Wer ruft den geänderten Code auf?".
+4. **Wann ein Panel Pflicht ist**, steht als abschließende Liste in
+   `panel.md` — hier nur die Auslöse-Frage: **Im Zweifel Panel.** Ein neuer
+   Test ist keine reine Testinfrastruktur, und Code fremder Herkunft bekommt
+   das Panel unabhängig vom Thema.
+5. **Bau-Briefe** nach `docs/agents/bau-brief.md`, Pflicht-Gerüst aus acht
+   Blöcken. Vor dem Absenden: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
+   Ein Brief ohne Block 3 (Konsumenten) ist die teuerste Auslassung.
 
 ## Agent skills
 
