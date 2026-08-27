@@ -144,8 +144,14 @@ export default function EditForm({
     if (daten) teile.push(`${t.detail_provenance_label_data}: ${daten}`);
     const bild = card.bild_quelle ? t.detail_provenance_image(card.bild_quelle) : null;
     if (bild) teile.push(`${t.detail_provenance_label_image}: ${bild}`);
+    // Panel-Nacharbeit KLEIN 3: wert_quelle kommt aus dem JÜNGSTEN
+    // PreisHistorie-Eintrag, unabhängig vom AKTUELLEN wert_eur — nach dem
+    // Leeren des Werts (PUT { wert_eur: null }) bliebe sonst ein Alt-Eintrag
+    // sichtbar ("Preis: Cardmarket" ohne jeden Preis). Dasselbe Gate wie der
+    // Wert-Kasten unten (`card.wert_eur != null`).
     const preisSchluessel = priceSourceKey(card.wert_quelle);
-    const preis = preisSchluessel !== "unbekannt" ? t.detail_provenance_price(preisSchluessel) : null;
+    const preis = card.wert_eur != null && preisSchluessel !== "unbekannt"
+      ? t.detail_provenance_price(preisSchluessel) : null;
     if (preis) teile.push(`${t.detail_provenance_label_price}: ${preis}`);
     return teile.length ? teile.join(" · ") : null;
   })();

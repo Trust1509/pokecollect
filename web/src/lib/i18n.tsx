@@ -341,17 +341,25 @@ const DE = {
   // detail_usd_variant (Fallback `?? v`) geben die drei Lookups hier `?? null`
   // zurück: ein unbekannter/künftiger Backend-Wert lässt SEIN Segment weg,
   // statt rohen ASCII-Text zu zeigen (Hausregel) — eine leere Herkunft ist bei
-  // ungepreisten/bildlosen Karten der Normalfall, kein Fehlerfall.
+  // ungepreisten/bildlosen Karten der Normalfall, kein Fehlerfall. Rückgabetyp
+  // explizit `string | null` (Panel-Nacharbeit KLEIN 6): ohne
+  // `noUncheckedIndexedAccess` würde TS aus `Record<string,string>[v] ?? null`
+  // sonst nur `string` folgern — der `null`-Fall wäre für Aufrufer unsichtbar.
   detail_provenance_label_data: "Daten",
   detail_provenance_label_image: "Bild",
   detail_provenance_label_price: "Preis",
-  detail_provenance_data: (v: string) => ({
-    tcgdex: "TCGdex", manuell: "manuell erfasst",
+  detail_provenance_data: (v: string): string | null => ({
+    // "manuell" behauptet NUR die Abwesenheit einer TCGdex-Verknüpfung, NICHT
+    // dass ein Mensch die Zeile erfasst hat (Panel-Nacharbeit KLEIN 5): ein
+    // vom Server nachgelegter Pokédex-Platzhalter nach dem Löschen der letzten
+    // Karte (cards.py::delete_card) hat ebenfalls keine tcgdex_card_id, ohne
+    // dass je jemand etwas „erfasst" hätte. Der ASCII-Wert bleibt "manuell".
+    tcgdex: "TCGdex", manuell: "ohne TCGdex-Verknüpfung",
   } as Record<string, string>)[v] ?? null,
-  detail_provenance_image: (v: string) => ({
-    foto: "eigenes Foto", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
+  detail_provenance_image: (v: string): string | null => ({
+    foto: "eigenes Foto", url: "eigene Bild-URL", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
   } as Record<string, string>)[v] ?? null,
-  detail_provenance_price: (v: string) => ({
+  detail_provenance_price: (v: string): string | null => ({
     cardmarket: "Cardmarket", oauth: "Cardmarket (OAuth)", tcgplayer: "TCGplayer",
   } as Record<string, string>)[v] ?? null,
   field_pattern: "Muster",
@@ -902,13 +910,13 @@ const EN: typeof DE = {
   detail_provenance_label_data: "Data",
   detail_provenance_label_image: "Image",
   detail_provenance_label_price: "Price",
-  detail_provenance_data: (v: string) => ({
-    tcgdex: "TCGdex", manuell: "manually entered",
+  detail_provenance_data: (v: string): string | null => ({
+    tcgdex: "TCGdex", manuell: "not linked to TCGdex",
   } as Record<string, string>)[v] ?? null,
-  detail_provenance_image: (v: string) => ({
-    foto: "own photo", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
+  detail_provenance_image: (v: string): string | null => ({
+    foto: "own photo", url: "custom image URL", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
   } as Record<string, string>)[v] ?? null,
-  detail_provenance_price: (v: string) => ({
+  detail_provenance_price: (v: string): string | null => ({
     cardmarket: "Cardmarket", oauth: "Cardmarket (OAuth)", tcgplayer: "TCGplayer",
   } as Record<string, string>)[v] ?? null,
   field_pattern: "Pattern",
