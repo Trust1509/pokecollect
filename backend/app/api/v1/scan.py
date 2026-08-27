@@ -284,16 +284,25 @@ async def scan(
         engine = "ocr"
 
     reads = reads or []
+    # Koordinaten-Vorstufe (Panel-Runde 3, Auflage A1 — Regression aus Runde
+    # 2): MUSS vor der Auswahl laufen. Ohne sie liest die Auswahl unten die
+    # ROHE bbox-Fläche ohne Gültigkeitsfilter — ein Koordinaten-Müll-Wert wie
+    # [2.0, 0.1, 0.63, 0.88] (vlm.py-Fallback-Bug) hat trotzdem eine reale,
+    # aber bedeutungslose Fläche und kann eine echte, nur unplausibel-
+    # großformatige Hauptkarte aus der Auswahl verdrängen. Prüft NUR
+    # Koordinaten, kein Bild nötig (Details: crop_hints.py).
+    reads = crop_hints.discard_invalid_coords(reads)
     # Einzelkarten-Modus: nur die Hauptkarte behalten (größte Bounding-Box),
     # falls versehentlich eine Karte darunter mit erkannt wurde. MUSS vor der
     # Sanitierung laufen (Panel-Nacharbeit #36, Auflage 1 — Blocker): die
     # Auswahl entscheidet, WELCHER Read die Hauptkarte ist, und dafür ist auch
-    # eine (später ggf. verworfene) unplausible Box ein gültiges Größensignal.
-    # In der alten Reihenfolge (Sanitierung zuerst) zählte eine verworfene
-    # bbox als Fläche 0.0 — eine überdimensionierte, aber richtig sitzende
-    # Hauptkarten-Box verlor dann gegen einen winzigen plausiblen Nachbarn,
-    # und der GANZE Read der Hauptkarte (Name, Nummer, alles) ging verloren,
-    # nicht nur ihr Zuschnitt.
+    # eine (später ggf. verworfene) unplausible, aber KOORDINATEN-gültige Box
+    # ein gültiges Größensignal. In der Runde-1-Reihenfolge (Sanitierung
+    # zuerst) zählte eine verworfene bbox als Fläche 0.0 — eine
+    # überdimensionierte, aber richtig sitzende Hauptkarten-Box verlor dann
+    # gegen einen winzigen plausiblen Nachbarn, und der GANZE Read der
+    # Hauptkarte (Name, Nummer, alles) ging verloren, nicht nur ihr
+    # Zuschnitt.
     if mode == "single" and len(reads) > 1:
         def _area(r) -> float:
             return (r.bbox[2] * r.bbox[3]) if (r.bbox and len(r.bbox) == 4) else 0.0

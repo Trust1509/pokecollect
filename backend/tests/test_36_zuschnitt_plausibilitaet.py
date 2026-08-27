@@ -38,7 +38,7 @@ from PIL import Image
 
 from app.schemas.scan import ScanRawRead
 from app.services.scan.crop_hints import (
-    _bbox_plausible, _quad_plausible, sanitize_crop_hints,
+    _bbox_plausible, _bbox_reject_reason, _quad_plausible, sanitize_crop_hints,
 )
 from app.services.scan.vlm import ReaderResult
 
@@ -411,6 +411,19 @@ def test_sanitize_crop_hints_loggt_verwerfungen_getrennt_gezaehlt(caplog):
     Klasse "stille Ausfälle" (lehren.md §3 + §9): eine Verwerfung darf nicht
     stumm bleiben. EINE Logzeile je Aufruf, mit getrennten bbox/quad-Zählern,
     nur wenn mindestens eine Verwerfung stattfand.
+
+    Panel-Runde 3, Auflage B1 (Nachbesserung): Die Logzeile muss den
+    TATSÄCHLICHEN Verwerfungsgrund je Hinweis nennen, nicht nur eine
+    statische Aufzählung aller möglichen Gründe (das läse sich wie der
+    echte Grund, wäre es aber nicht). `schlecht_bbox` hat hier ein zu
+    schmales Verhältnis (Grund "verhaeltnis"), `schlecht_quad` einen
+    Koordinaten-Ausreißer (y=1,81, Grund "koordinaten") — beide Wörter
+    müssen wörtlich in der Logzeile stehen, nicht nur "Verhältnis/Fläche/
+    Koordinaten" als Fließtext-Erklärung.
+
+    Rot-Beweis: die Grund-Weitergabe kappen (z.B. wieder nur zählen statt
+    den Grund zu übernehmen) → dieser Test fällt, obwohl die reinen
+    Zähl-Assertions weiter grün blieben (das war exakt die Lücke).
     """
     image_bytes = _png_bytes(1000, 1000)
     gut = ScanRawRead(name="test36-log-gut", bbox=[0.10, 0.05, 0.315, 0.44])
@@ -424,6 +437,33 @@ def test_sanitize_crop_hints_loggt_verwerfungen_getrennt_gezaehlt(caplog):
     assert caplog.text.count("Zuschnitt-Hinweise verworfen") == 1
     assert "1 bbox" in caplog.text
     assert "1 quad" in caplog.text
+    # Der ECHTE Grund je Hinweis, nicht nur die Zählung (Auflage B1):
+    assert "verhaeltnis" in caplog.text
+    assert "koordinaten" in caplog.text
+    # Gegenprobe: "flaeche" kommt hier gar nicht vor (kein Read verletzt die
+    # Kappe) — würde die Logik alle drei Wörter immer statisch anhängen
+    # (die alte, unzureichende Fassung), stünde "flaeche" fälschlich mit da.
+    assert "flaeche" not in caplog.text
+
+
+def test_bbox_negative_breite_zaehlt_als_koordinaten_nicht_verhaeltnis():
+    """
+    Panel-Runde 3, Auflage B4: w<=0 bzw. h<=0 ist ein KOORDINATEN-Defekt
+    (eine kaputte Größenangabe), keine Verhältnis-Frage. Zwei Gründe, warum
+    das mehr als Kosmetik ist: (1) macht B1s Log-Aussage ehrlich — sonst
+    stünde "verhaeltnis" im Log für einen Wert, der nie ein Seitenverhältnis
+    hatte; (2) zwei NEGATIVE Werte multiplizieren sich zu einer POSITIVEN
+    "Fläche" (w=-0,5, h=-0,3 -> w*h=+0,15) — ohne diese Prüfung in der
+    Koordinaten-Stufe wäre das ein zweiter Weg, die Auswahl in scan.py zu
+    kapern (dieselbe Fehlerklasse wie Auflage A1, nur über das Vorzeichen
+    statt über den Wertebereich).
+
+    Rot-Beweis: die w<=0/h<=0-Prüfung aus `_bbox_coords_valid` entfernen →
+    dieser Test fällt (Grund würde dann "verhaeltnis").
+    """
+    assert _bbox_reject_reason([0.1, 0.1, 0.0, 0.5], 1000, 1000, "single") == "koordinaten"
+    assert _bbox_reject_reason([0.1, 0.1, 0.3, -0.2], 1000, 1000, "single") == "koordinaten"
+    assert _bbox_reject_reason([0.1, 0.1, -0.5, -0.3], 1000, 1000, "single") == "koordinaten"
 
 
 def test_sanitize_crop_hints_loggt_nichts_wenn_alles_plausibel(caplog):
@@ -433,3 +473,159 @@ def test_sanitize_crop_hints_loggt_nichts_wenn_alles_plausibel(caplog):
     with caplog.at_level("INFO", logger="app.services.scan.crop_hints"):
         sanitize_crop_hints([gut], image_bytes)
     assert "Zuschnitt-Hinweise verworfen" not in caplog.text
+
+
+# ── Panel-Nacharbeit #36, Runde 3, Auflage A1 (Regression): ─────────────────
+# Koordinaten-Müll darf die Auswahl nicht kapern
+#
+# Sonden-Beleg der Delta-Prüfung: `[200,10,63,88]` wird via vlm.py-Fallback
+# zu `[2.0, 0.1, 0.63, 0.88]` (x=2.0 weit außerhalb). Roh gerechnet hat das
+# eine Fläche von 0,63*0,88=0,5544 — mehr als die echte Hauptkarte (0,504)
+# im selben Foto. Unter der Runde-2-Reihenfolge (Auswahl liest die ROHE
+# bbox ohne Gültigkeitsfilter) gewann der Müll-Read die Auswahl, und die
+# echte Hauptkarte (Name+Nummer) ging komplett verloren.
+
+def test_koordinaten_muell_kapert_die_auswahl_nicht(client, reader_openai, png_bytes):
+    """
+    Integrationstest über den echten Endpunkt (mode=single): eine echte,
+    plausible Hauptkarte (Fläche 0,504 auf dem 10x14-Bild, Verhältnis
+    ≈0,735 — beides im grünen Bereich) tritt gegen einen Koordinaten-Müll-
+    Read an (bbox=[2.0, 0.1, 0.63, 0.88], rohe Fläche 0,5544 — GRÖSSER als
+    die Hauptkarte). Die Hauptkarte muss trotzdem gewinnen: der Müll-Read
+    hat keine gültige Koordinate und darf gar nicht erst als Größensignal
+    zählen.
+
+    Rot-Beweis: die Koordinaten-Vorstufe (`crop_hints.discard_invalid_coords`
+    in scan.py) entfernen → dieser Test fällt, weil dann der Müll-Read
+    (0,5544 > 0,504) die Auswahl gewinnt.
+    """
+    reader_openai(ReaderResult(
+        [
+            ScanRawRead(name="test36-hauptkarte", number="321/654",
+                        bbox=[0.02, 0.02, 0.72, 0.70]),   # Fläche 0,504, plausibel
+            ScanRawRead(name="test36-parse-muell", number="000/000",
+                        bbox=[2.0, 0.1, 0.63, 0.88]),      # Koordinaten-Müll, rohe Fläche 0,5544
+        ],
+        44, None))
+    r = client.post(
+        "/api/v1/scan",
+        files={"file": ("scan.png", png_bytes, "image/png")},
+        data={"mode": "single"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert len(body["candidates"]) == 1
+    raw = body["candidates"][0]["raw"]
+    assert raw["name"] == "test36-hauptkarte"
+    assert raw["number"] == "321/654"
+    assert raw["bbox"] is not None  # koordinaten- UND verhältnis-gültig, übersteht auch Phase 2
+
+
+# ── Panel-Nacharbeit #36, Runde 3, Auflage C1: Flächen-Kappe am echten ──────
+# Endpunkt (mode=mode ist sonst spurlos entfernbar)
+
+def test_flaechenkappe_greift_am_echten_endpunkt_nur_in_binder_nicht_in_single(client, reader_openai, png_bytes):
+    """
+    Ohne diesen Test war `mode=mode` beim `sanitize_crop_hints`-Aufruf in
+    scan.py spurlos entfernbar (491/491 blieben grün) — die Flächen-Kappe
+    wäre in mode=multi/binder am echten Endpunkt still tot gewesen, weil
+    `sanitize_crop_hints` ohne den Parameter auf den Default "single"
+    zurückfällt.
+
+    Box mit 68% der Bildfläche (0,85 x 0,80) und plausiblem Verhältnis
+    (≈0,759 auf dem 10x14-Bild) — genau der Mappenseiten-Fall aus Auflage 2.
+
+    Rot-Beweis: `mode=mode` aus dem `sanitize_crop_hints`-Aufruf in scan.py
+    entfernen → die mode=binder-Hälfte dieses Tests fällt (bbox würde
+    fälschlich überleben).
+    """
+    grosse_seite = [0.02, 0.02, 0.85, 0.80]  # Fläche 0,68; Verhältnis ≈0,759 auf 10x14
+
+    reader_openai(ReaderResult([ScanRawRead(name="test36-seite", bbox=list(grosse_seite))], 55, None))
+    r_binder = client.post(
+        "/api/v1/scan",
+        files={"file": ("scan.png", png_bytes, "image/png")},
+        data={"mode": "binder"},
+    )
+    assert r_binder.status_code == 200, r_binder.text
+    assert r_binder.json()["candidates"][0]["raw"]["bbox"] is None
+
+    reader_openai(ReaderResult([ScanRawRead(name="test36-seite", bbox=list(grosse_seite))], 56, None))
+    r_single = client.post(
+        "/api/v1/scan",
+        files={"file": ("scan.png", png_bytes, "image/png")},
+        data={"mode": "single"},
+    )
+    assert r_single.status_code == 200, r_single.text
+    assert r_single.json()["candidates"][0]["raw"]["bbox"] == grosse_seite
+
+
+# ── Panel-Nacharbeit #36, Runde 3, Auflage C2: quad-Zwilling ────────────────
+# der Flächen-Kappe (die quad-Hälfte hatte null Testabdeckung)
+
+def test_quad_dreimaldrei_mappenseite_binder_modus_wird_von_flaechenkappe_gefangen():
+    """
+    quad-Zwilling von `test_bbox_dreimaldrei_mappenseite_binder_modus_wird_von_flaechenkappe_gefangen`
+    (Auflage 2b) — als Rechteck-Viereck dieselbe Geometrie, damit exakt
+    dieselbe Fläche (≈64,6%) und dasselbe Verhältnis (≈0,716) herauskommen.
+    Ohne diesen Test war `_polygon_area_fraction` (die Flächen-Berechnung
+    für quad) ersatzlos löschbar, ohne dass irgendein Test das bemerkt hätte.
+
+    Rot-Beweis: die Flächen-Kappe aus `_quad_reject_reason` entfernen →
+    dieser Test fällt.
+    """
+    w, h = 0.6801136363636363, 0.95
+    x, y = 0.02, 0.02
+    quad = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]
+    assert not _quad_plausible(quad, 1000, 1000, mode="binder")
+
+
+def test_quad_dreimaldrei_mappenseite_single_modus_ueberlebt():
+    """Gegenprobe zum Test oben: dieselbe quad-Box, mode=single -> keine Flächen-Kappe, überlebt."""
+    w, h = 0.6801136363636363, 0.95
+    x, y = 0.02, 0.02
+    quad = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]
+    assert _quad_plausible(quad, 1000, 1000, mode="single")
+
+
+# ── Panel-Nacharbeit #36, Runde 3, Auflage B2: _MAX_RATIO-Kommentar war ─────
+# nur für quadratische Bilder korrekt
+
+def test_bbox_ganzbild_auf_3zu4_bild_ueberlebt_im_single_faellt_an_flaechenkappe_im_binder():
+    """
+    Der ursprüngliche Kommentar an `_MAX_RATIO` behauptete pauschal, ein
+    Ganzbild-bbox `[0,0,1,1]` werde von der oberen Schranke gefangen — das
+    gilt nur bei einem QUADRATISCHEN Bild. Auf einem 3:4-Bild hat
+    `[0,0,1,1]` das Seitenverhältnis 3/4=0,75 und ist damit nach reinem
+    Seitenverhältnis PLAUSIBEL (kein Fehler: ein formatfüllendes Einzelfoto
+    ist im single-Modus normal). Die Flächen-Kappe fängt denselben Fall im
+    Mehrkarten-Modus trotzdem, unabhängig vom Bildformat (Fläche ist immer
+    1,0).
+    """
+    bbox = [0.0, 0.0, 1.0, 1.0]
+    image_bytes = _png_bytes(300, 400)  # 3:4
+    assert _bbox_plausible(bbox, 300, 400, mode="single")
+    out = sanitize_crop_hints([ScanRawRead(name="test36-3zu4-ganzbild", bbox=list(bbox))], image_bytes, mode="binder")
+    assert out[0].bbox is None
+
+
+# ── Panel-Nacharbeit #36, Runde 3, Auflage C3: _COORD_EPS an der Grenze ─────
+# festnageln (bisher nur implizit über weit-außerhalb-Werte getestet)
+
+def test_bbox_knapp_ausserhalb_der_koordinaten_toleranz_wird_verworfen():
+    """
+    x+w = 1,05 — knapp über der Toleranzgrenze 1+ε=1,02 (ε=0,02). w/h ALLEIN
+    ergäben ein plausibles Verhältnis (0,63/0,88≈0,716): erst die Grenze
+    selbst entscheidet.
+
+    Rot-Beweis: `_COORD_EPS` auf 0,19 weiten → dieser Test fällt (1,05 läge
+    dann innerhalb 1+0,19=1,19).
+    """
+    bbox = [0.42, 0.05, 0.63, 0.88]  # x + w = 1.05
+    assert not _bbox_plausible(bbox, 1000, 1000)
+
+
+def test_bbox_knapp_innerhalb_der_koordinaten_toleranz_ueberlebt():
+    """Gegenprobe: x+w = 1,01 — knapp INNERHALB von 1+ε=1,02 — überlebt."""
+    bbox = [0.38, 0.05, 0.63, 0.88]  # x + w = 1.01
+    assert _bbox_plausible(bbox, 1000, 1000)
