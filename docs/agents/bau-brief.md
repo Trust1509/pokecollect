@@ -9,7 +9,7 @@ Ein Bau-Brief ist der Unterschied zwischen einem Slice, der beim ersten Panel
 durchgeht, und einem, der drei Runden braucht. Die Punkte unten stehen alle,
 weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
 
-## Pflicht-Gerüst (Block 0 plus acht Blöcke, keiner leer)
+## Pflicht-Gerüst (neun Themen: Block 0 plus acht Blöcke, keiner leer)
 
 Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
 
@@ -25,8 +25,9 @@ kein Urteil* — ob ein Thema hier gegenstandslos ist, entscheidet weiterhin der
 Kopf.
 
 ```markdown
-## 0 Risiko             Risiko: R<n> — Auslöser: <welcher aus der Tabelle
-                        in CLAUDE.md; bei R0/R2 genügt „kein R3/R4-Auslöser">
+## 0 Risiko             Risiko: R<n> — Auslöser: <bei R3/R4 der Auslöser aus
+                        der Tabelle in CLAUDE.md; bei R0 der R0-Auslöser; bei
+                        R2 „Normalfall, gegen die Auslöser-Tabelle geprüft">
 ## 1 Auftrag            was gebaut wird, in zwei Sätzen
 ## 2 Befund             bereits verifiziert — NICHT neu recherchieren
 ## 3 Konsumenten        WER RUFT DEN GEÄNDERTEN CODE AUF? Jeden nennen.
@@ -66,8 +67,9 @@ Repo: C:\Users\manue\.claude\Immich\pokecollect. Branch main, HEAD ⟨…⟩.
 Baue Issue #⟨…⟩.
 
 ## Risiko
-Risiko: R⟨n⟩ — Auslöser: ⟨…⟩ (Tabelle in CLAUDE.md; die Abstufung nach
-unten braucht die Begründung, nicht die nach oben)
+Risiko: R⟨n⟩ — Auslöser: ⟨bei R3/R4 der Tabellen-Auslöser; bei R2 „Normalfall,
+gegen die Auslöser-Tabelle geprüft"⟩ (Abstufung nach unten braucht die
+Begründung, nicht die nach oben)
 
 ## Befund (bereits verifiziert, nicht neu recherchieren)
 ⟨Was schon gemessen/geprüft ist — mit Datei:Zeile.⟩
@@ -174,6 +176,42 @@ liegt.
 benutzte Hälfte. Neue Tabellen als responsive Karten, nicht als rohe Tabelle.
 
 ---
+
+## Die Wahrheit des Briefs: Behauptungen sind Bringschuld des Schreibers
+
+Übernommen aus v1.12.0 (zweimal in einer Woche war anderswo die Fehlerquelle
+der Brief, nicht der Bauer) — und hier bereits einmal selbst erlebt: Die
+arbitrierte #36-Auflage „Auswahl auf rohen Daten" war zu grob und erzeugte
+eine Regression. Drei Regeln:
+
+- **„Dasselbe Muster wie Y" gilt erst, wenn Y wirklich gelesen und seine
+  Schutzschichten AUFGEZÄHLT und übernommen sind.** Sonst erbt die Kopie den
+  Namen, nicht den Schutz.
+- **Eine Umfangsgrenze gilt für neue Features, nie für die Blast-Radius-Prüfung
+  einer Default-Änderung.** Wer einen globalen Default ändert, prüft ALLE
+  Leser — auch die ausgeklammerten.
+- **Der Bauer korrigiert eine falsche Brief-Prämisse mit Beleg — erwünschtes
+  Verhalten, kein Ungehorsam.** Der Brief ist Anleitung, kein Dogma;
+  verifizierte Gegenbelege gehören in den Report.
+
+## Sechs Prüffragen vor der Landung (v1.12.0 — in jeden Brief-Block 5/8 bzw. vor den Selbst-Commit)
+
+1. **Schreibt dieser Fix an einer Stelle, die vorher nur las — und wer teilt
+   sich die Zielzeilen?**
+2. **Prüft dieser Test, was wahr bleiben MUSS — oder nur, was sich nicht
+   ändern DARF?**
+3. **Welche Geschwister-Routinen haben denselben Aufbau, und warum bleiben sie
+   so?** „Bewusst später" ist eine gültige Antwort — Fehlen keine.
+4. **Wählt eine Routine eine Zeile aus UND legt bei Nichtpassung eine neue
+   an?** Dann läuft die Auswahl über die Identität des Zwecks, nie über eine
+   Reihenfolge — sonst wächst der Bestand mit jedem Aufruf.
+5. **Gilt die Rot-Zahl auch mit Kontext?** „N Tests rot" zählt nur mit
+   Lauf-Umfang (eine Datei / ganze Suite) und DB-Zustand (frisch/befüllt).
+6. **Ist jede Behauptung im Brief belegt oder als Annahme markiert?**
+
+Messauftrag des Owners: je Slice melden, welche Fragen gefangen haben und
+welche Ritual waren (Vorlagen-Rückmeldungs-Issue) — Rituale werden wieder
+herausgeschnitten.
 
 ## Nacharbeit nach dem Panel
 

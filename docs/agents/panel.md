@@ -47,21 +47,18 @@ Dateizugriff nicht funktioniert und nur der Connector zu benutzen ist — sonst
 verbrennt Codex Züge an `git`-Aufrufen, die an der Namespace-Sperre scheitern.
 Der Zweig ist Wegwerfware und wird nach dem Landen gelöscht.
 
-**Stimme 3 — DeepSeek V4 Pro**, diff-only, günstig. Irrt Richtung zu-streng und
-liest gelegentlich die Vorher-Seite eines Diffs; die Treffer sind echt.
-**Budget: bis 2 $/Monat ohne Rückfrage** (Owner-Freigabe 15.08.2026), darüber
-melden. Bei `402` (Guthaben leer) gilt der Ausfall-Weg unten.
+**Stimme 3 — klassenabhängig besetzt (v1.12.0):** Bei **R3** eine **zweite
+blinde Claude-Repo-Stimme, adversarial gerahmt** — vier R3-Runden Messbasis,
+in jeder exklusive Funde der Blocker-Klasse. Bei R2 entfällt Stimme 3
+(Mindestprüfung: Erst- + Zweitstimme). **DeepSeek ist keine Panel-Stimme
+mehr** — diff-only konvergierte nur und lieferte hier eine falsche Entwarnung
+am Blocker (#66); das Werkzeug bleibt als Ad-hoc-Zweitmeinung (Budget bis
+2 $/Monat, Owner 15.08.2026; bei `402` Owner informieren).
 
-**Sie zählt mit ihren Funden, nie mit ihrer Freigabe** (v1.8.0, über fünf
-Projekte gemessen: ein exklusiver bestätigter Fund gegen rund ein Dutzend Fehl-
-und Überbefunde). Der Grund ist strukturell: Die schweren Funde liegen in der
-Beziehung zwischen Diff und Umgebung — für eine diff-only-Sicht prinzipiell
-unsichtbar. Hier bestätigt: Im #66-Panel gab sie „keine Funde, landen" und
-begründete das ausgerechnet an der Stelle des Blockers.
-
-Zuschnitt daraus: **große Diffs schneiden** (nur die tragenden Dateien), und
-**bei reinen Konfigurations-Diffs gar nicht einsetzen** — dort produziert sie
-Inversionen. Behalten lohnt trotzdem: Konvergenz für Bruchteile eines Cents.
+**Besetzung folgt dem Diff-Typ, der Umfang der Klasse** (v1.12.0, sieben
+Slices Messbasis): backend-Diffs → Zweit-/Drittstimme tragen; reine
+frontend-/Text-Diffs → die blinde Erststimme allein ist tragend und
+ausreichend. Jede Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.
 
 ## Ablauf
 
@@ -182,6 +179,23 @@ dessen Annahme. Das Risiko hängt am fremden Ursprung, nicht am Thema.
 gemeldet wird, ist nicht trivial — sie braucht mindestens den Rot-Beweis über
 die ganze Suite (`bau-brief.md`).
 
+## Quellen-Regel: keine Stimme sieht den Arbeitsbaum
+
+Der Kontext jeder Stimme kommt aus `git show HEAD:<pfad>` oder dem
+Commit-Diff — **nie aus dem Arbeitsbaum** (v1.12.0). Sobald irgendein Prüflauf
+mutieren darf (Rot-Beweise!), ist der Arbeitsbaum kein definierter Zustand
+mehr; anderswo war der schwerste „Befund" einer Stimme ein Mutations-Marker.
+Unsere Reviewer sabotieren bereits in gemounteten Kopien — die LESE-Quelle
+muss trotzdem HEAD sein, nicht der Baum.
+
+## Fremdstimmen: Suchverbot, und Ausfall heißt Ausfall
+
+Jeder Auftrag an eine Fremdmodell-Stimme enthält ein ausdrückliches
+**Suchverbot** (kein Web-Zugriff, keine Recherche nach Repo, Commit oder
+Namen) — anderswo suchte eine Stimme bei Sandbox-Ausfall selbstständig im
+Netz nach Repo und Commit. Ein Werkzeug-/Sandbox-Ausfall wird als **AUSFALL**
+gemeldet, nie als Stimme mit dünnem Ergebnis.
+
 ## Wenn eine Stimme ausfällt
 
 Werkzeug nicht verfügbar, kein Guthaben, Dienst down: **mit zweien weitermachen,
@@ -191,3 +205,12 @@ ausgeliefert ist.
 
 Ein Slice ohne vollständiges oder ausdrücklich vermerkt-verkürztes Panel gilt
 als **nicht geprüft** und wird nicht ausgeliefert.
+
+**Ausfall ist stimmen-neutral** (v1.12.0): Auch die eigene (Claude-)Stimme
+fällt aus — ein Session-Limit mitten im Lauf ist ein AUSFALL unter ihrer
+Überschrift, nie ein dünnes Ergebnis; hier zweimal real passiert. Ein
+abgebrochener Prüflauf wird wie ein abgebrochener Bau behandelt: erst den
+Baum prüfen, dann weiterreden. **Klumpenrisiko bei R3** (zwei von drei
+Stimmen am selben Kontingent): bei knappem Kontingent laufen die beiden
+Claude-Stimmen ZUERST; Ersatzregel für die Zweitblinde: GPT adversarial über
+den Review-Zweig.

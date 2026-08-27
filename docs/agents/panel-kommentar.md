@@ -41,9 +41,9 @@ hingeschrieben.⟩
 ### Stimme 2 — GPT über Codex (⟨modell⟩, ⟨datum⟩)
 ⟨Über denselben Diff, Zweig `review/⟨issue⟩-⟨kurzname⟩`.⟩
 
-### Stimme 3 — DeepSeek (⟨modell⟩, ⟨datum⟩, diff-only)
-⟨Kurz. Bekanntes Muster: irrt Richtung zu-streng, liest gelegentlich die
-Vorher-Seite eines Diffs.⟩
+### Stimme 3 — ⟨R3: zweite blinde Claude-Repo-Stimme, adversarial (⟨modell⟩, ⟨datum⟩) · R2: entfällt (Klasse)⟩
+⟨Bei R3: eigener Prüf-Fokus, adversarial gerahmt. Bei R2 bleibt die
+Überschrift stehen mit „entfällt — R2-Mindestprüfung".⟩
 
 ### Arbitrierung
 ⟨Je Fund eines von DREI Urteilen: reproduziert · verworfen · richtiger Instinkt,
@@ -63,9 +63,10 @@ Prüfer-Konvergenz ersetzt keine Reproduktion.⟩
 Überschrift **stehen lassen**, Grund darunter:
 
 ```markdown
-### Stimme 3 — DeepSeek (⟨modell⟩, ⟨datum⟩, diff-only)
-Ausgefallen: 402, Guthaben leer. Owner informiert am ⟨Datum⟩. Nachzuholen,
-solange der Slice nicht ausgeliefert ist.
+### Stimme 3 — zweite blinde Claude-Repo-Stimme (adversarial)
+Ausgefallen: Session-Limit mitten im Lauf (stimmen-neutral — auch die eigene
+Stimme fällt aus). Ersatz nach Klumpenregel: GPT adversarial über den
+Review-Zweig, gestartet am ⟨Datum⟩.
 ```
 
 Ein Slice ohne vollständiges oder so vermerkt-verkürztes Panel gilt als **nicht

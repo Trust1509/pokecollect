@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.11.3** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.12.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.11.3`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.12.0`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -183,16 +183,16 @@ die Pflichtfälle (v1.11.0) — sie ist der einzige Eigentümer der Auslöser.
 | Klasse | Auslöser (abschließend) | Mindestprüfung |
 |---|---|---|
 | **R0** | reine Testinfrastruktur ohne Verhaltensänderung (**ein neuer Test ist das NICHT**); Doku-Korrektur ohne ausgelieferten Inhalt; Typisierung ohne Verhaltensänderung | lokale Gates |
+| *R1* | **keine frei vergebbare Klasse** — benannte Verkürzung innerhalb von R2 für genau einen Fall: Nacharbeit mit ausschließlich mechanischen Auflagen | blinde Erststimme allein; Begründung unter den ausgelassenen Stimmen |
 | **R2** | alles ohne R0-, R3- oder R4-Auslöser (der Normalfall) | blinde Erststimme + unabhängige Zweitstimme |
-| **R3** | Light-Migration; Berechtigungs-/Datenschutzlogik (Auth, Secrets); Geld/Werte (Preise, Bewertung); Außenwirkung über eine Schnittstelle; **Fremdcode** — Produktionscode, den ein FREMDES System beigesteuert hat (Patch eines Anbietermodells, zugelieferter Zweig, übernommener Schnipsel). **NICHT gemeint: der eigene Bau-Subagent** — sonst wäre der Auslöser hier immer erfüllt und R2 leer | volles Panel + risikospezifische Probe durch die echte Tür |
+| **R3** | **Datenmigration — der VORGANG zählt, nicht das Werkzeug** (v1.12.0, framework-frei): bestehende Daten werden unumkehrbar umgewandelt — auch eine Light-Migration, die Werte aufteilt/umschreibt, auch eine selbstheilende Wanderung beim Start. Eine rein ADDITIVE Spalte ohne Datenumwandlung ist KEINE Datenmigration (→ R2); Berechtigungs-/Datenschutzlogik (Auth, Secrets); Geld/Werte (Preise, Bewertung); Außenwirkung über eine Schnittstelle; **Fremdcode** — Produktionscode, den ein FREMDES System beigesteuert hat (Patch eines Anbietermodells, zugelieferter Zweig, übernommener Schnipsel). **NICHT gemeint: der eigene Bau-Subagent** — sonst wäre der Auslöser hier immer erfüllt und R2 leer | volles Panel + risikospezifische Probe durch die echte Tür |
 | **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe vor Release |
 
-**R1 ist keine frei vergebbare Klasse**, sondern die definierte Verkürzung
-innerhalb von R2 für genau einen Fall: **Nacharbeit mit ausschließlich
-mechanischen Auflagen** → blinde Erststimme allein, Begründung unter der
-Stimmen-Überschrift. „Klein" und „gut rückrollbar" sind Urteile, keine
-Auslöser — und Urteile sind der Punkt, an dem sich der Ausführende unter
-Druck freispricht.
+„Klein" und „gut rückrollbar" sind **Urteile, keine Auslöser** — und Urteile
+sind der Punkt, an dem sich der Ausführende unter Druck freispricht.
+**R4-Lockerungs-Hinweis (v1.12.0):** Gegenüber der früheren Praxis „jede
+Migration = Owner-Gate" ist diese Tabelle eine echte Lockerung — dem Owner beim
+Abgleich am 15.08. und 27.08. veto-fähig vorgelegt, kein Veto.
 
 ## Review-Panel
 
@@ -208,12 +208,12 @@ gilt als **nicht geprüft**.
    Bau-Brief noch den Bericht des Bauers sieht.
 2. **Tiering:** Read-only-Scans/Mechanik → `haiku`, Bau-Slices → `sonnet`,
    Review/Verifikation → `opus`; bei Unsicherheit erben lassen.
-3. **Drittstimme:** bei **R3** eine **zweite blinde Claude-Repo-Stimme,
-   adversarial gerahmt** (P1-Pilot: 2/2 Runden exklusive Blocker; Regelfassung
-   folgt, gearbeitet wird ab jetzt so — Besetzung im Panel-Kommentar
-   kennzeichnen). DeepSeek diff-only nur noch als Zusatzstimme, wo der Diff
-   selbsttragend ist; Budget bis 2 $/Monat ohne Rückfrage (Owner, 15.08.2026),
-   bei `402` vermerken und den Owner informieren.
+3. **Drittstimme bei R3: zweite blinde Claude-Repo-Stimme, adversarial**
+   (Regelfassung v1.12.0 — vier R3-Runden Messbasis, in jeder exklusive
+   Blocker-Funde). DeepSeek ist **keine Panel-Stimme mehr** (diff-only
+   konvergierte nur); das Werkzeug bleibt als Ad-hoc-Zweitmeinung, Budget bis
+   2 $/Monat ohne Rückfrage (Owner, 15.08.2026). Besetzung nach Diff-Typ und
+   Ausfallregeln: `panel.md`.
 
    Im Zweifel Panel. Ablauf, Prüfaufträge und Begründungen: `panel.md`.
 5. **Bau-Briefe** nach `docs/agents/bau-brief.md`, Pflicht-Gerüst aus acht

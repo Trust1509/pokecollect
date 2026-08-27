@@ -148,6 +148,9 @@ Daraus folgt eine eigene Prüfpflicht — der Roundtrip anderer Projekte
 
 Schritt 4 ist die Zusatzpflicht dieser Bauform: Was bei jedem Start läuft, läuft
 auch über schon migrierte Daten. Muster: `backend/tests/test_63_muster.py`.
+**Die Datenerhalt-Stichprobe deckt die ANGEFASSTEN Tabellen** (Vorlage,
+v1.12.0): Eine Stichprobe in einer unbeteiligten Tabelle ist schlechter als
+keine — anderswo loggte ein Roundtrip den eigenen Datenverlust und blieb grün.
 
 **Expand–Contract ist Pflicht** bei Semantik-Änderungen: erst additiv erweitern
 (beide Formen lesbar, Alt-Zeilen bekommen einen Default — vgl. `region` DEFAULT
@@ -311,6 +314,12 @@ Zwei eigene Fälle an einem Tag, beide gegen den Prüfenden selbst (v1.10.0 §19
   protokollierte — die Liste sah vollständig aus, obwohl jeder Schritt
   scheiterte.
 
+Dritter eigener Fall derselben Familie: **Eine Prüfung, deren Ergebnis eine
+Entscheidung steuern soll, darf nie im selben verketteten Kommando laufen wie
+die Entscheidung** — der Exit-Code hinter einer Pipe/`&&`-Kette gehörte schon
+zweimal uns (Rot-Beweis als „exit=0" gemeldet; §17-Suche lief, aber der Commit
+wartete nicht auf ihr Ergebnis). Seit v1.12.0 Vorlagen-Regel.
+
 Diagnose beide Male: *Die Prüfung maß etwas, das leichter zu messen war als das
 Gemeinte.* Keine Nachlässigkeit, sondern die Richtung, in die jede Prüfung von
 selbst rutscht. Gegenfrage vor dem Vertrauen: **„Messe ich die Wirkung oder nur
@@ -360,3 +369,29 @@ Rückdreh-Bedingung, kein stiller Verzicht.
   einzieht, lässt den Wächter dahinter messen (unser Beleg: der 401-Interceptor
   fing die AuthGuard-Mutation ab, die Suite blieb zu Recht grün — die Grenze
   steht als Kommentar im Test).
+
+---
+
+## 11. Eine als Spezialfall formulierte Regel wird beim strukturgleichen Fall nicht wiedererkannt
+
+Übernommen aus der Vorlage (dort §22, drei unabhängige Belege — einer vom
+Autor der Regel selbst). Die Klasse: Eine Regel, die an ihrem Entstehungsfall
+klebt („bei Preisen nie …"), wird nicht angewandt, wenn dieselbe Struktur mit
+anderen Wörtern auftritt („bei Zuschnitt-Hinweisen …"). Eigener Beleg im Haus:
+Die v1.8.2-Preis-Label-Lehre („das Label darf nichts behaupten, was die Quelle
+nicht deckt") wurde beim #47-Bild-Label zunächst nicht wiedererkannt — beide
+Stimmen fanden denselben Fehler als „neu". **Beim Formulieren einer Lehre die
+Struktur benennen, nicht nur den Fall; beim Lesen fragen: Wo ist dieselbe
+Struktur unter anderem Namen?**
+
+---
+
+## 12. Ein Hook deckt nur, was er nennt
+
+Übernommen aus der Vorlage (dort §23): Eine Ausnahme-/Auslassungsliste in
+einem Hook oder einer Notmaßnahme wird scharf, sobald der Normalpfad
+pausiert. Unser aktueller Fall: Die CI-Pause (Quota) macht die
+`[skip ci]`-Praxis zur einzigen Wahrheit — alles, was NUR die CI geprüft
+hätte, prüft bis 01.09. niemand automatisch (ehrliche Inventur in Klasse 10).
+**Beim Einrichten jeder Pause/Ausnahme: die Liste dessen, was dadurch
+ungeprüft wird, ausschreiben — sie ist die eigentliche Änderung.**
