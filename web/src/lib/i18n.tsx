@@ -337,6 +337,23 @@ const DE = {
       : quelle === "oauth" ? "Wert (Cardmarket, OAuth)"
       : quelle === "cardmarket" ? "Wert (Cardmarket 30-Tage-Ø)"
       : "Wert",
+  // Dezente Herkunfts-Zeile "Daten: … · Bild: … · Preis: …" (#47). Anders als
+  // detail_usd_variant (Fallback `?? v`) geben die drei Lookups hier `?? null`
+  // zurück: ein unbekannter/künftiger Backend-Wert lässt SEIN Segment weg,
+  // statt rohen ASCII-Text zu zeigen (Hausregel) — eine leere Herkunft ist bei
+  // ungepreisten/bildlosen Karten der Normalfall, kein Fehlerfall.
+  detail_provenance_label_data: "Daten",
+  detail_provenance_label_image: "Bild",
+  detail_provenance_label_price: "Preis",
+  detail_provenance_data: (v: string) => ({
+    tcgdex: "TCGdex", manuell: "manuell erfasst",
+  } as Record<string, string>)[v] ?? null,
+  detail_provenance_image: (v: string) => ({
+    foto: "eigenes Foto", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
+  } as Record<string, string>)[v] ?? null,
+  detail_provenance_price: (v: string) => ({
+    cardmarket: "Cardmarket", oauth: "Cardmarket (OAuth)", tcgplayer: "TCGplayer",
+  } as Record<string, string>)[v] ?? null,
   field_pattern: "Muster",
   price_chart_value: "Wert",
   price_source_cardmarket: "Cardmarket €",
@@ -882,6 +899,18 @@ const EN: typeof DE = {
       : quelle === "oauth" ? "Value (Cardmarket, OAuth)"
       : quelle === "cardmarket" ? "Value (Cardmarket 30-day avg)"
       : "Value",
+  detail_provenance_label_data: "Data",
+  detail_provenance_label_image: "Image",
+  detail_provenance_label_price: "Price",
+  detail_provenance_data: (v: string) => ({
+    tcgdex: "TCGdex", manuell: "manually entered",
+  } as Record<string, string>)[v] ?? null,
+  detail_provenance_image: (v: string) => ({
+    foto: "own photo", tcgdex: "TCGdex", tcgplayer: "TCGplayer",
+  } as Record<string, string>)[v] ?? null,
+  detail_provenance_price: (v: string) => ({
+    cardmarket: "Cardmarket", oauth: "Cardmarket (OAuth)", tcgplayer: "TCGplayer",
+  } as Record<string, string>)[v] ?? null,
   field_pattern: "Pattern",
   price_chart_value: "Value",
   price_source_cardmarket: "Cardmarket €",

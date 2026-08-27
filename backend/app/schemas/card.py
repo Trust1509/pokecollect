@@ -147,6 +147,12 @@ class CardResponse(CardBase):
     # das Label darf nicht „Cardmarket" behaupten, wenn TCGplayer zahlte (v1.8.2).
     katalog_preis_usd_variante: Optional[str] = None
     wert_quelle: Optional[str] = None
+    # Daten-/Bild-Herkunft für die dezente Herkunfts-Zeile in der Detailansicht
+    # (#47): reine Ableitung aus vorhandenen Feldern (_card_response), KEINE
+    # eigene Spalte. Gleiches Muster wie wert_quelle/katalog_preis_usd: NUR die
+    # Einzelkarten-Antwort füllt sie, Listen nicht (kein DB-Zugriff je Zeile).
+    bild_quelle: Optional[str] = None
+    daten_quelle: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

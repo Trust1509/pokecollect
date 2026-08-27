@@ -82,6 +82,10 @@ export type Card = {
   // Variante des $-Preises + Herkunft des zuletzt gesetzten Werts (v1.8.2)
   katalog_preis_usd_variante?: string | null;
   wert_quelle?: string | null;
+  // Daten-/Bild-Herkunft für die Herkunfts-Zeile in der Detailansicht (#47) —
+  // wie wert_quelle nur in Einzelkarten-Antworten gefüllt, in Listen None.
+  bild_quelle?: string | null;
+  daten_quelle?: string | null;
 };
 
 export type CardListResponse = {

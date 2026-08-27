@@ -21,6 +21,7 @@ from app.models.collection import Collection, collection_cards
 from app.models.pokemon_set import PokemonSet
 from app.services.catalog_lookup import catalog_row_for
 from app.services.pricing import variant_usd
+from app.services.provenance import bild_quelle, daten_quelle
 from app.schemas.card import (
     CardCreate, CardListResponse, CardResponse, CardUpdate,
     EnumsResponse, StatsResponse,
@@ -209,6 +210,10 @@ def _card_response(db: Session, card: PokemonCard) -> CardResponse:
                   PreisHistorie.id.desc())
         .limit(1)
     )
+    # Herkunfts-Zeile "Daten: … · Bild: … · Preis: …" in der Detailansicht
+    # (#47) — Preis kommt aus wert_quelle oben, Daten/Bild rein abgeleitet.
+    resp.bild_quelle = bild_quelle(card)
+    resp.daten_quelle = daten_quelle(card)
     return resp
 
 

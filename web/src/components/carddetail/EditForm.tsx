@@ -132,6 +132,24 @@ export default function EditForm({
   const gv = kp != null && wv != null ? wv - kp : null;
   const gvPct = gv != null && kp && kp !== 0 ? (gv / kp) * 100 : null;
 
+  // Dezente Herkunfts-Zeile "Daten: … · Bild: … · Preis: …" (#47). Daten/Bild
+  // kommen als fertig abgeleitete ASCII-Werte vom Server (_card_response);
+  // Preis nutzt dieselbe Ableitung wie die Wert-Zeile unten (priceSourceKey),
+  // NICHT deren ausführliches Label (Kurs/Variante stehen dort bereits).
+  // Jedes Segment lässt sich weg, wenn es nichts Bekanntes zu sagen hat — eine
+  // leere Herkunft ist bei ungepreisten/bildlosen Karten der Normalfall.
+  const provenanceLine = (() => {
+    const teile: string[] = [];
+    const daten = t.detail_provenance_data(card.daten_quelle ?? "");
+    if (daten) teile.push(`${t.detail_provenance_label_data}: ${daten}`);
+    const bild = card.bild_quelle ? t.detail_provenance_image(card.bild_quelle) : null;
+    if (bild) teile.push(`${t.detail_provenance_label_image}: ${bild}`);
+    const preisSchluessel = priceSourceKey(card.wert_quelle);
+    const preis = preisSchluessel !== "unbekannt" ? t.detail_provenance_price(preisSchluessel) : null;
+    if (preis) teile.push(`${t.detail_provenance_label_price}: ${preis}`);
+    return teile.length ? teile.join(" · ") : null;
+  })();
+
   return (
     <div className="flex-1">
       <div className="flex items-start justify-between mb-4">
@@ -166,6 +184,13 @@ export default function EditForm({
           )}
         </div>
       </div>
+
+      {/* Herkunfts-Zeile (#47): nur im Ansichtsmodus, nicht während des
+          Bearbeitens — die Ableitung bezieht sich auf den GESPEICHERTEN
+          Stand (card), nicht auf ungespeicherte Formular-Änderungen. */}
+      {!editing && provenanceLine && (
+        <p className="text-gray-500 text-xs -mt-3 mb-4">{provenanceLine}</p>
+      )}
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         {field("kartenname", t.field_card_name)}
