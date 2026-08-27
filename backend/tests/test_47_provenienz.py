@@ -11,6 +11,7 @@ import pytest
 
 from app.database import SessionLocal
 from app.models.card import PokemonCard, PreisHistorie
+from app.services.tcgdex import is_allowed_image_url
 from app.services.provenance import _HOST_QUELLE, bild_quelle, daten_quelle
 from app.services.tcgdex import ALLOWED_IMAGE_HOSTS
 
@@ -82,6 +83,11 @@ def test_bild_quelle_erlaubter_host_als_teilstring_im_pfad_ist_none():
     ist aber nicht der tatsächliche Host (evil.example). Eine naive
     Teilstring-Prüfung würde das durchlassen – die echte Prüfung
     (is_allowed_image_url → urlparse().hostname) nicht."""
+    # Erst den TÜRSTEHER selbst festnageln (R1-Delta-Fund: ohne diese Zeile
+    # färbte der .get()-Fallback in bild_quelle den Test grün, selbst wenn
+    # is_allowed_image_url auf naive Teilstring-Prüfung sabotiert war — die
+    # ganze 462er-Suite blieb grün, der Türsteher hatte null echte Abdeckung).
+    assert not is_allowed_image_url(_HOST_ALS_PFAD_TEILSTRING_URL)
     card = PokemonCard(kartenname=_TESTNAME, bild_karte_url=_HOST_ALS_PFAD_TEILSTRING_URL)
     assert bild_quelle(card) is None
 
@@ -89,6 +95,7 @@ def test_bild_quelle_erlaubter_host_als_teilstring_im_pfad_ist_none():
 def test_bild_quelle_erlaubter_host_als_domain_praefix_ist_none():
     """Wie oben, aber der erlaubte Host ist Präfix einer FREMDEN Domain
     (assets.tcgdex.net.evil.example) statt eines Pfad-Segments."""
+    assert not is_allowed_image_url(_HOST_ALS_DOMAIN_PRAEFIX_URL)
     card = PokemonCard(kartenname=_TESTNAME, bild_karte_url=_HOST_ALS_DOMAIN_PRAEFIX_URL)
     assert bild_quelle(card) is None
 
