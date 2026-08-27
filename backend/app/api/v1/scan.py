@@ -28,7 +28,7 @@ from app.schemas.scan import (
 from app.services.card_creation import create_owned_card
 from app.services.catalog_lookup import catalog_row_for
 from app.services.collection_slots import next_free_position
-from app.services.scan import gemini, model_catalog, ocr, vlm
+from app.services.scan import crop_hints, gemini, model_catalog, ocr, vlm
 from app.services.scan.rate_window import gemini_rate
 from app.services.scan.resolver import resolve_one, resolve_reads
 from app.services.tcgdex import is_allowed_image_url
@@ -284,6 +284,12 @@ async def scan(
         engine = "ocr"
 
     reads = reads or []
+    # Plausibilitäts-Sanitierung der Zuschnitt-Hinweise (#36): verwirft (None)
+    # unplausible bbox/quad, BEVOR die Flächen-Auswahl unten oder das Frontend
+    # sie sieht — eine überdimensionierte Box kann die Auswahl so nicht mehr
+    # gewinnen, nur weil sie (zu Unrecht) am größten ist. Braucht die echten
+    # Bildmaße, die nur der Aufrufer hier hat (Details: crop_hints.py).
+    reads = crop_hints.sanitize_crop_hints(reads, data)
     # Einzelkarten-Modus: nur die Hauptkarte behalten (größte Bounding-Box),
     # falls versehentlich eine Karte darunter mit erkannt wurde.
     if mode == "single" and len(reads) > 1:
