@@ -284,18 +284,30 @@ async def scan(
         engine = "ocr"
 
     reads = reads or []
-    # Plausibilitäts-Sanitierung der Zuschnitt-Hinweise (#36): verwirft (None)
-    # unplausible bbox/quad, BEVOR die Flächen-Auswahl unten oder das Frontend
-    # sie sieht — eine überdimensionierte Box kann die Auswahl so nicht mehr
-    # gewinnen, nur weil sie (zu Unrecht) am größten ist. Braucht die echten
-    # Bildmaße, die nur der Aufrufer hier hat (Details: crop_hints.py).
-    reads = crop_hints.sanitize_crop_hints(reads, data)
     # Einzelkarten-Modus: nur die Hauptkarte behalten (größte Bounding-Box),
-    # falls versehentlich eine Karte darunter mit erkannt wurde.
+    # falls versehentlich eine Karte darunter mit erkannt wurde. MUSS vor der
+    # Sanitierung laufen (Panel-Nacharbeit #36, Auflage 1 — Blocker): die
+    # Auswahl entscheidet, WELCHER Read die Hauptkarte ist, und dafür ist auch
+    # eine (später ggf. verworfene) unplausible Box ein gültiges Größensignal.
+    # In der alten Reihenfolge (Sanitierung zuerst) zählte eine verworfene
+    # bbox als Fläche 0.0 — eine überdimensionierte, aber richtig sitzende
+    # Hauptkarten-Box verlor dann gegen einen winzigen plausiblen Nachbarn,
+    # und der GANZE Read der Hauptkarte (Name, Nummer, alles) ging verloren,
+    # nicht nur ihr Zuschnitt.
     if mode == "single" and len(reads) > 1:
         def _area(r) -> float:
             return (r.bbox[2] * r.bbox[3]) if (r.bbox and len(r.bbox) == 4) else 0.0
         reads = [max(reads, key=_area)]
+    # Plausibilitäts-Sanitierung der Zuschnitt-Hinweise (#36): verwirft (None)
+    # unplausible bbox/quad AM GEWINNER, bevor das Frontend sie sieht — die
+    # Auswahl oben ist bereits entschieden, hier geht nur noch die
+    # Zuschnitt-EIGNUNG des Hinweises verloren, nicht mehr der ganze Read.
+    # Verworfen heißt: kein eigener Foto-Zuschnitt, die Karte bekommt das
+    # Katalogbild statt eines eigenen Fotos (das Frontend hat KEINE Kaskade
+    # auf eine "nächste Stufe" — Details in crop_hints.py). `mode` steuert
+    # zusätzlich die Flächen-Kappe (nur multi/binder, Auflage 2). Braucht die
+    # echten Bildmaße, die nur der Aufrufer hier hat.
+    reads = crop_hints.sanitize_crop_hints(reads, data, mode=mode)
 
     candidates = await resolve_reads(db, reads, default_lang=default_language)
     return ScanResponse(
