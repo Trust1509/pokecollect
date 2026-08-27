@@ -1,6 +1,6 @@
 # Review-Panel: drei Stimmen über denselben Diff
 
-Verbindlich nach **jedem nicht-trivialen Slice**, vor dem Landen. Zweck ist
+Verbindlich ab **Risikoklasse R2** (Tabelle in `CLAUDE.md`), vor dem Landen. Zweck ist
 **Diversität im Urteil**, nicht Token-Ersparnis.
 
 > Die **Werkzeuge** (Skripte, Docker-Image, OpenRouter-Zugang) liegen bewusst
@@ -137,12 +137,20 @@ Fragen, die hier überdurchschnittlich oft etwas gefunden haben:
 - „Wird der geänderte Code auch **serverseitig** aufgerufen, nicht nur vom
   Client?" (fand den #55-MAJOR: der Scan baut dasselbe Schema aus OCR-Text)
 
-## Verhältnismäßigkeit — abschließende Liste
+## Verhältnismäßigkeit — die Risikoklassen-Tabelle entscheidet
 
-**Die verbindliche, abschließende Liste steht in `CLAUDE.md`** — dort wird
-entschieden (v1.8.2: Schwellen gehören dorthin, wo man sich sonst in der Lücke
-freispricht). Hier steht, warum sie so aussieht, damit sie beim nächsten
-Abgleich nicht aufgeweicht wird.
+**Die verbindliche Tabelle (R0/R2/R3/R4) steht in `CLAUDE.md`** — dort wird
+entschieden; sie hat die frühere Trivial-Liste und die Pflichtfälle ERSETZT
+(v1.11.0). Hier steht das Verfahren je Klasse und, warum die Auslöser so
+aussehen, damit sie beim nächsten Abgleich nicht aufgeweicht werden.
+
+**Verfahren je Klasse:** R0 → lokale Gates. R2 → blinde Erststimme +
+unabhängige Zweitstimme. R1 (Verkürzung in R2, nur mechanische Nacharbeit) →
+blinde Erststimme allein, Begründung unter der Stimmen-Überschrift. R3 →
+volles Panel, Drittstimme als **zweite blinde Claude-Repo-Stimme, adversarial
+gerahmt** (nicht diff-only — die schweren R3-Funde liegen in der Beziehung
+zwischen Diff und Umgebung), plus **risikospezifische Probe durch die echte
+Tür**. R4 → wie R3, zusätzlich Owner-Freigabe vor Release.
 
 **Ein neuer Test ist KEINE reine Testinfrastruktur** (v1.8.0). Er behauptet
 etwas über das Verhalten — und kann falsch behaupten. Für dieses Repo heißt das
@@ -155,11 +163,14 @@ den Rot-Beweis, nicht durch ein Panel, das es nicht gab.
 Warum sie abschließend ist, nicht beispielhaft: „Ist das trivial?" ist genau die
 Frage, bei der man sich unter Zeitdruck selbst überzeugt.
 
-Warum **Herkunft** ein eigener Pflichtfall ist: Ein zugelieferter Zweig war
-fachlich unauffällig und tauschte einen dokumentierten Endpunkt gegen einen
-ausdrücklich undokumentierten; alle mitgelieferten Tests waren grün — sie
-stammten vom selben Autor und prüften dessen Annahme. Das Risiko hängt an der
-Herkunft, nicht am Thema.
+Warum **Fremdcode** ein eigener R3-Auslöser ist (v1.11.1 — der Auslöser hieß
+früher „Herkunft" und war zu weit gefasst: „Code, den niemand aus dem Team
+gebaut hat" wäre bei durchgängiger Subagenten-Arbeit IMMER erfüllt, R2 wäre
+leer; gemeint ist Produktionscode eines FREMDEN Systems, nicht der eigene
+Bau-Subagent): Ein zugelieferter Zweig war fachlich unauffällig und tauschte
+einen dokumentierten Endpunkt gegen einen ausdrücklich undokumentierten; alle
+mitgelieferten Tests waren grün — sie stammten vom selben Autor und prüften
+dessen Annahme. Das Risiko hängt am fremden Ursprung, nicht am Thema.
 
 > **Nachtrag 20.08.2026:** Hier stand bis eben die zweite Hälfte der Pflichtliste
 > („Immer volles Panel bei …") — ich hatte beim Verschieben nach `CLAUDE.md` nur

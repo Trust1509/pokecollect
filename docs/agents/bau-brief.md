@@ -9,7 +9,7 @@ Ein Bau-Brief ist der Unterschied zwischen einem Slice, der beim ersten Panel
 durchgeht, und einem, der drei Runden braucht. Die Punkte unten stehen alle,
 weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
 
-## Pflicht-Gerüst (alle acht Blöcke, keiner leer)
+## Pflicht-Gerüst (Block 0 plus acht Blöcke, keiner leer)
 
 Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
 
@@ -25,6 +25,8 @@ kein Urteil* — ob ein Thema hier gegenstandslos ist, entscheidet weiterhin der
 Kopf.
 
 ```markdown
+## 0 Risiko             Risiko: R<n> — Auslöser: <welcher aus der Tabelle
+                        in CLAUDE.md; bei R0/R2 genügt „kein R3/R4-Auslöser">
 ## 1 Auftrag            was gebaut wird, in zwei Sätzen
 ## 2 Befund             bereits verifiziert — NICHT neu recherchieren
 ## 3 Konsumenten        WER RUFT DEN GEÄNDERTEN CODE AUF? Jeden nennen.
@@ -62,6 +64,10 @@ behandelt" sagt dem Bauer, warum er es stehen lässt — und wo die Arbeit hinge
 ```
 Repo: C:\Users\manue\.claude\Immich\pokecollect. Branch main, HEAD ⟨…⟩.
 Baue Issue #⟨…⟩.
+
+## Risiko
+Risiko: R⟨n⟩ — Auslöser: ⟨…⟩ (Tabelle in CLAUDE.md; die Abstufung nach
+unten braucht die Begründung, nicht die nach oben)
 
 ## Befund (bereits verifiziert, nicht neu recherchieren)
 ⟨Was schon gemessen/geprüft ist — mit Datei:Zeile.⟩

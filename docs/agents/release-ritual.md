@@ -28,10 +28,11 @@ bleibt. Ein Flag, das mal so und mal so gemeint ist, wird ignoriert.
 > obwohl seither fast jede Auslieferung eine Light-Migration mitbringt
 > (Abgleich 15.08.2026). Sie ist wieder verbindlich.
 
-**Autonomes Release ist freigegeben** für: gefahrlos **und** alle Gates grün
-**und** real im Teststand verifiziert. Alles andere (Migration, Auth, Security,
-möglicher Datenverlust) braucht **Owner-OK vor dem Tag** — siehe Riskant-Gate in
-`CLAUDE.md`.
+**Autonomes Release ist freigegeben** für Slices **ohne R4-Auslöser**, wenn
+alle Gates grün sind und der Stand real im Teststand verifiziert ist. **R4
+(Tabelle in `CLAUDE.md`) braucht Owner-OK vor dem Tag.** Die Auslöser stehen
+NUR dort — hier bewusst keine Aufzählung (eine Schwelle hat genau einen
+Eigentümer, v1.9.0).
 
 ## Ablauf
 

@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.9.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.11.3** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.9.1`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.11.3`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -61,9 +61,10 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    beteiligt waren: `Built-With: bau=<m>; nacharbeit=<m>; arbitriert=<m>
    (<datum>)`. Ohne ihn ist nach vier Wochen nicht feststellbar, wer was gebaut
    hat — und jede Aussage über Modellverhalten bleibt Anekdote.
-4. **Riskant-Gate:** Datenverlust-/Migrations-/Security-/Auth-Änderungen →
-   bauen + grüner Report + **Owner-OK vor Release**. Gefahrloses + alle Gates
-   grün + real im Teststand verifiziert → Release autonom.
+4. **Prüftiefe und Owner-Gate bestimmt die Risikoklasse** — Tabelle unten,
+   sie ist der einzige Eigentümer der Auslöser. Das frühere „Riskant-Gate"
+   heißt dort R4 (kein neuer Mechanismus, ein Name dafür). Unverändert gilt:
+   Gefahrloses (R0/R2) + Gates grün + Teststand verifiziert → Release autonom.
 5. **Verifikation real, nicht nur Tests:** Änderungen in der laufenden App
    prüfen (lokaler Teststand, siehe unten), bevor „fertig" gemeldet wird.
 6. **Grilling vor großen/riskanten Designs;** Lock-Spec als Issue-Kommentar.
@@ -169,12 +170,36 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   eines Agenten, wird der Wächter sofort nötig** (Vorlage + Echtprobe siehe
   `docs/SECRETS.md`).
 
-## Review-Panel — verbindlich nach jedem nicht-trivialen Slice
+## Risikoklasse je Slice — hier wird entschieden, was geprüft wird
 
-Ablauf, Prüfaufträge und die abschließende Trivial-Liste: `docs/agents/panel.md`.
-Die **Form des Ergebnisses**: `docs/agents/panel-kommentar.md` — drei feste
-Überschriften, eine je Stimme, **auch bei „keine Funde"**. Ein Slice ohne
-vollständiges oder vermerkt-verkürztes Panel gilt als **nicht geprüft**.
+Jeder Slice bekommt im Bau-Brief eine Risikoklasse mit Auslöser
+(`Risiko: R<n> — Auslöser: …`, Block 0). **Die Klasse wird aus Auslösern
+abgeleitet, nicht frei vergeben** — kleine Diff-Größe stuft einen R3-Auslöser
+nie herunter (sechs Zeilen an einer Berechtigungsgrenze sind R3). Im Zweifel
+gilt die höhere Klasse; **die Abstufung nach unten braucht die Begründung,
+nicht die nach oben.** Diese Tabelle ERSETZT die frühere Trivial-Liste und
+die Pflichtfälle (v1.11.0) — sie ist der einzige Eigentümer der Auslöser.
+
+| Klasse | Auslöser (abschließend) | Mindestprüfung |
+|---|---|---|
+| **R0** | reine Testinfrastruktur ohne Verhaltensänderung (**ein neuer Test ist das NICHT**); Doku-Korrektur ohne ausgelieferten Inhalt; Typisierung ohne Verhaltensänderung | lokale Gates |
+| **R2** | alles ohne R0-, R3- oder R4-Auslöser (der Normalfall) | blinde Erststimme + unabhängige Zweitstimme |
+| **R3** | Light-Migration; Berechtigungs-/Datenschutzlogik (Auth, Secrets); Geld/Werte (Preise, Bewertung); Außenwirkung über eine Schnittstelle; **Fremdcode** — Produktionscode, den ein FREMDES System beigesteuert hat (Patch eines Anbietermodells, zugelieferter Zweig, übernommener Schnipsel). **NICHT gemeint: der eigene Bau-Subagent** — sonst wäre der Auslöser hier immer erfüllt und R2 leer | volles Panel + risikospezifische Probe durch die echte Tür |
+| **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe vor Release |
+
+**R1 ist keine frei vergebbare Klasse**, sondern die definierte Verkürzung
+innerhalb von R2 für genau einen Fall: **Nacharbeit mit ausschließlich
+mechanischen Auflagen** → blinde Erststimme allein, Begründung unter der
+Stimmen-Überschrift. „Klein" und „gut rückrollbar" sind Urteile, keine
+Auslöser — und Urteile sind der Punkt, an dem sich der Ausführende unter
+Druck freispricht.
+
+## Review-Panel
+
+Das Verfahren je Klasse: `docs/agents/panel.md`. Die **Form des Ergebnisses**:
+`docs/agents/panel-kommentar.md` — feste Überschriften je Stimme, **auch bei
+„keine Funde"**. Ein Slice ohne vollständiges oder vermerkt-verkürztes Panel
+gilt als **nicht geprüft**.
 
 1. **Subagenten sind für dieses Projekt freigegeben** (Owner, 15.08.2026).
    Reviewer-Subagenten **immer** — ohne sie gibt es keine blinde Erststimme.
@@ -183,20 +208,12 @@ vollständiges oder vermerkt-verkürztes Panel gilt als **nicht geprüft**.
    Bau-Brief noch den Bericht des Bauers sieht.
 2. **Tiering:** Read-only-Scans/Mechanik → `haiku`, Bau-Slices → `sonnet`,
    Review/Verifikation → `opus`; bei Unsicherheit erben lassen.
-3. **Drittstimme (DeepSeek) bis 2 $/Monat ohne Rückfrage** (Owner, 15.08.2026),
-   darüber melden. Bei `402` zweistimmig weiterarbeiten, im Panel-Kommentar
-   vermerken **und** den Owner informieren.
-4. **Wann ein Panel Pflicht ist — abschließend, hier und nicht nebenan**
-   (v1.8.2: Verfahren verweisen, Schwellen stehen dort, wo entschieden wird):
-
-   **Ohne Panel nur:** reine Testinfrastruktur *ohne* Verhaltensänderung
-   (Läufer, Konfiguration, Hilfsmittel), Doku, Typisierung ohne
-   Verhaltensänderung. **Ein neuer Test gehört NICHT dazu** — er behauptet
-   etwas über das Verhalten und kann falsch behaupten.
-
-   **Immer volles Panel** bei: Migrationen, Auth/Berechtigungen, allem was
-   Werte berechnet, allem was nach außen geht — **und allem, was Herkunft
-   hat** (Code, den niemand aus diesem Projekt gebaut hat).
+3. **Drittstimme:** bei **R3** eine **zweite blinde Claude-Repo-Stimme,
+   adversarial gerahmt** (P1-Pilot: 2/2 Runden exklusive Blocker; Regelfassung
+   folgt, gearbeitet wird ab jetzt so — Besetzung im Panel-Kommentar
+   kennzeichnen). DeepSeek diff-only nur noch als Zusatzstimme, wo der Diff
+   selbsttragend ist; Budget bis 2 $/Monat ohne Rückfrage (Owner, 15.08.2026),
+   bei `402` vermerken und den Owner informieren.
 
    Im Zweifel Panel. Ablauf, Prüfaufträge und Begründungen: `panel.md`.
 5. **Bau-Briefe** nach `docs/agents/bau-brief.md`, Pflicht-Gerüst aus acht

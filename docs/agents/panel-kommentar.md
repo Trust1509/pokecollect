@@ -11,6 +11,10 @@ Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Stimme weglassen.
 Herkunfts-Regel nach vier Wochen nicht durchsetzbar, und jede Aussage über
 Modellverhalten bleibt Anekdote — Anbieter ziehen still nach.
 
+**Panel-Bilanzen (Meldung an die Vorlage) tragen ab v1.11.3 Risikoklasse UND
+Diff-Typ** — ohne beides sind Zahlen über Projekte hinweg nicht vergleichbar
+(der Fragetyp bestimmt, was ein Panel wert ist).
+
 **Eine Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.** Ein „keine
 Funde" beschreibt die Reichweite dieser Stimme, es ist kein Argument fürs
 Landen. In der Arbitrierung wird begründet, was geprüft und widerlegt wurde —
@@ -26,7 +30,8 @@ nie „zwei von drei Stimmen sahen nichts".
 ```markdown
 ## Panel ⟨Slice / Issue⟩
 
-Basis: `⟨commit-a⟩..⟨commit-b⟩` · Umfang: ⟨was geprüft wurde⟩
+Basis: `⟨commit-a⟩..⟨commit-b⟩` · Risiko: R⟨n⟩ — Auslöser: ⟨…⟩ ·
+Diff-Typ: ⟨backend/frontend/config/gemischt⟩ · Umfang: ⟨was geprüft wurde⟩
 
 ### Stimme 1 — Claude, blinde Erststimme (⟨modell⟩, ⟨datum⟩)
 ⟨Nur Diff + Repo, kein Bau-Brief, kein Bericht des Bauers. Je Fund: Schwere,

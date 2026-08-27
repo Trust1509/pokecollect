@@ -243,7 +243,13 @@ der Anfang" unterscheiden.
   Verschärfung (v1.9.1): `gh run list --limit 1` **unmittelbar nach dem Push**
   liefert den Lauf des VORGÄNGER-Commits, weil der eigene noch nicht angelegt
   ist. Über den eigenen `headSha` filtern. Anderswo wurde so ein Issue gegen
-  fremdes Grün geschlossen.
+  fremdes Grün geschlossen. Vollständige Regel (v1.10.1, anderswo trotz
+  headSha erneut passiert): **das `conclusion`-Feld lesen, nie den Exit-Code
+  einer Pipe** (`… --exit-status | tail` liefert den Exit von `tail` — bei
+  Grün unsichtbar, beim ersten Rot falsch; dieselbe Falle hat hier einen
+  Rot-Beweis als „exit=0" gemeldet). Und: **„nicht gestartet" ist auch ein
+  Fehlschlag** — ein roter Lauf mit null Schritten ist „Infrastruktur weg",
+  nicht „Code kaputt"; die Reaktionen sind gegensätzlich.
 - **Gepinnte Actions altern still.** SHA-Pins sind sicher, aber unsere lagen im
   August 2026 drei Hauptversionen zurück (Node-20-Abkündigung in den
   Lauf-Annotationen). Beim Übernehmen prüfen, ob die Hauptversion noch aktuell
@@ -287,3 +293,70 @@ Rückweg**, beides an der Stelle, an der sie steht. Konkret hier:
 
 Der Befund ist erst aus der Portfolio-Sicht sichtbar geworden: vier Repos, vier
 Notbremsen, kein Datum. Wer nur das eigene Repo ansieht, hält das für Ordnung.
+
+---
+
+## 8. Eine Prüfung rutscht zu dem, was leichter zu messen ist
+
+Zwei eigene Fälle an einem Tag, beide gegen den Prüfenden selbst (v1.10.0 §19):
+
+- **Präsenz geprüft, Struktur nicht.** Nach dem Abbruch eines Bau-Subagenten
+  mitten im Rot-Beweis suchte die Kontrolle per `grep`, ob der Schutz
+  `if pr["eur"] is not None` existiert — er existierte. Dass die Sabotage die
+  geschützte Zuweisung **aus ihm herausgeschoben** hatte, sah die Suche nicht.
+  Die Entwarnung war falsch; der Baum stand zwei Tage in einem Zustand, in dem
+  jede Karte ohne Cardmarket-Daten ihren Preis verloren hätte.
+- **Aufruf geprüft, Wirkung nicht.** Ein Test blieb ohne den zugehörigen Fix
+  grün, weil jede Hilfsfunktion ihren Namen **vor** der geprüften Anweisung
+  protokollierte — die Liste sah vollständig aus, obwohl jeder Schritt
+  scheiterte.
+
+Diagnose beide Male: *Die Prüfung maß etwas, das leichter zu messen war als das
+Gemeinte.* Keine Nachlässigkeit, sondern die Richtung, in die jede Prüfung von
+selbst rutscht. Gegenfrage vor dem Vertrauen: **„Messe ich die Wirkung oder nur
+ihr Anzeichen?"**
+
+---
+
+## 9. Eine Fähigkeitsgrenze, die still verwirft, macht die Metadaten-Karte zur Lüge
+
+Übernommen aus der Vorlage (v1.11.0 §20), mit eigenem Beleg: Beim E2E-Testen
+schluckte `POST /api/v1/cards` die Felder `tcgdex_card_id`/`set_id` **still** —
+`CardCreate` kennt sie nicht, Pydantic verwirft unbekannte Felder wortlos. Der
+Aufruf gelang, die Karte war unverknüpft, und die Referenz musste von Hand in
+der DB gesetzt werden. Bei menschlichen Aufrufern ärgerlich; für die geplante
+LLM-Tür (#56) ein Datenintegritäts-Risiko — ein Modell behandelt die
+API-Beschreibung als verlässliche Karte.
+
+**Regeln:** Eine Fähigkeitsgrenze wird DEKLARIERT und ABGELEHNT, nie still
+verworfen. Prüfsatz: **„Wenn ein Aufrufer dieses Feld ausdrücklich mitschickt —
+erfährt er, was damit passiert ist, auch wenn der Wert dabei seine BEDEUTUNG
+wechselt?"** Verwerfen ist nur die eine Hälfte, die andere ist **UMDEUTEN**
+(`"nein"` per `bool()` zu `True` — nichts verworfen, Bedeutung verkehrt). Wer
+eine Grenze begradigt, prüft beide Richtungen: kommt der Wert an — und kommt er
+als DASSELBE an?
+
+---
+
+## 10. Ein Wächter, dessen Lauf niemand erzwingt, macht die Abdeckungszahl zur Beruhigung
+
+Übernommen aus der Vorlage (v1.11.0 §21), mit ehrlicher eigener Inventur:
+`scripts/bau-brief-pruefen.sh` erzwingt **niemand** — es läuft nur, wenn der
+Hauptagent daran denkt. Nach der Hierarchie **Abdeckung < Zustand < AUSFÜHRUNG**
+ist es damit eine Notiz, kein Wächter. Ebenso ehrlich: Während der
+CI-Aussetzung (Quota, bis 01.09.) macht **keine** unserer Suiten automatisch
+etwas rot — das ist die nach §7 zulässige, **terminierte** Ersetzung mit
+Rückdreh-Bedingung, kein stiller Verzicht.
+
+**Regeln:**
+- **Pflichtfrage beim Anlegen jeder Prüfung: „Was macht sie rot, ohne dass
+  jemand daran denkt?"** Ohne Antwort ist sie eine Notiz, kein Wächter.
+- Geht der automatische Lauf (noch) nicht: ausdrücklich und **terminiert**
+  ersetzen (Datum + Rückdreh-Bedingung) — kein stiller Verzicht.
+- **Abdeckung hat zwei Achsen:** welche Objekte UND in welchen Zuständen.
+  Persistierte Bedien-Zustände (localStorage-Filter, BottomNav-Konfiguration)
+  sind eigene Fälle, keine Varianten.
+- Ein **Sicherheitsnetz kann den Fehler unsichtbar machen** — wer eines
+  einzieht, lässt den Wächter dahinter messen (unser Beleg: der 401-Interceptor
+  fing die AuthGuard-Mutation ab, die Suite blieb zu Recht grün — die Grenze
+  steht als Kommentar im Test).
