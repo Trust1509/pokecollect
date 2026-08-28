@@ -130,34 +130,63 @@ def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None
 
     tmp+rename (#82, Vorbild catalog_images.py::download_one): Die rohen
     Upload-Bytes gehen zuerst in eine JE-VERSUCH-EINDEUTIGE TMP-Datei im
-    Zielverzeichnis (uuid4-Suffix) — die gesamte Verarbeitung (EXIF-
-    Aufrichtung, JPEG-Konvertierung, Qualität) läuft auf dieser TMP-Datei,
-    das Thumbnail in einer EIGENEN TMP-Datei. Erst NACH vollständig
-    erfolgreicher Verarbeitung wird per os.replace() atomar an den Zielort
-    verschoben. Vorher (Direkt-Schreiben nach `dst` + `dst.unlink()` bei
-    jedem Fehler) vernichtete ein fehlgeschlagener Re-Upload mit DERSELBEN
-    Endung (jpg→jpg, der häufigste Fall) das bereits gültig liegende Foto
-    samt Thumbnail. Jetzt bleibt eine vorhandene Zieldatei bei jedem
-    Fehlschlag unangetastet — Signatur und Erfolgs-Verhalten (aufrechtes
-    Bild, Thumbnail, gleiche Dateinamen) bleiben unverändert, dadurch erben
+    Zielverzeichnis (uuid4-Suffix, VOLLE 32 Hex-Zeichen seit der #82-
+    Nacharbeit — die Datei liegt für Sekunden auth-frei unter /images,
+    der volle Suffix macht den Namen kryptographisch unerratbar), die
+    gesamte Verarbeitung (EXIF-Aufrichtung, JPEG-Konvertierung, Qualität)
+    läuft auf dieser TMP-Datei, das Thumbnail in einer EIGENEN TMP-Datei.
+    Erst NACH vollständig erfolgreicher Verarbeitung UND erfolgreichem
+    os.replace() an den Zielort gilt der Versuch als erfolgreich. Vorher
+    (Direkt-Schreiben nach `dst` + `dst.unlink()` bei jedem Fehler)
+    vernichtete ein fehlgeschlagener Re-Upload mit DERSELBEN Endung
+    (jpg→jpg, der häufigste Fall) das bereits gültig liegende Foto samt
+    Thumbnail. Jetzt bleibt eine vorhandene Zieldatei bei jedem Fehlschlag
+    unangetastet — Signatur und Erfolgs-Verhalten (aufrechtes Bild,
+    Thumbnail, gleiche Dateinamen) bleiben unverändert, dadurch erben
     store_card_image UND store_sealed_image den Fix ohne eigene Änderung.
     Verschärft Issue #2 ("keine unverarbeitete Rohdatei öffentlich unter
     /images"): die Rohdatei liegt nie mehr unter ihrem öffentlichen Namen.
 
+    Fehlerbild seit #82 (Panel-Nacharbeit, ehrliche Doku):
+    (a) JEDER Fehler des Speicherwegs — Verarbeitung UND os.replace() (kann
+        unter Windows bei einem noch offenen Leser mit PermissionError
+        scheitern) — landet einheitlich als ImageValidationError/400. VORHER
+        (vor #82) konnte ein Schreibfehler (z. B. volle Platte) als
+        unbehandelte Exception/500 entkommen UND dabei den Bestand unter dem
+        öffentlichen Namen mit halben Rohbytes überschreiben (Panel-Sonde:
+        61.440 Rohbytes ersetzten das gültige Bild) — strukturell
+        ausgeschlossen, weil nie mehr direkt auf `dst` geschrieben wird.
+    (b) Die TMP-Datei liegt kurzzeitig unter zufälligem Namen im
+        ÖFFENTLICHEN Baum (images_dir wird auth-frei gemountet) —
+        akzeptiert: der volle 32-Hex-uuid4-Suffix macht den Namen
+        unerratbar, und ohne Pfadtrenner im Suffix ist kein
+        Verzeichniswechsel möglich (os.replace verlangt ohnehin dasselbe
+        Dateisystem/Docker-Volume).
+    (c) Im Multi-Worker-Betrieb (heute: 1 Worker, `async def` serialisiert
+        die Endpunkte faktisch) könnten zwei GLEICHZEITIGE Uploads
+        DERSELBEN Karte einen dauerhaften Bild/Thumb-Mix hinterlassen (kein
+        Lock über den ganzen store_*_image-Aufruf) — akzeptiert, bis
+        Multi-Worker tatsächlich kommt.
+
     Akzeptiertes Fenster: zwischen den beiden os.replace()-Aufrufen unten
     zeigt dst bereits auf das NEUE Bild, thumb aber noch kurz auf das ALTE
     Thumbnail — jeder replace() für sich ist atomar, die Zwei-Schritt-Folge
-    als Ganzes nicht. Für ein Vorschaubild hinnehmbar (kein Datenverlust,
-    kein ungültiger Zwischenzustand, nur kurz inkonsistent).
+    als Ganzes nicht. Scheitert der ZWEITE replace (Thumbnail), nachdem der
+    erste bereits durch ist, bleibt dst DAUERHAFT neu und thumb DAUERHAFT
+    alt; die DB-Felder werden vom Aufrufer erst NACH erfolgreicher Rückkehr
+    aus dieser Funktion gesetzt und damit nie auf diesen Zwischenstand
+    verändert. Für ein Vorschaubild hinnehmbar (kein Datenverlust, kein
+    ungültiger Zwischenzustand) und unter Linux (ein Dateisystem, kein
+    offener Fremd-Leser) praktisch unerreichbar.
     """
     suffix = dst.suffix.lower()
     is_jpeg = suffix in (".jpg", ".jpeg")
     # _validated_suffix (vor jedem Aufruf) erzwingt eine der vier Endungen —
     # "PNG" ist ein defensiver, praktisch unerreichbarer Fallback.
     fmt = _PIL_FORMAT_BY_SUFFIX.get(suffix, "PNG")
-    tmp_img = dst.with_name(dst.name + f".tmp-{uuid4().hex[:8]}")
+    tmp_img = dst.with_name(dst.name + f".tmp-{uuid4().hex}")
     tmp_thumb = (
-        thumb.with_name(thumb.name + f".tmp-{uuid4().hex[:8]}") if thumb is not None else None
+        thumb.with_name(thumb.name + f".tmp-{uuid4().hex}") if thumb is not None else None
     )
     try:
         with tmp_img.open("wb") as f:
@@ -172,22 +201,35 @@ def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None
                 t = upright.copy()
                 t.thumbnail(THUMB_SIZE)
                 t.save(tmp_thumb, format=fmt, **kw)
+        # Beide replace()-Aufrufe INNERHALB des try (#82-Nacharbeit, Panel-
+        # Fund): ein scheiternder Rename (z. B. Windows PermissionError bei
+        # noch offenem Leser) landet jetzt im selben except wie ein
+        # Verarbeitungsfehler -- nie mehr als unbehandelte Exception/500.
+        os.replace(tmp_img, dst)  # atomar — ab hier existiert entweder die alte ODER die neue Datei, nie ein Zwischenzustand
+        if tmp_thumb is not None:
+            # Scheitert DIESER zweite replace, nachdem der erste (Hauptbild)
+            # bereits durch ist: dst zeigt schon auf das NEUE Bild, thumb
+            # noch auf das ALTE Thumbnail. Hinnehmbar, siehe Docstring oben.
+            os.replace(tmp_thumb, thumb)  # atomar, siehe Fenster-Kommentar oben
     except Exception as exc:
         # NUR die TMP-Dateien aufräumen (#82) — eine bereits gültig liegende
-        # Zieldatei/Thumbnail aus einem früheren Erfolg wird beim Fehlschlag
-        # nie angefasst. Aufräumen in einem INNEREN try: ein werfender unlink
-        # darf die ImageValidationError unten weder verdrängen noch ersetzen.
-        try:
-            tmp_img.unlink(missing_ok=True)
-            if tmp_thumb is not None:
-                tmp_thumb.unlink(missing_ok=True)
-        except Exception as cleanup_exc:  # noqa: BLE001 — darf den Originalfehler nicht verdecken
-            log.warning("Upload-TMP-Aufräumen fehlgeschlagen: %s", cleanup_exc)
+        # Zieldatei/Thumbnail aus einem früheren Erfolg wird NIE angefasst.
+        # Sowohl ein Verarbeitungsfehler als auch ein scheiternder
+        # os.replace() landen jetzt hier — beide werden einheitlich zu
+        # ImageValidationError/400, nie zu einem 500 (Panel-Fund).
+        # Je TMP-Datei ein EIGENER innerer try in einer Schleife (#82-
+        # Nacharbeit, Panel-Fund): ein werfender erster unlink darf weder den
+        # Aufräum-Versuch der zweiten Datei verhindern noch die
+        # ImageValidationError unten verdrängen/ersetzen.
+        for p in (tmp_img, tmp_thumb):
+            if p is None:
+                continue
+            try:
+                p.unlink(missing_ok=True)
+            except Exception as cleanup_exc:  # noqa: BLE001 — darf den Originalfehler nicht verdecken
+                log.warning("Upload-TMP-Aufräumen fehlgeschlagen (%s): %s", p, cleanup_exc)
         log.warning("Upload-Bild nicht verarbeitbar: %s", exc)
         raise ImageValidationError("Bilddatei konnte nicht verarbeitet werden")
-    os.replace(tmp_img, dst)  # atomar — ab hier existiert entweder die alte ODER die neue Datei, nie ein Zwischenzustand
-    if tmp_thumb is not None:
-        os.replace(tmp_thumb, thumb)  # atomar, siehe Fenster-Kommentar oben
 
 
 def store_card_image(

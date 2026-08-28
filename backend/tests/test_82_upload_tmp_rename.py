@@ -14,16 +14,24 @@ Beide Türen (Karten UND Sealed) teilen sich _save_upright — je ein Test pro
 Tür belegt, dass der zentrale Fix wirklich BEIDE Konsumenten erreicht, ohne
 dass store_card_image oder store_sealed_image selbst geändert wurden.
 
+Panel-Nacharbeit: seit beide os.replace()-Aufrufe INNERHALB des try liegen,
+ergibt auch ein scheiternder Rename (os.replace, z. B. Windows
+PermissionError bei offenem Leser) einheitlich 400/ImageValidationError
+statt einer unbehandelten Exception/500 — eigener Türtest per
+monkeypatch(os.replace).
+
 Netzfrei. Fixtures mit Präfix "test82-".
 """
 
 import io
+import os
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
 from app.config import settings
+from app.services import card_images
 
 # Erfundene kaputte Bytes (abgeschnittener/kein Header) — kein echtes Bild,
 # aber Endung+Content-Type sehen für _validated_suffix gültig aus, sodass der
@@ -102,6 +110,57 @@ def test_karten_tuer_fehlgeschlagener_reupload_laesst_bild_und_thumb_unangetaste
     got = client.get(f"/api/v1/cards/{card_id}").json()
     assert got["bild_karte_pfad"] == body1["bild_karte_pfad"]
     assert got["bild_thumbnail_pfad"] == body1["bild_thumbnail_pfad"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Panel-Nacharbeit #82: scheiternder os.replace() (Rename) muss dasselbe
+# einheitliche 400/ImageValidationError ergeben wie ein Verarbeitungsfehler
+# — nie eine unbehandelte Exception/500 (Panel-Fund: unter Windows wirft
+# replace bei noch offenem Leser PermissionError; die beiden replace()-
+# Aufrufe lagen vorher AUSSERHALB des try).
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_karten_tuer_rename_fehler_wird_400_und_laesst_bestand_unangetastet(client, card_id, monkeypatch):
+    """Rot-Beweis: beide os.replace(...) in card_images.py::_save_upright
+    zurück HINTER den try-Block ziehen (Stand vor der #82-Panel-Nacharbeit)
+    -> dieser Test fällt, weil ein scheiternder Rename dann nicht mehr von
+    ImageValidationError gefangen wird und als 500/durchgereichte Exception
+    entkommt statt als 400."""
+    r1 = client.post(
+        f"/api/v1/cards/{card_id}/image",
+        files={"file": ("erst.jpg", _jpeg_bytes(), "image/jpeg")},
+    )
+    assert r1.status_code == 200, r1.text
+    body1 = r1.json()
+    img_path = Path(settings.images_dir).parent / body1["bild_karte_pfad"]
+    thumb_path = Path(settings.images_dir).parent / body1["bild_thumbnail_pfad"]
+    assert img_path.is_file() and thumb_path.is_file()
+    img_bytes_before = img_path.read_bytes()
+    thumb_bytes_before = thumb_path.read_bytes()
+
+    def _boom(*a, **k):
+        raise OSError("simulierter Rename-Fehler (z. B. Windows PermissionError)")
+
+    monkeypatch.setattr(card_images.os, "replace", _boom)
+
+    # Zweit-Upload: gültige Bytes, gleiche Endung — die Verarbeitung selbst
+    # gelingt, NUR der abschließende os.replace() scheitert (simuliert).
+    r2 = client.post(
+        f"/api/v1/cards/{card_id}/image",
+        files={"file": ("zweit.jpg", _jpeg_bytes((5, 5, 5)), "image/jpeg")},
+    )
+    assert r2.status_code == 400, r2.text
+
+    assert img_path.is_file(), "Bild wurde beim Rename-Fehlschlag gelöscht"
+    assert thumb_path.is_file(), "Thumbnail wurde beim Rename-Fehlschlag gelöscht"
+    assert img_path.read_bytes() == img_bytes_before, "Bild wurde trotz Rename-Fehler überschrieben"
+    assert thumb_path.read_bytes() == thumb_bytes_before, "Thumbnail wurde trotz Rename-Fehler überschrieben"
+
+    got = client.get(f"/api/v1/cards/{card_id}").json()
+    assert got["bild_karte_pfad"] == body1["bild_karte_pfad"]
+    assert got["bild_thumbnail_pfad"] == body1["bild_thumbnail_pfad"]
+
+    _no_tmp_leftovers()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

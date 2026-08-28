@@ -263,7 +263,7 @@ async def download_one(db: Session, row: TcgdexCatalog) -> bool:
     # Verzeichnis ist unabhängig von der Endung) — die tatsächliche Endung
     # steht erst nach der PIL-Erkennung weiter unten fest.
     dest = catalog_image_disk_path(row.card_id)
-    tmp = dest.with_name(dest.name + f".tmp-{uuid4().hex[:8]}")
+    tmp = dest.with_name(dest.name + f".tmp-{uuid4().hex}")  # volle 32 Hex-Zeichen (#82-Nacharbeit) — TMP-Name im auth-freien /images-Baum kryptographisch unerratbar
     try:
         content = await _fetch_image_bytes(url)
         if len(content) > _MAX_UPLOAD_BYTES:

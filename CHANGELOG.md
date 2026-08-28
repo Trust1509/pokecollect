@@ -18,7 +18,7 @@ ohne die Historie einer bestehenden datierten Version umzuschreiben.
   für sehr lange Karten-IDs).
 
 ### Korrigiert (#82)
-- **Ein fehlgeschlagener Bild-Re-Upload mit derselben Dateiendung (häufigster Fall: jpg → jpg) konnte das bereits gespeicherte Karten-/Sealed-Foto samt Thumbnail löschen** — die Verarbeitung schreibt jetzt auf eine temporäre Datei und übernimmt erst nach vollständigem Erfolg atomar (tmp+rename); ein Fehlschlag lässt ein vorhandenes Bild unangetastet.
+- **Ein fehlgeschlagener Bild-Re-Upload mit derselben Dateiendung (häufigster Fall: jpg → jpg) konnte das bereits gespeicherte Karten-/Sealed-Foto samt Thumbnail löschen** — die Verarbeitung schreibt jetzt auf eine temporäre Datei und übernimmt erst nach vollständigem Erfolg atomar (tmp+rename); ein Fehlschlag lässt ein vorhandenes Bild unangetastet. Panel-Nacharbeit: auch ein Schreib-/Rename-Fehler meldet sich jetzt einheitlich als 400 statt vorher als 500, das dabei den Bestand mit halben Rohbytes überschreiben konnte.
 
 ## [v1.8.3] – 2026-08-14 (Groß-/Kleinschreibung, saubere Fehlermeldungen, Sicherheitsnetz)
 
