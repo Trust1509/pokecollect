@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.12.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.12.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.12.0`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.12.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -61,10 +61,14 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    beteiligt waren: `Built-With: bau=<m>; nacharbeit=<m>; arbitriert=<m>
    (<datum>)`. Ohne ihn ist nach vier Wochen nicht feststellbar, wer was gebaut
    hat — und jede Aussage über Modellverhalten bleibt Anekdote.
-4. **Prüftiefe und Owner-Gate bestimmt die Risikoklasse** — Tabelle unten,
-   sie ist der einzige Eigentümer der Auslöser. Das frühere „Riskant-Gate"
-   heißt dort R4 (kein neuer Mechanismus, ein Name dafür). Unverändert gilt:
-   Gefahrloses (R0/R2) + Gates grün + Teststand verifiziert → Release autonom.
+4. **Die Tabelle besitzt die PRÜFTIEFE** (wer prüft, wie tief) — sie ist der
+   einzige Eigentümer der Auslöser. **Das RELEASE-GATE (wer vor Release
+   freigibt) ist eine eigene, projekteigene Größe** und darf breiter sein als
+   R4 (v1.12.1). Unsere Entscheidung dazu: Das frühere breitere Gate („jede
+   Migration → Owner-OK") wurde im v1.11.3-Abgleich **bewusst und
+   Owner-gebilligt** auf die R4-Auslöser verengt (#78, veto-fähig vorgelegt,
+   kein Veto) — sie bleibt gültig. Unverändert: Gefahrloses (R0/R2) + Gates
+   grün + Teststand verifiziert → Release autonom.
 5. **Verifikation real, nicht nur Tests:** Änderungen in der laufenden App
    prüfen (lokaler Teststand, siehe unten), bevor „fertig" gemeldet wird.
 6. **Grilling vor großen/riskanten Designs;** Lock-Spec als Issue-Kommentar.
@@ -186,13 +190,16 @@ die Pflichtfälle (v1.11.0) — sie ist der einzige Eigentümer der Auslöser.
 | *R1* | **keine frei vergebbare Klasse** — benannte Verkürzung innerhalb von R2 für genau einen Fall: Nacharbeit mit ausschließlich mechanischen Auflagen | blinde Erststimme allein; Begründung unter den ausgelassenen Stimmen |
 | **R2** | alles ohne R0-, R3- oder R4-Auslöser (der Normalfall) | blinde Erststimme + unabhängige Zweitstimme |
 | **R3** | **Datenmigration — der VORGANG zählt, nicht das Werkzeug** (v1.12.0, framework-frei): bestehende Daten werden unumkehrbar umgewandelt — auch eine Light-Migration, die Werte aufteilt/umschreibt, auch eine selbstheilende Wanderung beim Start. Eine rein ADDITIVE Spalte ohne Datenumwandlung ist KEINE Datenmigration (→ R2); Berechtigungs-/Datenschutzlogik (Auth, Secrets); Geld/Werte (Preise, Bewertung); Außenwirkung über eine Schnittstelle; **Fremdcode** — Produktionscode, den ein FREMDES System beigesteuert hat (Patch eines Anbietermodells, zugelieferter Zweig, übernommener Schnipsel). **NICHT gemeint: der eigene Bau-Subagent** — sonst wäre der Auslöser hier immer erfüllt und R2 leer | volles Panel + risikospezifische Probe durch die echte Tür |
-| **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe vor Release |
+| **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe. **Ein projekteigenes Release-Gate mit breiteren Auslösern bleibt davon unberührt** — diese Spalte sagt, ab wann die Vorlage eine Freigabe verlangt, nicht, ab wann das Projekt sie verlangen darf (v1.12.1) |
 
 „Klein" und „gut rückrollbar" sind **Urteile, keine Auslöser** — und Urteile
 sind der Punkt, an dem sich der Ausführende unter Druck freispricht.
-**R4-Lockerungs-Hinweis (v1.12.0):** Gegenüber der früheren Praxis „jede
-Migration = Owner-Gate" ist diese Tabelle eine echte Lockerung — dem Owner beim
-Abgleich am 15.08. und 27.08. veto-fähig vorgelegt, kein Veto.
+**Prüftiefe ≠ Release-Gate (v1.12.1):** Die Tabelle besitzt die Prüftiefe;
+das Release-Gate ist projekteigen und darf breiter sein — wer ein breiteres
+Gate zugunsten der R4-Zeile aufgibt, tut das als ausdrückliche, veto-fähige
+Owner-Entscheidung, nie als Nebenwirkung der Übernahme. **Hier geschehen und
+gültig:** verengt im v1.11.3-Abgleich (#78) und bei der v1.12.0-Schärfung
+(#81), beide Male veto-fähig vorgelegt, kein Veto.
 
 ## Review-Panel
 

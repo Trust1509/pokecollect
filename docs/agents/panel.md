@@ -194,7 +194,11 @@ Jeder Auftrag an eine Fremdmodell-Stimme enthält ein ausdrückliches
 **Suchverbot** (kein Web-Zugriff, keine Recherche nach Repo, Commit oder
 Namen) — anderswo suchte eine Stimme bei Sandbox-Ausfall selbstständig im
 Netz nach Repo und Commit. Ein Werkzeug-/Sandbox-Ausfall wird als **AUSFALL**
-gemeldet, nie als Stimme mit dünnem Ergebnis.
+gemeldet, nie als Stimme mit dünnem Ergebnis. **Erfolgskriterium eines
+Fremdstimmen-Aufrufs ist die SYNTHESE, nie der Exit-Code** (v1.12.1): Ein
+Wrapper kann mit Exit 0 enden, ohne dass je ein Urteil entstand — dieselbe
+Familie wie unsere Exit-hinter-der-Pipe-Fälle (lehren.md Klasse 8), nur an
+der Werkzeuggrenze.
 
 ## Wenn eine Stimme ausfällt
 
@@ -212,5 +216,9 @@ fällt aus — ein Session-Limit mitten im Lauf ist ein AUSFALL unter ihrer
 abgebrochener Prüflauf wird wie ein abgebrochener Bau behandelt: erst den
 Baum prüfen, dann weiterreden. **Klumpenrisiko bei R3** (zwei von drei
 Stimmen am selben Kontingent): bei knappem Kontingent laufen die beiden
-Claude-Stimmen ZUERST; Ersatzregel für die Zweitblinde: GPT adversarial über
-den Review-Zweig.
+Claude-Stimmen ZUERST. **Ersatzregel für die Zweitblinde (v1.12.1,
+ergebnis- statt transportbezogen):** GPT übernimmt die adversariale Rahmung
+mit **vollem Quelltext auf `git show HEAD:`-Stand** — Review-Zweig,
+Commit-Snapshot oder Quelltext inline sind gleichwertig, solange die Quelle
+stimmt (anderswo trug die Inline-Variante den einzigen echten Treffer der
+Runde).
