@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas._validators import reject_control_chars, reject_explicit_null
@@ -27,6 +27,10 @@ DEFAULTS: dict[str, str] = {
     "openai_model": "gpt-4o-mini",
     "openrouter_api_key": "",
     "openrouter_model": "google/gemini-2.5-flash",
+    # Lokaler Katalog-Bildcache (#43): "urls" (Default, kein Überraschungs-
+    # Download) | "owned" (besessene + Wunschlisten-Karten) | "all" (ganzer
+    # Katalog, ~3 GB Schätzung). Siehe services/catalog_images.py.
+    "catalog_image_cache_level": "urls",
 }
 
 # Secrets verlassen das Backend nie im Klartext (Issue #1): die Response
@@ -72,6 +76,8 @@ class SettingsResponse(BaseModel):
     openrouter_api_key_set: bool
     openrouter_api_key_masked: str
     openrouter_model: str
+    # Lokaler Katalog-Bildcache (#43) — kein Secret, GET maskiert nichts.
+    catalog_image_cache_level: str
 
 
 class SettingsUpdate(BaseModel):
@@ -99,6 +105,9 @@ class SettingsUpdate(BaseModel):
     openai_model: Optional[str] = None
     openrouter_api_key: Optional[str] = None
     openrouter_model: Optional[str] = None
+    # #43: nur die drei Stufen — Literal liefert 422 bei jedem anderen Wert,
+    # ohne einen eigenen Validator (Muster: CollectionTyp/ScanMode).
+    catalog_image_cache_level: Optional[Literal["urls", "owned", "all"]] = None
 
     _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
     # Alle Einstellungen landen als Text in der DB; ein ausdrückliches `null`

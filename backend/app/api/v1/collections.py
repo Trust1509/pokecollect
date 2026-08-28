@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -236,23 +236,24 @@ def _soll_or_404(collection_id: int, soll_id: int, db: Session) -> CollectionSol
     return slot
 
 
-def _slot_response(db: Session, coll: Collection, soll_id: int) -> SollSlotResponse:
+def _slot_response(db: Session, coll: Collection, soll_id: int, base_url: str = "") -> SollSlotResponse:
     """Einen einzelnen Slot über die zentrale Status-Routine ausgeben (DRY)."""
-    for s in set_goal.soll_status(db, coll):
+    for s in set_goal.soll_status(db, coll, base_url):
         if s["id"] == soll_id:
             return SollSlotResponse(**s)
     raise HTTPException(status_code=404, detail="Soll-Eintrag nicht gefunden")
 
 
 @router.get("/{collection_id}/soll", response_model=list[SollSlotResponse])
-def list_soll(collection_id: int, db: Session = Depends(get_db)):
+def list_soll(collection_id: int, request: Request, db: Session = Depends(get_db)):
     """Soll-Liste inkl. erfüllt/fehlend, erfüllender Karte und Katalog-Bild."""
     coll = _collection_or_404(collection_id, db)
-    return [SollSlotResponse(**s) for s in set_goal.soll_status(db, coll)]
+    base_url = str(request.base_url)
+    return [SollSlotResponse(**s) for s in set_goal.soll_status(db, coll, base_url)]
 
 
 @router.post("/{collection_id}/soll", response_model=SollSlotResponse, status_code=201)
-def add_soll(collection_id: int, data: SollSlotCreate, db: Session = Depends(get_db)):
+def add_soll(collection_id: int, data: SollSlotCreate, request: Request, db: Session = Depends(get_db)):
     """Katalog-Karte zur Soll-Liste hinzufügen (Kuratieren)."""
     coll = _collection_or_404(collection_id, db)
     if not db.get(TcgdexCatalog, data.tcgdex_card_id):
@@ -270,18 +271,20 @@ def add_soll(collection_id: int, data: SollSlotCreate, db: Session = Depends(get
     db.add(slot)
     db.commit()
     db.refresh(slot)
-    return _slot_response(db, coll, slot.id)
+    return _slot_response(db, coll, slot.id, str(request.base_url))
 
 
 @router.put("/{collection_id}/soll/{soll_id}", response_model=SollSlotResponse)
-def update_soll(collection_id: int, soll_id: int, data: SollSlotUpdate, db: Session = Depends(get_db)):
+def update_soll(
+    collection_id: int, soll_id: int, data: SollSlotUpdate, request: Request, db: Session = Depends(get_db),
+):
     """Slot kuratieren: Folierung (null = Regel gilt) bzw. Position ändern."""
     coll = _collection_or_404(collection_id, db)
     slot = _soll_or_404(collection_id, soll_id, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(slot, field, value)
     db.commit()
-    return _slot_response(db, coll, slot.id)
+    return _slot_response(db, coll, slot.id, str(request.base_url))
 
 
 @router.delete("/{collection_id}/soll/{soll_id}", status_code=204)

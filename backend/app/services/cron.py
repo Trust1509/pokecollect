@@ -38,10 +38,12 @@ async def _daily_price_update(db: Session):
 
 
 async def _daily_catalog_sync(db: Session):
-    """Sets + Katalog-Basis aktualisieren, einen Schwung anreichern und die
-    €-Preise bereits angereicherter Zeilen rollierend nachsehen (#66)."""
+    """Sets + Katalog-Basis aktualisieren, einen Schwung anreichern, die
+    €-Preise bereits angereicherter Zeilen rollierend nachsehen (#66) und
+    zuletzt den lokalen Bild-Cache in einer Etappe füllen (#43)."""
     from app.services.set_sync import sync_sets
     from app.services.catalog import sync_catalog, enrich_catalog, refresh_catalog_eur
+    from app.services.catalog_images import run_catalog_image_cache
     log.info("Starte täglichen Katalog-Sync …")
 
     # Je Schritt ein eigener Fang (#75): Vorher lagen alle in EINEM try/except —
@@ -76,6 +78,11 @@ async def _daily_catalog_sync(db: Session):
     # Vorrang, aber der €-Repass läuft NEBENHER mit; sonst kämen die schon
     # angereicherten ~11,8k Zeilen erst nach Abschluss der Anreicherung dran.
     await schritt("€-Repass", refresh_catalog_eur(db, limit=1000))
+    # #43: eigenes, noch kleineres Budget — ein Bild-Download ist teurer als
+    # ein JSON-Preis-Abruf (echter Dateidownload + Schreiben + PIL-Validierung).
+    # Lädt nur, wenn die Einstellung catalog_image_cache_level das erlaubt
+    # ("urls", der Default, lädt nichts).
+    await schritt("Bild-Cache", run_catalog_image_cache(db, limit=60))
 
 
 def _price_update_hour(db: Session) -> int:

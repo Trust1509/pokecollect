@@ -58,6 +58,11 @@ def _apply_full(row: TcgdexCatalog, tc) -> None:
         row.image = tc.image
         row.image_url = tcgdex.image_url(tc.image)
         row.image_source = None  # TCGdex übernimmt → evtl. „tcgplayer"-Fallback-Label räumen (#41)
+        # #43: image_pfad (lokaler Bild-Cache) bleibt hier bewusst UNANGETASTET —
+        # nur der Nachtlauf-Cache-Schritt/On-demand-Task (services/catalog_images.py)
+        # dürfen ihn setzen. Ein evtl. bereits gecachtes Bild wird bei einer neuen
+        # CDN-URL NICHT invalidiert (kein Auto-Invalidierungs-Mechanismus, akzeptierter
+        # Trade-off — siehe Modell-Kommentar TcgdexCatalog.image_pfad).
     row.enriched = True
     # Preise lokal cachen (Epic #41 #45): € Cardmarket (+ Holo-Fallback) für alle,
     # $ TCGplayer für westliche Karten (bei JP ist tcgplayer leer → der aus TCGCSV
@@ -176,6 +181,8 @@ async def sync_catalog(db: Session) -> dict:
                 row.image = image
                 row.image_url = tcgdex.image_url(image)
                 row.image_source = None  # TCGdex übernimmt → „tcgplayer"-Fallback-Label räumen (#41)
+                # #43: image_pfad (lokaler Bild-Cache) bewusst unangetastet — siehe
+                # Kommentar bei _apply_full() weiter oben.
         db.commit()  # je Set committen (kleinere Transaktionen)
 
     # Nicht-westliche Regionen (JP …) additiv indizieren — eigene Karten.
@@ -268,6 +275,8 @@ async def _index_region_cards(
                 row.image = image
                 row.image_url = tcgdex.image_url(image)
                 row.image_source = None  # TCGdex übernimmt → „tcgplayer"-Fallback-Label räumen (#41)
+                # #43: image_pfad (lokaler Bild-Cache) bewusst unangetastet — siehe
+                # Kommentar bei _apply_full() weiter oben.
         db.commit()
     return created, updated
 

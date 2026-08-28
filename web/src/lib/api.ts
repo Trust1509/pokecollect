@@ -299,6 +299,8 @@ export type AppSettings = {
   openrouter_api_key_set: boolean;
   openrouter_api_key_masked: string;
   openrouter_model: string;
+  // Lokaler Katalog-Bildcache (#43): "urls" | "owned" | "all"
+  catalog_image_cache_level: string;
 };
 
 export type AppSettingsUpdate = Partial<{
@@ -323,6 +325,8 @@ export type AppSettingsUpdate = Partial<{
   openai_model: string;
   openrouter_api_key: string;
   openrouter_model: string;
+  // Lokaler Katalog-Bildcache (#43)
+  catalog_image_cache_level: string;
 }>;
 
 export const collectionApi = {
@@ -591,7 +595,7 @@ export const catalogApi = {
   list: (params: Record<string, unknown> = {}) => api.get<CatalogListResponse>("/catalog", { params }),
   detail: (cardId: string, opts?: { signal?: AbortSignal }) =>
     api.get<CatalogDetail>(`/catalog/${encodeURIComponent(cardId)}/detail`, opts),
-  meta: () => api.get<{ total: number; enriched: number }>("/catalog/meta"),
+  meta: () => api.get<{ total: number; enriched: number; cached_images: number }>("/catalog/meta"),
   sync: () => api.post<{ detail: string }>("/catalog/sync"),
   illustrators: () => api.get<string[]>("/catalog/illustrators"),
   addWishlist: (cardId: string, opts: CatalogAddOpts = {}) =>

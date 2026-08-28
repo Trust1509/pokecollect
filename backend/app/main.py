@@ -324,6 +324,9 @@ def _run_light_migrations():
         # Modell-Kommentar) — additiv, NULL für Bestandszeilen (kein Default
         # nötig: NULL sortiert per NULLS FIRST ohnehin vor jedem Datum).
         "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS price_eur_checked TIMESTAMP",
+        # #43: lokaler Bild-Cache-Pfad je Katalogzeile — rein additiv, KEINE
+        # Datenumwandlung (NULL für jede Bestandszeile, s. Modell-Kommentar).
+        "ALTER TABLE tcgdex_catalog ADD COLUMN IF NOT EXISTS image_pfad TEXT",
     ]
     with engine.begin() as conn:
         for stmt in stmts:

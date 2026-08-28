@@ -41,9 +41,12 @@ _ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 _MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB, analog Scan-Endpoint
 
 # Alle DB-Spalten, die einen lokalen (relativen) Medienpfad tragen — quer über
-# Karten UND Sealed. Werden beim Restore per safe_media_path validiert (#37).
+# Karten, Sealed UND (#43) den Katalog-Bildcache. Werden beim Restore per
+# safe_media_path validiert (#37) — _restore_tables() (api/v1/data.py) prüft
+# generisch JEDE Tabelle auf Spalten aus dieser Menge, ein neuer Eintrag hier
+# deckt die neue Spalte also ohne weitere Änderung am Restore-Code ab.
 MEDIA_PATH_COLUMNS = frozenset(
-    {"bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad", "bild_pfad"}
+    {"bild_karte_pfad", "bild_thumbnail_pfad", "bild_original_pfad", "bild_pfad", "image_pfad"}
 )
 
 

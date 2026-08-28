@@ -81,10 +81,13 @@ export default function SettingsPage() {
   // Scan-Stufe B (Issue #57): bild-fähige Modell-Vorschläge für die Combobox.
   const [modelList, setModelList] = useState<ScanModelSuggestion[]>([]);
   const [modelSource, setModelSource] = useState<"live" | "curated" | null>(null);
+  // Lokaler Bild-Cache (#43): Katalog-Kennzahlen für Status + Größenschätzung.
+  const [catalogMeta, setCatalogMeta] = useState<{ total: number; cached_images: number } | null>(null);
 
   useEffect(() => {
     settingsApi.get().then((r) => setS(r.data)).catch(() => toast.error(t.settings_load_error));
     scanApi.usage().then((r) => setUsage(r.data)).catch(() => {});
+    catalogApi.meta().then((r) => setCatalogMeta(r.data)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -533,7 +536,42 @@ export default function SettingsPage() {
       {/* Katalog */}
       <Section title={`📚 ${t.settings_section_catalog}`}>
         <p className="text-gray-400 text-xs">{t.settings_catalog_hint}</p>
+
+        {/* Lokaler Bild-Cache (#43) */}
+        <Field label={t.settings_catalog_cache_level} hint={t.settings_catalog_cache_level_hint}>
+          <select
+            value={s.catalog_image_cache_level}
+            onChange={(e) => set("catalog_image_cache_level", e.target.value)}
+            className={INPUT}
+            style={{ width: "auto" }}
+          >
+            <option value="urls">{t.settings_catalog_cache_urls}</option>
+            <option value="owned">{t.settings_catalog_cache_owned}</option>
+            <option value="all">
+              {t.settings_catalog_cache_all((((catalogMeta?.total ?? 0) * 0.1) / 1000).toFixed(1))}
+            </option>
+          </select>
+        </Field>
+        {catalogMeta && (
+          <p className="text-gray-600 text-xs">
+            {t.settings_catalog_cache_status(
+              catalogMeta.cached_images.toLocaleString(t.date_locale),
+              catalogMeta.total.toLocaleString(t.date_locale),
+            )}
+          </p>
+        )}
         <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => save({ catalog_image_cache_level: s.catalog_image_cache_level })}
+            disabled={saving}
+            className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            {t.form_save}
+          </button>
+        </div>
+
+        <div className="pt-3 border-t border-gray-700">
           <button type="button" onClick={handleCatalogSync} disabled={syncingCatalog} className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50">
             {t.settings_catalog_sync_now}
           </button>

@@ -29,6 +29,7 @@ from app.models.card import PokemonCard
 from app.models.collection import Collection, CollectionSoll
 from app.models.pokemon_set import PokemonSet
 from app.models.tcgdex_catalog import TcgdexCatalog
+from app.services import catalog_images
 
 
 def _official_count(db: Session, set_id: Optional[str]) -> Optional[int]:
@@ -115,10 +116,18 @@ def _rule_ok(card: PokemonCard, required_folierung: Optional[str], required_spra
     return True
 
 
-def soll_status(db: Session, collection: Collection) -> list[dict]:
+def soll_status(db: Session, collection: Collection, base_url: str = "") -> list[dict]:
     """
     Alle Soll-Slots inkl. erfüllt/fehlend, erfüllender Karte und Katalog-Daten
     (Bild-URL etc.) — eine Routine für GET /soll und den Fortschritt (DRY).
+
+    base_url (#43): Basis für eine bevorzugte lokale Bild-URL, wenn die
+    Katalogzeile einen gecachten Pfad hat (siehe resolve_catalog_image_url).
+    Default "" für Aufrufer ohne Request-Kontext (z. B. progress()/Tests) —
+    ohne gecachten Pfad liefert das unverändert die CDN-URL, mit gecachtem
+    Pfad aber ohne echte base_url ergäbe sich eine unbrauchbare relative
+    „URL"; die drei echten API-Endpunkte (collections.py) geben deshalb immer
+    str(request.base_url) mit.
     """
     slots = db.scalars(
         select(CollectionSoll)
@@ -189,7 +198,9 @@ def soll_status(db: Session, collection: Collection) -> list[dict]:
             "name": cat.name if cat else None,
             "name_en": cat.name_en if cat else None,
             "local_id": cat.local_id if cat else None,
-            "image_url": cat.image_url if cat else None,
+            # #43: lokal gecachtes Bild bevorzugen, sonst unverändert die CDN-URL.
+            "image_url": catalog_images.resolve_catalog_image_url(
+                cat.image_pfad, cat.image_url, base_url) if cat else None,
             "rarity": cat.rarity if cat else None,
             "set_id": cat.set_id if cat else None,
             "set_code": cat.set_code if cat else None,

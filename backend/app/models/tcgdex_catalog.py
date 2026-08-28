@@ -29,6 +29,18 @@ class TcgdexCatalog(Base):
     category = Column(Text, nullable=True)
     image = Column(Text, nullable=True)                 # Basis-URL
     image_url = Column(Text, nullable=True)             # high.webp
+    # Lokal gecachter Bild-Pfad (#43, additiv – KEINE Migration bestehender
+    # Zeilen, alle starten NULL). Konvention wie PokemonCard.bild_karte_pfad:
+    # relativ zu images_dir.parent, damit services.card_images.safe_media_path
+    # unverändert wiederverwendet werden kann (DRY, kein zweiter Pfad-Prüfer).
+    # NULL = (noch) nicht lokal gecacht -> image_url (CDN) bleibt die Quelle.
+    # sync_catalog()/_apply_full() dürfen dieses Feld NIE anfassen (nur den
+    # Nachtlauf-Cache-Schritt bzw. den On-demand-Task in services/catalog_images.py,
+    # #43) – ein Sync-Lauf überschreibt image_url frei, ein evtl. gecachtes
+    # Bild wird dabei bewusst NICHT invalidiert (kein Auto-Invalidierungs-
+    # Mechanismus; ein veralteter lokaler Cache nach einer CDN-Bildänderung
+    # ist ein akzeptierter Trade-off, siehe Bau-Brief #43 Block 8).
+    image_pfad = Column(Text, nullable=True)
     # Woher das Bild stammt: "tcgdex" (Standard) oder "tcgplayer" (JP-Fallback,
     # Epic #41). Für die Quellen-Kennzeichnung in der Detailansicht (Slice 6).
     image_source = Column(Text, nullable=True)

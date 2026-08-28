@@ -5,7 +5,7 @@ Read-only; per Stern auf die Wunschliste / in Sammlungen übernehmbar.
 
 import math
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -15,13 +15,15 @@ from app.domain.search import parse_kurzcode
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
 from app.schemas.catalog import CatalogAddRequest, CatalogDetail, CatalogItem, CatalogListResponse
-from app.services import catalog as catalog_svc, tcgdex
+from app.services import catalog as catalog_svc, catalog_images, tcgdex
 from app.services.set_sync import sync_sets
+from app.services.settings import get_setting
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 @router.get("", response_model=CatalogListResponse)
 def list_catalog(
+    request: Request,
     q: str | None = None,
     set_code: str | None = None,
     set_id: str | None = None,
@@ -107,9 +109,13 @@ def list_catalog(
                 PokemonCard.im_pokedex == True)  # noqa: E712
         ).all())
 
+    base_url = str(request.base_url)
     items = []
     for r in rows:
         ci = CatalogItem.model_validate(r)
+        # #43: lokal gecachtes Bild bevorzugen, sonst unverändert die CDN-URL
+        # (EINE Hilfsfunktion für Liste/Detail/Soll-Slots, DRY).
+        ci.image_url = catalog_images.resolve_catalog_image_url(r.image_pfad, r.image_url, base_url)
         key = r.card_id.upper() if r.card_id else ""
         ci.owned = key in owned_ids
         ci.in_pokedex = key in pokedex_ids
@@ -127,7 +133,13 @@ def catalog_meta(db: Session = Depends(get_db)):
     enriched = db.scalar(
         select(func.count()).select_from(TcgdexCatalog).where(TcgdexCatalog.enriched == True)  # noqa: E712
     ) or 0
-    return {"total": int(total), "enriched": int(enriched)}
+    # #43: Zahl der bereits lokal gecachten Katalogbilder — die Größenschätzung
+    # (Stufe "all") rechnet das Frontend aus `total` (kein zweites Backend-Feld
+    # für dieselbe Information, DRY).
+    cached_images = db.scalar(
+        select(func.count()).select_from(TcgdexCatalog).where(TcgdexCatalog.image_pfad.isnot(None))
+    ) or 0
+    return {"total": int(total), "enriched": int(enriched), "cached_images": int(cached_images)}
 
 
 @router.post("/sync")
@@ -157,17 +169,26 @@ def list_illustrators(db: Session = Depends(get_db)):
 
 
 @router.get("/{card_id}/detail", response_model=CatalogDetail)
-async def catalog_card_detail(card_id: str, db: Session = Depends(get_db)):
+async def catalog_card_detail(
+    card_id: str, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db),
+):
     """Angereichertes Katalog-Detail fürs Popup: die gespeicherte Zeile plus ein
     LIVE-Abruf bei TCGdex (Regionssprache) — füllt fehlende Felder (dex/rarity/
     illustrator/kategorie/varianten) noch nicht angereicherter Karten und liefert
     aktuelle Preise (€ Cardmarket + $ TCGplayer). Read-only, fehlertolerant: bei
-    TCGdex-Ausfall kommen die gespeicherten Felder ohne Preise zurück."""
+    TCGdex-Ausfall kommen die gespeicherten Felder ohne Preise zurück.
+
+    #43: cached bei Bedarf das Katalogbild NACH dem Response-Versand (Background-
+    Task, siehe catalog_images.cache_one_on_demand) — GET bleibt lesend/schnell,
+    die Stufe entscheidet NUR, ob der Task überhaupt registriert wird."""
     row = db.get(TcgdexCatalog, card_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Karte nicht im Katalog")
 
     detail = CatalogDetail.model_validate(row)
+    # #43: lokal gecachtes Bild bevorzugen, sonst unverändert die CDN-URL.
+    detail.image_url = catalog_images.resolve_catalog_image_url(
+        row.image_pfad, row.image_url, str(request.base_url))
     # Case-tolerant wie in der Liste (#67)
     cid_upper = card_id.upper()
     detail.owned = bool(db.scalar(select(PokemonCard.id).where(
@@ -209,6 +230,16 @@ async def catalog_card_detail(card_id: str, db: Session = Depends(get_db)):
         if pr["usd"] is not None:
             detail.price_usd = pr["usd"]
             detail.price_usd_updated = pr["usd_updated"]
+
+    # #43: On-demand-Cache NUR registrieren, wenn die Stufe überhaupt Downloads
+    # erlaubt — bei "urls" (Default) bleibt der Detail-GET ohne jede
+    # Schreib-Nebenwirkung. Die feinere Prüfung (welche Karten "owned" erlaubt)
+    # macht der Task selbst (stage_allows), mit dem zu diesem Zeitpunkt
+    # frischesten Setting-Wert.
+    stage = get_setting(db, "catalog_image_cache_level")
+    if stage != "urls":
+        background_tasks.add_task(catalog_images.cache_one_on_demand, card_id)
+
     return detail
 
 

@@ -67,6 +67,7 @@ def _to_response(raw: dict[str, str]) -> SettingsResponse:
         scan_reader_provider=raw["scan_reader_provider"] or "gemini",
         openai_model=raw["openai_model"] or "gpt-4o-mini",
         openrouter_model=raw["openrouter_model"] or "google/gemini-2.5-flash",
+        catalog_image_cache_level=raw["catalog_image_cache_level"] or "urls",
         **secret_fields,
     )
 
