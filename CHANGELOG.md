@@ -17,6 +17,9 @@ ohne die Historie einer bestehenden datierten Version umzuschreiben.
   dazu Download-Härtung (Byte-Kappe, atomares Schreiben, Dateinamen-Kappung
   für sehr lange Karten-IDs).
 
+### Korrigiert (#82)
+- **Ein fehlgeschlagener Bild-Re-Upload mit derselben Dateiendung (häufigster Fall: jpg → jpg) konnte das bereits gespeicherte Karten-/Sealed-Foto samt Thumbnail löschen** — die Verarbeitung schreibt jetzt auf eine temporäre Datei und übernimmt erst nach vollständigem Erfolg atomar (tmp+rename); ein Fehlschlag lässt ein vorhandenes Bild unangetastet.
+
 ## [v1.8.3] – 2026-08-14 (Groß-/Kleinschreibung, saubere Fehlermeldungen, Sicherheitsnetz)
 
 ### Korrigiert (#67)

@@ -16,6 +16,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import Optional
+from uuid import uuid4
 
 from PIL import Image, ImageOps
 from fastapi import UploadFile
@@ -38,6 +39,14 @@ THUMB_SIZE = (200, 280)
 # Upload-Härtung (Issue #2): nur echte Bildformate, die StaticFiles gefahrlos
 # ausliefern kann — kein .svg/.html im /images-Verzeichnis (aktive Inhalte).
 _ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+
+# PIL-Formatname je erlaubter Endung (#82): PIL.Image.save() ohne explizites
+# format= errät das Format aus dem DATEINAMEN — bei der TMP-Datei
+# (Endung ".tmp-<hex>", siehe _save_upright) schlägt diese Erratung fehl
+# ("unknown file extension"). Deshalb hier explizit statt implizit über den
+# Namen; Schlüssel sind exakt _ALLOWED_IMAGE_SUFFIXES (dieselbe Menge, die
+# _validated_suffix vor jedem _save_upright-Aufruf bereits erzwingt).
+_PIL_FORMAT_BY_SUFFIX = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
 _MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # 12 MB, analog Scan-Endpoint
 
 # Alle DB-Spalten, die einen lokalen (relativen) Medienpfad tragen — quer über
@@ -118,31 +127,67 @@ def _save_upright(upload: UploadFile, dst: Path, *, thumb: Optional[Path] = None
     Speichert ein hochgeladenes Bild aufrecht (EXIF-Orientierung angewandt) und
     optional ein Thumbnail. Handy-/Galerie-Uploads tragen oft nur eine
     Orientierungs-Marke statt gedrehter Pixel → sonst läge das Foto quer.
-    Bei Verarbeitungsfehlern wird die bereits geschriebene Rohdatei entfernt.
+
+    tmp+rename (#82, Vorbild catalog_images.py::download_one): Die rohen
+    Upload-Bytes gehen zuerst in eine JE-VERSUCH-EINDEUTIGE TMP-Datei im
+    Zielverzeichnis (uuid4-Suffix) — die gesamte Verarbeitung (EXIF-
+    Aufrichtung, JPEG-Konvertierung, Qualität) läuft auf dieser TMP-Datei,
+    das Thumbnail in einer EIGENEN TMP-Datei. Erst NACH vollständig
+    erfolgreicher Verarbeitung wird per os.replace() atomar an den Zielort
+    verschoben. Vorher (Direkt-Schreiben nach `dst` + `dst.unlink()` bei
+    jedem Fehler) vernichtete ein fehlgeschlagener Re-Upload mit DERSELBEN
+    Endung (jpg→jpg, der häufigste Fall) das bereits gültig liegende Foto
+    samt Thumbnail. Jetzt bleibt eine vorhandene Zieldatei bei jedem
+    Fehlschlag unangetastet — Signatur und Erfolgs-Verhalten (aufrechtes
+    Bild, Thumbnail, gleiche Dateinamen) bleiben unverändert, dadurch erben
+    store_card_image UND store_sealed_image den Fix ohne eigene Änderung.
+    Verschärft Issue #2 ("keine unverarbeitete Rohdatei öffentlich unter
+    /images"): die Rohdatei liegt nie mehr unter ihrem öffentlichen Namen.
+
+    Akzeptiertes Fenster: zwischen den beiden os.replace()-Aufrufen unten
+    zeigt dst bereits auf das NEUE Bild, thumb aber noch kurz auf das ALTE
+    Thumbnail — jeder replace() für sich ist atomar, die Zwei-Schritt-Folge
+    als Ganzes nicht. Für ein Vorschaubild hinnehmbar (kein Datenverlust,
+    kein ungültiger Zwischenzustand, nur kurz inkonsistent).
     """
     suffix = dst.suffix.lower()
     is_jpeg = suffix in (".jpg", ".jpeg")
-    with dst.open("wb") as f:
-        shutil.copyfileobj(upload.file, f)
+    # _validated_suffix (vor jedem Aufruf) erzwingt eine der vier Endungen —
+    # "PNG" ist ein defensiver, praktisch unerreichbarer Fallback.
+    fmt = _PIL_FORMAT_BY_SUFFIX.get(suffix, "PNG")
+    tmp_img = dst.with_name(dst.name + f".tmp-{uuid4().hex[:8]}")
+    tmp_thumb = (
+        thumb.with_name(thumb.name + f".tmp-{uuid4().hex[:8]}") if thumb is not None else None
+    )
     try:
-        with Image.open(dst) as img:
+        with tmp_img.open("wb") as f:
+            shutil.copyfileobj(upload.file, f)
+        with Image.open(tmp_img) as img:
             upright = ImageOps.exif_transpose(img)
             if is_jpeg and upright.mode not in ("RGB", "L"):
                 upright = upright.convert("RGB")
             kw = {"quality": 90} if is_jpeg else {}
-            upright.save(dst, **kw)   # aufrecht zurückschreiben (Marke entfernt)
-            if thumb is not None:
+            upright.save(tmp_img, format=fmt, **kw)   # aufrecht zurückschreiben (Marke entfernt)
+            if tmp_thumb is not None:
                 t = upright.copy()
                 t.thumbnail(THUMB_SIZE)
-                t.save(thumb, **kw)
+                t.save(tmp_thumb, format=fmt, **kw)
     except Exception as exc:
-        # Rohdatei nicht liegen lassen (Issue #2) — sie wäre sonst öffentlich
-        # unter /images erreichbar, obwohl sie kein gültiges Bild ist.
-        dst.unlink(missing_ok=True)
-        if thumb is not None:
-            thumb.unlink(missing_ok=True)
+        # NUR die TMP-Dateien aufräumen (#82) — eine bereits gültig liegende
+        # Zieldatei/Thumbnail aus einem früheren Erfolg wird beim Fehlschlag
+        # nie angefasst. Aufräumen in einem INNEREN try: ein werfender unlink
+        # darf die ImageValidationError unten weder verdrängen noch ersetzen.
+        try:
+            tmp_img.unlink(missing_ok=True)
+            if tmp_thumb is not None:
+                tmp_thumb.unlink(missing_ok=True)
+        except Exception as cleanup_exc:  # noqa: BLE001 — darf den Originalfehler nicht verdecken
+            log.warning("Upload-TMP-Aufräumen fehlgeschlagen: %s", cleanup_exc)
         log.warning("Upload-Bild nicht verarbeitbar: %s", exc)
         raise ImageValidationError("Bilddatei konnte nicht verarbeitet werden")
+    os.replace(tmp_img, dst)  # atomar — ab hier existiert entweder die alte ODER die neue Datei, nie ein Zwischenzustand
+    if tmp_thumb is not None:
+        os.replace(tmp_thumb, thumb)  # atomar, siehe Fenster-Kommentar oben
 
 
 def store_card_image(
