@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 from contextlib import asynccontextmanager
 
@@ -404,6 +405,12 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+
+# #43-Nacharbeit: im python:3.12-slim-Container liefert mimetypes.guess_type()
+# für ".webp" oft None (schlanke Distro-MIME-Registry ohne Bildtypen) —
+# StaticFiles fällt dann auf "text/plain" zurück, obwohl die Datei ein Bild
+# ist. Registrierung VOR dem Mount, gilt für den gesamten Prozess.
+mimetypes.add_type("image/webp", ".webp")
 
 # Serve uploaded card images
 app.mount("/images", StaticFiles(directory=settings.images_dir), name="images")

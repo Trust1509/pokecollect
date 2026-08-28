@@ -16,18 +16,27 @@ erfunden (tcgdex.ALLOWED_IMAGE_HOSTS).
 import asyncio
 import io
 import json
+import os
 import zipfile
 from pathlib import Path
 
 import pytest
+from PIL import Image
 from sqlalchemy import insert, text
 
 from app.config import settings
 from app.database import SessionLocal
 from app.main import _run_light_migrations
 from app.models.card import PokemonCard
+from app.models.collection import Collection, CollectionSoll
+from app.models.pokemon_set import PokemonSet
+from app.models.setting import AppSetting
 from app.models.tcgdex_catalog import TcgdexCatalog
+from app.services import card_images
+from app.services import catalog as catalog_svc
 from app.services import catalog_images
+from app.services import cron as cron_svc
+from app.services import tcgdex
 
 _ALLOWED_HOST = "assets.tcgdex.net"
 
@@ -68,6 +77,29 @@ def cache_stufe(client):
         assert r.status_code == 200, r.text
     yield _set
     _set("urls")
+
+
+def _grosses_gueltiges_png() -> bytes:
+    """Ein ECHTES, gültiges PNG über der 12-MB-Kappe (#43-Nacharbeit A(b)) —
+    Zufallsrauschen statt einer Fläche, weil PNG eine einfarbige Fläche auf
+    wenige Bytes komprimiert (2200×2200 Rauschen bleibt bei ~13,9 MB, empirisch
+    geprüft: deutlich über der 12-MB-Grenze, auch nach der Kompression)."""
+    data = os.urandom(2200 * 2200 * 3)
+    img = Image.frombytes("RGB", (2200, 2200), data)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@pytest.fixture()
+def jpeg_bytes() -> bytes:
+    """Ein kleines, echtes JPEG (#43-Nacharbeit A/C: die tcgplayer-Quelle
+    liefert JPEG, download_one muss die Endung danach wählen, nicht blind
+    .webp annehmen). Lokal statt in conftest.py — nur dieser Testfall braucht
+    ein zweites Bildformat."""
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 14), color=(30, 60, 90)).save(buf, format="JPEG")
+    return buf.getvalue()
 
 
 def _zeile(db, cid, *, region="west", image_url=None, image_pfad=None):
@@ -195,8 +227,12 @@ def test_download_one_erfolg_setzt_image_pfad(db, monkeypatch, png_bytes):
     db.expire_all()
     reloaded = db.get(TcgdexCatalog, "test43-dl-ok")
     assert reloaded.image_pfad is not None
-    disk = catalog_images.catalog_image_disk_path("test43-dl-ok")
-    assert disk.is_file()
+    # #43-Nacharbeit A: Endung folgt dem ECHTEN PIL-Format (png_bytes-Fixture
+    # erzeugt ein PNG) — auf row.image_pfad prüfen, nicht auf hart kodiertes
+    # ".webp" (lehren.md-Klasse: Wächter muss seine eigene Reichweite belegen).
+    assert reloaded.image_pfad.endswith(".png"), reloaded.image_pfad
+    disk = card_images.safe_media_path(reloaded.image_pfad)
+    assert disk is not None and disk.is_file()
     assert disk.read_bytes() == png_bytes
 
 
@@ -254,6 +290,163 @@ def test_download_one_ohne_cdn_url_liefert_false(db):
     row = _zeile(db, "test43-dl-leer", image_url=None)
     db.commit()
     assert asyncio.run(catalog_images.download_one(db, row)) is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 5b) Panel-Nacharbeit #43: tmp+rename-Vertrag, Byte-Kappe, Format-Endung,
+#     Redirect-Endprüfung, Dateinamen-Härtung (neue Tests A, siehe Bau-Brief)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_a_fehlschlag_laesst_vorhandene_gueltige_datei_unangetastet(db, monkeypatch, png_bytes):
+    """Neuer Test A(a): tmp+rename-Vertrag — ein Fehlschlag darf eine bereits
+    vorhandene GÜLTIGE Cache-Datei (aus einem früheren Erfolg) nicht antasten.
+    Sabotage-Rot: download_one zurück auf Direkt-Schreiben-nach-dest +
+    dest.unlink()-bei-Fehler -> fällt (die vorhandene Datei wird beim
+    Direkt-Schreiben SOFORT überschrieben, bevor die Validierung überhaupt
+    beginnt, und beim anschließenden unlink() endgültig entfernt)."""
+    cid = "test43-a-unangetastet"
+    row = _zeile(db, cid, image_url=_url("a-unangetastet"))
+    final = catalog_images.catalog_image_disk_path(cid)  # .webp, wie ein frueherer Erfolg ihn geschrieben haette
+    final.parent.mkdir(parents=True, exist_ok=True)
+    final.write_bytes(png_bytes)
+    row.image_pfad = catalog_images.catalog_image_db_pfad(cid)
+    db.commit()
+    original_bytes = final.read_bytes()
+
+    async def fake_bytes(url):
+        return b"kaputte-neue-daten-kein-bild"
+    monkeypatch.setattr(catalog_images, "_fetch_image_bytes", fake_bytes)
+
+    try:
+        ok = asyncio.run(catalog_images.download_one(db, row))
+        assert ok is False
+        assert final.is_file(), "vorhandene gueltige Datei wurde geloescht"
+        assert final.read_bytes() == original_bytes, "vorhandene gueltige Datei wurde ueberschrieben"
+        db.expire_all()
+        assert db.get(TcgdexCatalog, cid).image_pfad == catalog_images.catalog_image_db_pfad(cid)
+        leftovers = list(final.parent.glob(f"{final.name}.tmp-*"))
+        assert leftovers == [], leftovers  # keine TMP-Leiche im Zielverzeichnis
+    finally:
+        final.unlink(missing_ok=True)
+
+
+def test_a_ueber_der_byte_kappe_scheitert_ohne_pfad(db, monkeypatch):
+    """Neuer Test A(b): Byte-Kappe WIEDERVERWENDET card_images._MAX_UPLOAD_BYTES
+    (12 MB, DRY) — keine eigene Konstante fuer dieselbe Bedeutung.
+
+    WICHTIG: die Fake-Bytes sind ein ECHTES, gültiges PNG (Zufallsrauschen —
+    komprimiert praktisch nicht), nur eben über der Kappe. Kaputte/keine
+    Bilddaten wären hier KEIN diskriminierender Beweis: die PIL-Validierung
+    weiter unten würde ohnehin False liefern, auch wenn die Kappe selbst gar
+    nicht mehr geprüft würde — der Test bewiese dann nur "irgendetwas schlägt
+    fehl", nicht "die Kappe greift"."""
+    cid = "test43-b-zu-gross"
+    row = _zeile(db, cid, image_url=_url("b-zu-gross"))
+    db.commit()
+
+    zu_gross = _grosses_gueltiges_png()
+    assert len(zu_gross) > card_images._MAX_UPLOAD_BYTES
+
+    async def fake_bytes(url):
+        return zu_gross
+    monkeypatch.setattr(catalog_images, "_fetch_image_bytes", fake_bytes)
+
+    ok = asyncio.run(catalog_images.download_one(db, row))
+    assert ok is False
+    db.expire_all()
+    assert db.get(TcgdexCatalog, cid).image_pfad is None
+    assert not catalog_images.catalog_image_disk_path(cid).exists()
+
+
+def test_a_jpeg_quelle_ergibt_jpg_pfad(db, monkeypatch, jpeg_bytes):
+    """Neuer Test A(c): Endung folgt dem ECHTEN PIL-Format, nicht blind
+    ".webp" — die tcgplayer-Quelle liefert JPEG."""
+    cid = "test43-c-jpeg"
+    row = _zeile(db, cid, image_url=_url("c-jpeg"))
+    db.commit()
+
+    async def fake_bytes(url):
+        return jpeg_bytes
+    monkeypatch.setattr(catalog_images, "_fetch_image_bytes", fake_bytes)
+
+    try:
+        ok = asyncio.run(catalog_images.download_one(db, row))
+        assert ok is True
+        db.expire_all()
+        pfad = db.get(TcgdexCatalog, cid).image_pfad
+        assert pfad is not None and pfad.endswith(".jpg"), pfad
+        disk = catalog_images.catalog_image_disk_path(cid, ".jpg")
+        assert disk.is_file()
+        assert disk.read_bytes() == jpeg_bytes
+        assert not catalog_images.catalog_image_disk_path(cid, ".webp").exists()
+    finally:
+        catalog_images.catalog_image_disk_path(cid, ".jpg").unlink(missing_ok=True)
+
+
+def test_a_redirect_auf_verbotenen_host_scheitert(db, monkeypatch, png_bytes):
+    """Neuer Test A(d): Redirect-Endprüfung in _fetch_image_bytes — die
+    AUSGANGS-URL ist erlaubt, der Server leitet aber auf einen fremden Host
+    um. httpx.AsyncClient wird gemockt (NICHT der Seam _fetch_image_bytes
+    selbst — sonst prüfte der Test nur den Mock, nie den echten Code)."""
+    cid = "test43-d-redirect"
+    row = _zeile(db, cid, image_url=_url("d-redirect"))
+    db.commit()
+
+    class _FakeResponse:
+        url = "https://evil.example.com/x.webp"  # finale URL NACH dem Redirect
+        headers = {"content-type": "image/webp"}
+        content = png_bytes
+
+        def raise_for_status(self):
+            pass
+
+    class _FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url):
+            return _FakeResponse()
+
+    monkeypatch.setattr(catalog_images.httpx, "AsyncClient", _FakeAsyncClient)
+
+    ok = asyncio.run(catalog_images.download_one(db, row))
+    assert ok is False
+    db.expire_all()
+    assert db.get(TcgdexCatalog, cid).image_pfad is None
+    assert not catalog_images.catalog_image_disk_path(cid).exists()
+
+
+def test_a_300_zeichen_card_id_gelingt_dank_haertung(db, monkeypatch, png_bytes):
+    """Neuer Test A(e) + C: eine überlange card_id (Panel-Sonde: 300 Zeichen
+    ergaben vorher ENAMETOOLONG) gelingt jetzt dank Kappung+Hash-Suffix in
+    safe_catalog_filename, und die Datei liegt sicher unter images_dir."""
+    cid = "test43-e-" + ("x" * 300)
+    row = _zeile(db, cid, image_url=_url("e-ueberlang"))
+    db.commit()
+
+    async def fake_bytes(url):
+        return png_bytes
+    monkeypatch.setattr(catalog_images, "_fetch_image_bytes", fake_bytes)
+
+    try:
+        ok = asyncio.run(catalog_images.download_one(db, row))
+        assert ok is True
+        db.expire_all()
+        pfad = db.get(TcgdexCatalog, cid).image_pfad
+        assert pfad is not None and pfad.endswith(".png"), pfad
+        disk = catalog_images.catalog_image_disk_path(cid, ".png")
+        assert disk.is_file()
+        media_root = Path(settings.images_dir).resolve()
+        assert disk.resolve().is_relative_to(media_root)
+        assert len(disk.name) < 150, disk.name  # deutlich unter dem Dateisystem-Limit
+    finally:
+        catalog_images.catalog_image_disk_path(cid, ".png").unlink(missing_ok=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -417,6 +610,42 @@ def test_loggt_genau_eine_zusammenfassungszeile(db, monkeypatch, cache_stufe, pn
     assert len(zusammenfassungen) == 1, [r.getMessage() for r in caplog.records]
 
 
+def test_e_stufenwechsel_waehrend_der_etappe_bricht_sie_ab(db, monkeypatch, cache_stufe, png_bytes):
+    """Panel-Nacharbeit E: die Stufe wird VOR JEDEM Download erneut gelesen —
+    nimmt jemand sie waehrend eines laufenden Schwungs zurueck, bricht die
+    Etappe sofort ab statt das bereits gezogene Budget zu Ende zu laden.
+    Sabotage-Rot: den Recheck entfernen -> beide Zeilen werden geladen (2
+    statt 1). Reihenfolge ist seit G zufaellig -- die Zusicherung prueft
+    deshalb bewusst nur die GESAMTZAHL, nicht WELCHE der beiden Zeilen es traf."""
+    cache_stufe("all")
+    _zeile(db, "test43-stufenwechsel-a", image_url=_url("stufenwechsel-a"))
+    _zeile(db, "test43-stufenwechsel-b", image_url=_url("stufenwechsel-b"))
+    db.commit()
+
+    aufrufe: list[str] = []
+
+    async def fake_bytes(url):
+        aufrufe.append(url)
+        if len(aufrufe) == 1:
+            # Stufe "waehrend" der Etappe zurueckgenommen -- dieselbe Session
+            # wie run_catalog_image_cache, damit der naechste get_setting()-
+            # Read (Identity-Map, noch vor jedem commit) die Aenderung sofort
+            # sieht, ganz ohne Flush/Commit noetig zu haben.
+            row = db.get(AppSetting, "catalog_image_cache_level")
+            row.value = "urls"
+        return png_bytes
+    monkeypatch.setattr(catalog_images, "_fetch_image_bytes", fake_bytes)
+
+    stats = asyncio.run(catalog_images.run_catalog_image_cache(db, limit=10))
+    assert stats["loaded"] == 1
+    db.expire_all()
+    geladen = [
+        db.get(TcgdexCatalog, "test43-stufenwechsel-a").image_pfad is not None,
+        db.get(TcgdexCatalog, "test43-stufenwechsel-b").image_pfad is not None,
+    ]
+    assert geladen.count(True) == 1  # genau EINE der beiden Zeilen wurde geladen
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 7) cache_one_on_demand() — Einzel-Cache
 # ═══════════════════════════════════════════════════════════════════════════
@@ -520,8 +749,10 @@ def test_detail_endpunkt_liefert_cdn_url_ohne_pfad(db, client):
 
 def test_on_demand_task_wird_nur_ausserhalb_von_urls_registriert(db, client, monkeypatch, cache_stufe):
     """Naht-Rot-Beweis: die Registrierung selbst (nicht nur ihre Wirkung) hängt
-    an der Stufe. Sabotage: die `if stage != "urls":`-Verdrahtung im
-    Detail-Endpunkt entfernen -> genau dieser Test fällt."""
+    an der Stufe UND (Panel-Nacharbeit F) daran, ob die Zeile schon gecacht
+    ist. Sabotage 1: die `if stage != "urls":`-Verdrahtung im Detail-Endpunkt
+    entfernen -> genau dieser Test fällt. Sabotage 2 (F): die Pfad-Bedingung
+    (`not row.image_pfad`) weglassen -> der letzte Block unten fällt."""
     cid = "test43-ondemand-wiring"
     _zeile(db, cid, image_url=_url("ondemand-wiring"))
     db.commit()
@@ -539,6 +770,16 @@ def test_on_demand_task_wird_nur_ausserhalb_von_urls_registriert(db, client, mon
     cache_stufe("owned")  # != urls: Task WIRD registriert (TestClient führt ihn synchron aus)
     assert client.get(f"/api/v1/catalog/{cid}/detail").status_code == 200
     assert calls == [cid]
+
+    # Panel-Nacharbeit F: Zeile schon gecacht -> KEIN Aufruf, obwohl stage
+    # weiterhin != urls ist (spart je Popup-Oeffnung einer gecachten Karte
+    # eine No-op-Background-Session).
+    cid_gecacht = "test43-ondemand-wiring-gecacht"
+    _zeile(db, cid_gecacht, image_url=_url("ondemand-wiring-gecacht"),
+           image_pfad="images/catalog/sentinel-schon-gecacht.webp")
+    db.commit()
+    assert client.get(f"/api/v1/catalog/{cid_gecacht}/detail").status_code == 200
+    assert calls == [cid]  # unveraendert -- kein neuer Aufruf fuer die gecachte Zeile
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -591,3 +832,166 @@ def test_restore_neutralisiert_traversal_in_tcgdex_catalog_image_pfad(db, client
             cleanup.commit()
         finally:
             cleanup.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 10) Panel-Nacharbeit #43: vier arbitrierte Naht-Rot-Beweise (D) —
+#     Liste, Soll-Slots, Cron-Schritt-Verdrahtung, Enrichment-Erhalt.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_d1_liste_liefert_lokale_url_wenn_pfad_gesetzt_und_datei_da(db, client, png_bytes):
+    """Naht-Rot-Beweis D1: Sabotage — die Zeile
+    `ci.image_url = catalog_images.resolve_catalog_image_url(...)` in
+    catalog.py::list_catalog entfernen -> item.image_url bliebe die CDN-URL,
+    dieser Test fällt. Eigener set_id-Wert (statt des von _zeile() geteilten
+    "test43set") isoliert die Zeile exakt über den Listen-Filter, unabhängig
+    von anderen test43-Zeilen."""
+    cid = "test43-liste-lokal"
+    cdn_url = _url("liste-lokal")
+    row = _zeile(db, cid, image_url=cdn_url)
+    row.set_id = "test43set-liste"
+    db.commit()
+    dest = catalog_images.catalog_image_disk_path(cid)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(png_bytes)
+    try:
+        row.image_pfad = catalog_images.catalog_image_db_pfad(cid)
+        db.commit()
+
+        body = client.get("/api/v1/catalog", params={"set_id": "test43set-liste"}).json()
+        assert body["total"] == 1, body
+        item = body["items"][0]
+        assert item["image_url"] is not None
+        assert item["image_url"] != cdn_url
+        assert item["image_url"].endswith(
+            f"images/{catalog_images.CATALOG_SUBDIR}/{catalog_images.safe_catalog_filename(cid)}.webp")
+    finally:
+        dest.unlink(missing_ok=True)
+
+
+def test_d2_soll_slot_liefert_lokale_url_wenn_pfad_gesetzt_und_datei_da(db, client, png_bytes):
+    """Naht-Rot-Beweis D2: Sabotage — in set_goal.py::soll_status den
+    resolve_catalog_image_url(...)-Aufruf auf `cat.image_url` zurückdrehen ->
+    dieser Test fällt."""
+    set_id = "test43set-soll"
+    set_code = "T43SOLL"
+    cid = "test43-soll-lokal"
+    cdn_url = _url("soll-lokal")
+    db.add(PokemonSet(code=set_code, name="Test43-Sollziel", set_id=set_id))
+    row = _zeile(db, cid, image_url=cdn_url)
+    row.set_id = set_id
+    row.set_code = set_code
+    db.commit()
+
+    dest = catalog_images.catalog_image_disk_path(cid)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(png_bytes)
+    coll_id = None
+    try:
+        row.image_pfad = catalog_images.catalog_image_db_pfad(cid)
+        db.commit()
+
+        r = client.post("/api/v1/collections", json={
+            "name": "Test43-Sollziel-Sammlung", "typ": "set_ziel", "ziel_set_id": set_id,
+        })
+        assert r.status_code == 201, r.text
+        coll_id = r.json()["id"]
+
+        slots = client.get(f"/api/v1/collections/{coll_id}/soll").json()
+        assert len(slots) == 1, slots
+        assert slots[0]["image_url"] is not None
+        assert slots[0]["image_url"] != cdn_url
+        assert slots[0]["image_url"].endswith(
+            f"images/{catalog_images.CATALOG_SUBDIR}/{catalog_images.safe_catalog_filename(cid)}.webp")
+    finally:
+        dest.unlink(missing_ok=True)
+        cleanup = SessionLocal()
+        try:
+            if coll_id:
+                cleanup.query(CollectionSoll).filter(CollectionSoll.collection_id == coll_id).delete(
+                    synchronize_session=False)
+                cleanup.query(Collection).filter(Collection.id == coll_id).delete(synchronize_session=False)
+            cleanup.query(PokemonSet).filter(PokemonSet.code == set_code).delete(synchronize_session=False)
+            cleanup.commit()
+        finally:
+            cleanup.close()
+
+
+def test_d3_bild_cache_schritt_wird_genau_einmal_aufgerufen(db, monkeypatch):
+    """Naht-Rot-Beweis D3 (Muster test_75_batch_fehler.py): der Bild-Cache-
+    Schritt ist im Nachtlauf verdrahtet. Sabotage — die Zeile
+    `await schritt("Bild-Cache", run_catalog_image_cache(db, limit=500))` in
+    cron.py::_daily_catalog_sync entfernen -> calls bleibt leer, dieser Test
+    fällt."""
+    calls: list[int] = []
+
+    async def fake_sync_sets():
+        pass
+
+    async def fake_sync_catalog(_db):
+        pass
+
+    async def fake_enrich(_db, limit=0):
+        pass
+
+    async def fake_repass(_db, limit=0):
+        pass
+
+    async def fake_image_cache(_db, limit=0):
+        calls.append(limit)
+        return {"stage": "urls", "loaded": 0, "skipped": 0, "failed": 0}
+
+    monkeypatch.setattr("app.services.set_sync.sync_sets", fake_sync_sets)
+    monkeypatch.setattr(catalog_svc, "sync_catalog", fake_sync_catalog)
+    monkeypatch.setattr(catalog_svc, "enrich_catalog", fake_enrich)
+    monkeypatch.setattr(catalog_svc, "refresh_catalog_eur", fake_repass)
+    monkeypatch.setattr(catalog_images, "run_catalog_image_cache", fake_image_cache)
+
+    asyncio.run(cron_svc._daily_catalog_sync(db))
+
+    assert len(calls) == 1, calls
+
+
+def test_d4_enrichment_laesst_image_pfad_unangetastet(db, monkeypatch):
+    """Naht-Rot-Beweis D4: Sabotage — direkt hinter der image_url-Zuweisung in
+    catalog.py::_apply_full ein `row.image_pfad = None` einfügen -> dieser
+    Test fällt. Bedingung `not row.image and tc.image` (catalog.py:57) muss
+    greifen (row.image ist hier leer), image_url wird dabei NEU gesetzt --
+    image_pfad (der lokale Bild-Cache, #43) muss trotzdem unangetastet
+    bleiben (sync_catalog/_apply_full duerfen ihn nie schreiben)."""
+    cid = "test43-enrich-pfad"
+    row = _zeile(db, cid, image_url=None, image_pfad="images/catalog/schon-gecacht.webp")
+    row.enriched = False
+    db.commit()
+
+    async def fake_get_card(card_id, lang="en"):
+        return tcgdex.TcgdexCard(id=card_id, image="https://assets.tcgdex.net/en/test43-enrich-pfad")
+    monkeypatch.setattr(tcgdex, "get_card", fake_get_card)
+
+    result = asyncio.run(catalog_svc.enrich_catalog(db, limit=10))
+    assert result["enriched"] == 1, result
+
+    db.expire_all()
+    reloaded = db.get(TcgdexCatalog, cid)
+    assert reloaded.image_url is not None  # Bedingung "not row.image and tc.image" hat gegriffen
+    assert reloaded.image_pfad == "images/catalog/schon-gecacht.webp"  # #43: unangetastet
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 11) MIME-Registrierung (main.py): .webp muss als image/webp ausgeliefert
+#     werden. GILT NUR im Gates-/CI-Container (siehe Bericht) — ein
+#     Wirts-System mit vollständigerer mimetypes-Registry-DB kennt .webp
+#     unter Umständen schon von selbst und macht diesen Test auch OHNE die
+#     main.py-Zeile grün.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_webp_wird_mit_image_webp_content_type_ausgeliefert(client):
+    dest = Path(settings.images_dir) / catalog_images.CATALOG_SUBDIR / "test43-mime.webp"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(b"irrelevanter-inhalt-nur-der-content-type-wird-geprueft")
+    try:
+        r = client.get(f"/images/{catalog_images.CATALOG_SUBDIR}/test43-mime.webp")
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"].startswith("image/webp"), r.headers.get("content-type")
+    finally:
+        dest.unlink(missing_ok=True)

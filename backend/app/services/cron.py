@@ -81,8 +81,14 @@ async def _daily_catalog_sync(db: Session):
     # #43: eigenes, noch kleineres Budget — ein Bild-Download ist teurer als
     # ein JSON-Preis-Abruf (echter Dateidownload + Schreiben + PIL-Validierung).
     # Lädt nur, wenn die Einstellung catalog_image_cache_level das erlaubt
-    # ("urls", der Default, lädt nichts).
-    await schritt("Bild-Cache", run_catalog_image_cache(db, limit=60))
+    # ("urls", der Default, lädt nichts). Panel-Nacharbeit #43: 60/Nacht ergäbe
+    # bei Stufe "all" (voller TCGdex-Katalog, NICHT die ~1.025 eigenen Karten
+    # aus CLAUDE.md — der €-Repass-Kommentar drei Zeilen weiter oben nennt
+    # dafür ~11,8k bereits angereicherte Zeilen) ≈16 Monate bis zum vollen
+    # Katalog; 500 ≈2 Monate, ~50 MB/Nacht sequenziell — der €-Repass hat bei
+    # vergleichbarem Katalogumfang analog limit=1000, ein Bild-Download ist
+    # aber teurer je Zeile (echter Dateidownload statt JSON-Abruf).
+    await schritt("Bild-Cache", run_catalog_image_cache(db, limit=500))
 
 
 def _price_update_hour(db: Session) -> int:

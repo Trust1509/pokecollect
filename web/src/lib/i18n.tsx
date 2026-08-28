@@ -508,6 +508,9 @@ const DE = {
   settings_catalog_cache_owned: "Besessene + Wunschliste",
   settings_catalog_cache_all: (gb: string) => `Alle Katalogbilder (geschätzt ~${gb} GB)`,
   settings_catalog_cache_status: (cached: string, total: string) => `${cached} von ${total} Katalogbildern lokal gecacht`,
+  // #43-Nacharbeit: bei Stufe "owned" ist `total` (ganzer Katalog) NICHT die
+  // Zielmenge – "X von Y" wäre irreführend. Nur die reine Zahl anzeigen.
+  settings_catalog_cache_status_owned: (cached: string) => `${cached} Bilder lokal gecacht`,
   settings_section_collection: "Sammlung",
   settings_default_language: "Standard-Sprache für neue Karten",
   settings_default_condition: "Standard-Zustand für neue Karten",
@@ -1070,6 +1073,7 @@ const EN: typeof DE = {
   settings_catalog_cache_owned: "Owned + wishlist",
   settings_catalog_cache_all: (gb: string) => `All catalog images (estimated ~${gb} GB)`,
   settings_catalog_cache_status: (cached: string, total: string) => `${cached} of ${total} catalog images cached locally`,
+  settings_catalog_cache_status_owned: (cached: string) => `${cached} images cached locally`,
   settings_section_collection: "Collection",
   settings_default_language: "Default language for new cards",
   settings_default_condition: "Default condition for new cards",

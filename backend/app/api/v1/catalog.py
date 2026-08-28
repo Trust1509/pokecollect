@@ -235,9 +235,14 @@ async def catalog_card_detail(
     # erlaubt — bei "urls" (Default) bleibt der Detail-GET ohne jede
     # Schreib-Nebenwirkung. Die feinere Prüfung (welche Karten "owned" erlaubt)
     # macht der Task selbst (stage_allows), mit dem zu diesem Zeitpunkt
-    # frischesten Setting-Wert.
+    # frischesten Setting-Wert. Panel-Nacharbeit #43: UND nur, wenn die Zeile
+    # noch keinen Pfad hat (row liegt hier bereits vor, ganz oben geladen) —
+    # spart je Popup-Öffnung einer längst gecachten Karte eine No-op-
+    # Background-Session (der Task würde ohnehin sofort an
+    # cache_one_on_demand()s eigenem Bereits-gecacht-Check verpuffen, aber
+    # erst NACH dem Session-Aufbau).
     stage = get_setting(db, "catalog_image_cache_level")
-    if stage != "urls":
+    if stage != "urls" and not row.image_pfad:
         background_tasks.add_task(catalog_images.cache_one_on_demand, card_id)
 
     return detail

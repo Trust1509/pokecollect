@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased] – Panel-Nacharbeit #43 (Lokaler Bild-Cache: Format-Endung, MIME, Budget)
+
+Hinweis: Der #43-Bau selbst (v1.8.3 → HEAD) hatte hier noch keinen eigenen
+Abschnitt bekommen — diese Zeilen ergänzen die arbitrierte Nacharbeit dazu,
+ohne die Historie einer bestehenden datierten Version umzuschreiben.
+
+### Korrigiert (#43)
+- **Katalogbilder werden mit ihrer echten Endung gespeichert** (`.jpg` für
+  JPEG-Quellen wie tcgplayer, `.png`/`.webp` je nach erkanntem PIL-Format)
+  statt bisher immer `.webp` unabhängig vom tatsächlichen Inhalt.
+- **`.webp` wird wieder als `image/webp` ausgeliefert** — in der schlanken
+  Container-Distro kannte die MIME-Registry die Endung sonst nicht und
+  Bilder kamen als `text/plain`.
+- Nächtliches Cache-Budget `60` → `500` Bilder/Nacht (Stufe „owned"/„all"),
+  dazu Download-Härtung (Byte-Kappe, atomares Schreiben, Dateinamen-Kappung
+  für sehr lange Karten-IDs).
+
 ## [v1.8.3] – 2026-08-14 (Groß-/Kleinschreibung, saubere Fehlermeldungen, Sicherheitsnetz)
 
 ### Korrigiert (#67)

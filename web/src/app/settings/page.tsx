@@ -554,10 +554,17 @@ export default function SettingsPage() {
         </Field>
         {catalogMeta && (
           <p className="text-gray-600 text-xs">
-            {t.settings_catalog_cache_status(
-              catalogMeta.cached_images.toLocaleString(t.date_locale),
-              catalogMeta.total.toLocaleString(t.date_locale),
-            )}
+            {/* #43-Nacharbeit: bei Stufe "owned" ist total (ganzer Katalog)
+                nicht die Zielmenge -- "X von Y" waere irrefuehrend, dort nur
+                die reine Zahl zeigen; bei "all" bleibt "X von Y". */}
+            {s.catalog_image_cache_level === "all"
+              ? t.settings_catalog_cache_status(
+                  catalogMeta.cached_images.toLocaleString(t.date_locale),
+                  catalogMeta.total.toLocaleString(t.date_locale),
+                )
+              : t.settings_catalog_cache_status_owned(
+                  catalogMeta.cached_images.toLocaleString(t.date_locale),
+                )}
           </p>
         )}
         <div className="pt-1">
