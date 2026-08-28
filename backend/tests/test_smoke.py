@@ -4,6 +4,31 @@ Platzhalter-Logik, Settings, Auth, Enums). Absichtlich schlank — sie ist das
 Gate, das jede Änderung vor Push/Release passieren muss.
 """
 
+import pytest
+
+from app.database import SessionLocal
+from app.models.card import PokemonCard
+
+
+@pytest.fixture()
+def _pokedex_9999_aufraeumen():
+    """Mehrfachlauf-Fixture (#79): test_owned_card_adopts_placeholder legt eine
+    Karte mit fester pokedex_nr=9999 an, ohne aufzuräumen — beim zweiten
+    Suite-Lauf trifft die Platzhalter-Adoption dann auf eine Dublette. Räumt
+    nach dem Test ALLE Karten dieser Nummer weg, unabhängig vom
+    `besessen`-Stand — das erfasst auch den Platzhalter, den der Server beim
+    Löschen der letzten Karte einer Art selbst neu anlegt (cards.py::
+    delete_card), also gerade den Rückstand, den der manuelle Delete im Test
+    für sich allein nicht auflöst."""
+    yield
+    db = SessionLocal()
+    try:
+        db.query(PokemonCard).filter(PokemonCard.pokedex_nr == 9999).delete(
+            synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
+
 
 def test_health(client):
     r = client.get("/health")
@@ -64,7 +89,7 @@ def test_placeholder_not_deletable(client):
     assert r.status_code == 400
 
 
-def test_owned_card_adopts_placeholder(client):
+def test_owned_card_adopts_placeholder(client, _pokedex_9999_aufraeumen):
     """Kern-Invariante: besessene Karte übernimmt den Pokédex-Platzhalter."""
     ph = client.post(
         "/api/v1/cards",
@@ -82,7 +107,10 @@ def test_owned_card_adopts_placeholder(client):
     assert body["id"] == ph_id, "Platzhalter muss übernommen werden, kein Duplikat"
     assert body["im_pokedex"] is True
 
-    # Aufräumen: Delete legt den Platzhalter wieder an → den auch entfernen
+    # Übt zusätzlich den Löschpfad (delete_card) aus: Löschen der letzten
+    # Karte einer Art legt server-seitig selbst wieder einen Platzhalter an.
+    # Vollständiges Aufräumen (inkl. dieses neuen Platzhalters) übernimmt die
+    # _pokedex_9999_aufraeumen-Fixture oben, nicht dieser Aufruf allein.
     client.delete(f"/api/v1/cards/{ph_id}")
 
 

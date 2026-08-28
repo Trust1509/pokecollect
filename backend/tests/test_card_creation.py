@@ -7,7 +7,35 @@ scan/commit und Katalog-Übernahme.
 import pytest
 
 from app.database import SessionLocal
+from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
+
+# Mehrfachlauf-Fixture (#79): Alle Tests in dieser Datei legen Karten mit
+# einer festen `pokedex_nr` aus dem 99xx-Bereich per POST an, ohne
+# aufzuräumen. Ohne dieses Aufräumen trifft die Platzhalter-Adoption in
+# create_owned_card beim zweiten Suite-Lauf auf mehr als eine offene Zeile
+# derselben Nummer, und len(cards)==1-Zusicherungen scheitern an der
+# Dublette aus dem Erstlauf. Die Nummern sind ausschließlich in dieser Datei
+# verwendet (grep über backend/tests bestätigt keine Kollision mit anderen
+# Testdateien).
+_TEST_POKEDEX_NRS = (9901, 9902, 9903)
+
+
+@pytest.fixture(autouse=True)
+def _pokedex_platzhalter_aufraeumen():
+    """Räumt nach jedem Test alle Karten der o.g. Nummern weg — auch den
+    Platzhalter, den der Server selbst beim Löschen der letzten Karte einer
+    Art neu anlegt (cards.py::delete_card): Der Filter auf `pokedex_nr`
+    erfasst beide Formen unabhängig vom `besessen`-Stand."""
+    yield
+    db = SessionLocal()
+    try:
+        db.query(PokemonCard).filter(
+            PokemonCard.pokedex_nr.in_(_TEST_POKEDEX_NRS)
+        ).delete(synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
 
 
 def _placeholder(client, name: str, nr: int) -> int:
