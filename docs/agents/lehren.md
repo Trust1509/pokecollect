@@ -297,6 +297,16 @@ Rückweg**, beides an der Stelle, an der sie steht. Konkret hier:
 Der Befund ist erst aus der Portfolio-Sicht sichtbar geworden: vier Repos, vier
 Notbremsen, kein Datum. Wer nur das eigene Repo ansieht, hält das für Ordnung.
 
+**Nachtrag 02.09.2026 — der Rückweg wurde begangen, und das Datum hat gewirkt:**
+Am Stichtag entschied der Owner je Maßnahme *Rückdreh* oder *Dauerregel* — das
+ist der Zweck des Datums, nicht ein automatischer Rückbau. Ergebnis:
+`pull_request`-Trigger weg, Ein-Job-pytest, `concurrency` und `paths-ignore`
+bleiben dauerhaft (kosten keine Qualität); Dependabot kommt nur halb zurück
+(monthly, Limit 1 — der Rücksetz-Kasten mit „weekly/limit 5" war in die falsche
+Richtung geschrieben); `[skip ci]` wird von der Notmaßnahme zum Standard mit
+EINEM `workflow_dispatch` je Slice (CLAUDE.md, CI-Dauerregel). Die
+Aussetzungs-Hinweise „bis 01.09." in den Klassen 10 und 12 sind damit historisch.
+
 ---
 
 ## 8. Eine Prüfung rutscht zu dem, was leichter zu messen ist

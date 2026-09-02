@@ -99,6 +99,13 @@ Verfahren und hatte bisher kein Gegenstück zum Rot-Beweis.
 - **Gegenfrage vor jedem Verwerfen: „Welche Eingabe würde der Stimme recht
   geben?"** Wer sie nicht beantworten kann, hat nicht widerlegt, sondern nicht
   reproduziert.
+- **Auch eine Text-Suche mit null Treffern ist eine verwerfende Sonde (v1.12.3).**
+  grep arbeitet zeilenweise — eine Wortgruppe über einem Prosa-Umbruch liefert
+  null Treffer, obwohl sie dasteht, und ohne `-i` verfehlt „Synthese" das
+  „SYNTHESE". Vor dem Verwerfen: `grep -rni` mit dem **seltensten Einzelwort**
+  (ein Einzelwort kann nicht umbrochen werden); mehrwortig nur umbruchtolerant
+  (`grep -Pzo` mit `\s+`). Gilt auch für die Zählprobe beim Verschieben
+  (v1.12.2: den neuen Wortlaut zählen, die Zahl muss eins bleiben).
 - **Drittes Urteil neben bestätigt/verworfen: „richtiger Instinkt, falsche
   Begründung."** Der Fund bleibt, die Begründung wird ersetzt. Ohne diese
   Kategorie werden echte Befunde als Fehlbefunde abgeräumt.
@@ -142,8 +149,10 @@ entschieden; sie hat die frühere Trivial-Liste und die Pflichtfälle ERSETZT
 aussehen, damit sie beim nächsten Abgleich nicht aufgeweicht werden.
 
 **Verfahren je Klasse:** R0 → lokale Gates. R2 → blinde Erststimme +
-unabhängige Zweitstimme. R1 (Verkürzung in R2, nur mechanische Nacharbeit) →
-blinde Erststimme allein, Begründung unter der Stimmen-Überschrift. R3 →
+unabhängige Zweitstimme. R1 → Auslöser und Mindestprüfung stehen NUR in der Tabelle
+(`../../CLAUDE.md`, Zeile *R1*; v1.12.2: ein Eigentümer, keine Prosa-Kopie) —
+hier nur das Verfahrens-Detail: Die Begründung der Verkürzung steht unter der
+Überschrift der ausgelassenen Stimme, nicht als Fließtext. R3 →
 volles Panel, Drittstimme als **zweite blinde Claude-Repo-Stimme, adversarial
 gerahmt** (nicht diff-only — die schweren R3-Funde liegen in der Beziehung
 zwischen Diff und Umgebung), plus **risikospezifische Probe durch die echte
@@ -221,4 +230,7 @@ ergebnis- statt transportbezogen):** GPT übernimmt die adversariale Rahmung
 mit **vollem Quelltext auf `git show HEAD:`-Stand** — Review-Zweig,
 Commit-Snapshot oder Quelltext inline sind gleichwertig, solange die Quelle
 stimmt (anderswo trug die Inline-Variante den einzigen echten Treffer der
-Runde).
+Runde). **Die Ersatzregel ist eine Aussage über den Transport, keine Ausnahme
+von der Datengrenze (v1.12.2):** Was einer Fremdstimme nicht gegeben werden
+darf — Owner-Bestand, Schlüssel, Teststand-Daten (definiert in `../../CLAUDE.md`,
+Secrets/Teststand) — darf ihr auch inline nicht gegeben werden.

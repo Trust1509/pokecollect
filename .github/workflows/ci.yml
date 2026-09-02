@@ -1,4 +1,6 @@
-# CI-Gates: laufen bei jedem Push auf main (und auf PRs, falls doch mal einer kommt).
+# CI-Gates: EIN Lauf je Slice (Owner-Dauerregel 02.09.2026) — alle Commits tragen
+# [skip ci]; nach der Landung startet der Agent genau einen workflow_dispatch auf
+# dem HEAD. Der push-Trigger bleibt als Netz für Commits ohne Marker.
 # Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc + build.
 name: CI
 

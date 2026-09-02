@@ -1,6 +1,6 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.12.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.12.3** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
 Titel `Abgleich v1.12.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
@@ -98,31 +98,33 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   `scripts/teststand.sh up` — für Browser-Verifikation vor jedem Release.
   **Trägt den echten Bestand des Owners samt Schlüssel** — nichts, was schreibt
   und aufräumt, läuft dort; `reset` löscht ihn samt Schlüssel.
-- **CI:** GitHub Actions (`.github/workflows/ci.yml`) läuft bei jedem Push auf
-  main: Backend-pytest + Frontend tsc/build. Actions sind SHA-gepinnt, jeder
-  Workflow hat einen `permissions:`-Block (Least Privilege). **Kein
-  `pull_request`-Trigger** (Minuten-Notbremse 14.08.2026) — es gibt keine
-  menschlichen PRs. Dependabot (`.github/dependabot.yml`) ist bis zum 01.09.
-  stillgelegt; Rücksetz-Anweisung steht in der Datei.
-- **NOTMASSNAHME bis 01.09.2026 — CI ausgesetzt (Owner, 20.08.2026):** Das
-  Actions-Kontingent ist aufgebraucht. Jeder Push erzeugt einen sofort roten
-  Lauf mit Quota-Fehler — **das ist kein Code-Befund**: nicht debuggen, nicht
-  als CI-Ergebnis werten, nicht zum Prüfen erneut pushen. Die Regel „CI grün
-  auf main" ist bis dahin **ersetzt** durch: volle lokale Gates auf dem
-  **finalen** Baumzustand, Ergebnis im Issue vermerkt
-  (`Gates lokal grün auf <SHA>, CI ausgesetzt wegen Quota`). Deshalb tragen bis
-  01.09. auch Code-Commits `[skip ci]` — ein Lauf, der nur am Kontingent
-  scheitert, beweist nichts.
-  **Keine Tags und Releases** bis dahin, außer der Owner gibt nach eigener
-  Teststand-Prüfung ausdrücklich frei. Wochen-Scans und Zeitplan-Läufe fallen
-  aus und werden **nicht** nachgeholt.
-  **Rückdreh am 01.09.2026** (Datum UND Bedingung, lehren.md §7): `[skip ci]`
-  aus den Code-Commits nehmen, einen `workflow_dispatch` auf dem dann aktuellen
-  Head fahren, Grün abwarten — erst danach gilt „CI grün auf main" wieder. Der
-  Rückbau hängt am selben Termin wie #71 (Pins + Dependabot).
-- **Ein Push kostet Minuten.** Reine Doku-/Konfigurations-Commits, die keine
-  Prüfung beweisen können, mit `[skip ci]` pushen; Verifikation einmal per
-  `workflow_dispatch`, nicht durch wiederholtes Pushen.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`): Backend-pytest + Frontend
+  tsc/build, gespiegelt in `scripts/gates.sh`. Actions sind SHA-gepinnt, jeder
+  Workflow hat einen `permissions:`-Block (Least Privilege).
+- **CI-DAUERREGEL: EIN Lauf je Slice, nicht je Push (Owner, 02.09.2026 — ersetzt
+  die Quota-Notbremse vom 14./20.08.).** Das Actions-Kontingent (3000 Min/Monat)
+  teilen sich alle Repos; das Portfolio-Tagesbudget ist 100 Min, ein Lauf hier
+  kostet 2–4 Min. Deshalb:
+  - **Alle Commits tragen `[skip ci]`** — Bau, Panel, Nacharbeit, Doku. Die
+    **lokalen Gates auf dem finalen Baum sind die Verifikation** (Pflicht,
+    Arbeitsregel 3); im Issue steht `Gates lokal grün auf <SHA>`.
+  - **Nach der Landung eines Slices genau EIN `workflow_dispatch` auf dem HEAD**
+    (`gh workflow run ci.yml`, dann `gh run watch <id> --exit-status`,
+    run-id-gepinnt) — die CI ist die **Gegenprobe**, nicht die Prüfung. Wird sie
+    rot: normaler Fix-Slice, kein Drama; ein Unterschied zwischen lokalen Gates
+    und CI ist selbst ein Befund und gehört ins Rückmeldungs-Issue der Vorlage.
+    Nie zum Prüfen pushen.
+  - **Dauerhaft, weil sie keine Qualität kosten:** ein pytest-Job, **kein
+    `pull_request`-Trigger** (es gibt keine menschlichen PRs), `concurrency` mit
+    `cancel-in-progress` (Tag-Refs ausgenommen), `paths-ignore` für reine Doku.
+  - **Dependabot** (`.github/dependabot.yml`): `interval` bleibt `monthly`,
+    `open-pull-requests-limit: 1` — Sicherheits-Updates unberührt. Kein
+    „weekly/limit 5" mehr; die frühere Rücksetz-Notiz war falsch.
+  - **Releases:** nach grüner CI-Gegenprobe erlaubt; wo unser Release-Gate ein
+    Owner-Gate verlangt (Migrationen, Geld — Arbeitsregel 4), **vorher fragen**.
+    Zeitplan-Läufe (Security-Scan) laufen wieder normal.
+  - Kostet ein Lauf deutlich mehr als 2–4 Min: im Rückmeldungs-Issue der
+    Vorlage melden (der Owner fährt einen Budget-Wächter über alle Repos).
 - **Wöchentlicher Security-Scan** (`.github/workflows/security-scan.yml`, Montag +
   `workflow_dispatch`, **kein** Push-Gate): `pip-audit` + `npm audit` +
   **Schemathesis**-API-Fuzzing (nur 5xx zählen). Bewusst nicht-blockierend: ein

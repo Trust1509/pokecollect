@@ -5,7 +5,11 @@
 #
 # DAS TRAGENDE PRINZIP: DIE ASYMMETRIE
 # ------------------------------------
-#   KEIN Treffer  -> belastbar.  Das Thema kommt im Brief nicht vor.
+#   KEIN Treffer  -> belastbar NUR bei Einzelwort-Mustern. grep arbeitet
+#                    zeilenweise: Eine Wortgruppe, die ueber einen Umbruch
+#                    faellt, liefert null Treffer, obwohl sie dasteht
+#                    (gemessen an umbrochener Markdown-Prosa, 08/2026).
+#                    Einzelwoerter koennen nicht umbrochen werden.
 #   EIN Treffer   -> unbelastbar. Es kann Behandlung sein, Erwaehnung,
 #                    Verneinung, Nachbarwort oder wiederverwendete Floskel.
 #
@@ -23,6 +27,11 @@
 #   deshalb markiert — als Hinweis, nicht als Urteil.
 # * NACHBARWOERTER in deutscher Prosa: "doku" trifft "dokumentieren", ein
 #   Dateipfad in einer Beschreibung trifft wie ein auszufuehrendes Kommando.
+# * MEHRWORTIGE Muster am ZEILENUMBRUCH: mehrere THEMEN-Muster unten sind
+#   zweiwortig ("sichtbares verhalten", "ruft .* auf") — in einem Brief mit
+#   harten Umbruechen koennen sie durchfallen. Die Einzelwort-Alternativen
+#   je Zeile fangen das meist; wer einem [KEIN TREFFER] misstraut, sucht das
+#   seltenste EINZELWORT nach.
 # * FLOSKELN von slice-spezifischer Behandlung unterscheiden. Eine
 #   Standard-Regelzeile ("Fixtures erfunden, Rot-Beweis je Test, Gates im
 #   Vordergrund") saettigt drei Themen auf einmal, ohne dass eines fuer DIESEN

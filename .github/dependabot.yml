@@ -12,19 +12,18 @@
 # * pip-PRs: kein Lock-Mechanismus (backend/requirements.txt ist die einzige
 #   Quelle) — direkt mergen, `scripts/gates.sh` prüft den echten Installations-
 #   pfad gegen Postgres.
-# ══ NOTBREMSE bis 01.09.2026 (Owner-Entscheidung 14.08.) ═══════════════════
-# Portfolio-Kontingent: 2701 von 3000 Minuten verbraucht, 299 für 18 Tage.
-# Versions-PRs sind der größte einzelne Posten — nicht der PR selbst, sondern
-# das Nachziehen: Dependabot rebaset jeden offenen PR, wenn main sich bewegt,
-# und jeder Rebase löst einen weiteren Lauf aus. Bei neun offenen PRs und acht
-# Pushes an einem Tag multipliziert sich das.
-#
-# `open-pull-requests-limit: 0` legt VERSIONS-Updates still.
-# SICHERHEITS-Updates laufen davon unberührt weiter — die bleiben an.
-#
-# ⚠️ AM 01.09. ZURÜCKSETZEN: github-actions weekly/limit 5,
-#    pip weekly/limit 5, npm monthly/limit 3 — und die am 14.08. geschlossenen
-#    PRs #49-#51, #57-#62 kommen dann von selbst wieder.
+# ══ DAUERREGEL (Owner, 02.09.2026 — ersetzt die Notbremse vom 14.08.) ═══════
+# Versions-Updates laufen wieder, aber gedrosselt: `interval` bleibt MONTHLY,
+# `open-pull-requests-limit: 1` je Ökosystem. Hintergrund: Dependabot rebaset
+# jeden offenen PR bei jeder Bewegung von main und löst je Rebase einen
+# CI-Lauf aus — weekly/limit 5 war eine der beiden Ursachen des
+# Kontingent-Platzers (2701/3000 Min am 14.08.). Das Portfolio-Tagesbudget
+# über alle Repos ist 100 Min; ein Lauf hier kostet 2–4 Min.
+# SICHERHEITS-Updates laufen davon unberührt weiter.
+# Die am 14.08. geschlossenen Versions-PRs (#49-#51, #57-#62) kommen mit
+# Limit 1 EINZELN nacheinander wieder — Merge nur nach grünen Gates am PR.
+# NICHT auf weekly/limit 5 zurückdrehen — die frühere Rücksetz-Notiz hier war
+# in die falsche Richtung geschrieben.
 # ═══════════════════════════════════════════════════════════════════════════
 version: 2
 updates:
@@ -33,12 +32,12 @@ updates:
     schedule:
       interval: "monthly"
     # SHA-gepinnte Actions: Dependabot aktualisiert Pin UND Versions-Kommentar.
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 1
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 1
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
@@ -46,4 +45,4 @@ updates:
     groups:
       npm-monatlich:
         patterns: ["*"]
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 1

@@ -36,8 +36,10 @@ Eigentümer, v1.9.0).
 
 ## Ablauf
 
-1. **Alles gelandet**, CI grün — jeden Lauf **run-id-gepinnt** beobachten
-   (`gh run watch <id> --exit-status`), nie über eine Listenposition.
+1. **Alles gelandet**, CI grün auf dem gelandeten Endstand — **EIN
+   `workflow_dispatch` je Slice** (CI-Dauerregel 02.09.2026, CLAUDE.md), den Lauf
+   **run-id-gepinnt** beobachten (`gh run watch <id> --exit-status`), nie über
+   eine Listenposition.
 2. **Version an beiden Stellen** ziehen.
 3. **CHANGELOG-Eintrag** ganz oben: Titel, Risiko-Stufe, was der Nutzer merkt.
    In seiner Sprache, nicht in der des Codes: *was er merkt*, nicht welche
