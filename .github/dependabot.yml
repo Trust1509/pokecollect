@@ -47,8 +47,14 @@ updates:
         patterns: ["*"]
     # Generationssprung des Frontend-Stacks (Next 16 / React 19 / Tailwind 4 / TS 7)
     # ist Owner-Entscheid (#87) und wird bewusst geplant, nicht per Sammel-PR gemergt:
-    # Major-Updates dieser Pakete ignorieren, Minor/Patch laufen weiter, Sicherheits-
-    # Updates bleiben unberührt (Dependabot-Security-PRs beachten ignore nicht).
+    # Major-Updates dieser Pakete ignorieren; Minor/Patch laufen weiter. ACHTUNG
+    # (Panel-Fund): `ignore` gilt laut Dependabot-Referenz AUCH für Sicherheits-
+    # Updates — ein Fix, der nur in einer neuen Hauptversion existiert (Stand
+    # 09/2026: 21 Next-Advisories, Fix erst in 15.5.21/16.x), kommt NICHT als PR.
+    # Das ist hier bewusst so: der Sprung wird geplant (#87), nicht per PR gemergt;
+    # der Detektor für solche Major-only-Fixes ist der Montags-Lauf
+    # `npm audit --audit-level=high` in security-scan.yml (nicht-blockierend,
+    # Funde triagieren). Minor/Patch-Sicherheitsfixes kommen weiterhin als PR.
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
