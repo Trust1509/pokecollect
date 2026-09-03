@@ -86,7 +86,7 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
 ## Build, Gates, Teststand
 
 - **Kein Node/npm lokal auf diesem PC.** Frontend-Gates laufen im Docker-Container:
-  `scripts/gates.sh` (tsc + next build + pytest). package-locks nur im
+  `scripts/gates.sh` (pytest + tsc + lint + next build). package-locks nur im
   Node-Container erzeugen — der lokale npm-Wrapper („allow-scripts") schreibt
   inkompatible Locks.
 - **Backend-Tests:** `pytest` unter `backend/tests/`, gegen echtes Postgres
@@ -99,7 +99,7 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   **Trägt den echten Bestand des Owners samt Schlüssel** — nichts, was schreibt
   und aufräumt, läuft dort; `reset` löscht ihn samt Schlüssel.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`): Backend-pytest + Frontend
-  tsc/build, gespiegelt in `scripts/gates.sh`. Actions sind SHA-gepinnt, jeder
+  tsc/lint/build, gespiegelt in `scripts/gates.sh`. Actions sind SHA-gepinnt, jeder
   Workflow hat einen `permissions:`-Block (Least Privilege).
 - **CI-DAUERREGEL: EIN Lauf je Slice, nicht je Push (Owner, 02.09.2026 — ersetzt
   die Quota-Notbremse vom 14./20.08.).** Das Actions-Kontingent (3000 Min/Monat)

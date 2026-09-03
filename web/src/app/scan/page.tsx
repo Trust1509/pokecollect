@@ -96,7 +96,6 @@ export default function ScanPage() {
     scanApi.status().then((r) => setStatus(r.data)).catch(() => {});
     collectionApi.list().then((r) => setCollections(r.data)).catch(() => {});
     return () => stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Layout aus gewählter Sammlung übernehmen

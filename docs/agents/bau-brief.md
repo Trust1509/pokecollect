@@ -90,7 +90,7 @@ Begründung, nicht die nach oben)
 ⟨Prüfbare Punkte, kein Fließtext. Je Punkt: womit belegt.⟩
 
 ## Randbedingungen
-sh scripts/gates.sh all        # Backend-pytest gegen echtes Postgres + Web-Build
+sh scripts/gates.sh all        # Backend-pytest gegen echtes Postgres + Web tsc/lint/build
 sh scripts/smoke.sh            # nur wenn die Oberfläche berührt ist (~3-5 min)
 Läufe im Vordergrund, Zeitlimits explizit, keine Hintergrundprozesse.
 Lokal committen, NICHT pushen. Landen entscheidet der Hauptagent nach dem Panel.
@@ -145,8 +145,8 @@ Beispiele aus dem Gespräch.
 ## Randbedingungen, die immer mitmüssen
 
 - **Alle** Prüf-Kommandos nennen, die die CI fährt — nicht nur die
-  naheliegenden. Die CI fährt `pytest` (gegen echtes Postgres), `tsc --noEmit`
-  und `next build`; `scripts/gates.sh all` deckt genau das ab.
+  naheliegenden. Die CI fährt `pytest` (gegen echtes Postgres), `tsc --noEmit`,
+  `next lint --max-warnings 0` und `next build`; `scripts/gates.sh all` deckt genau das ab.
 - Läufe im **Vordergrund**, Zeitlimits explizit. Keine Hintergrundprozesse,
   keine eigenen Subagenten.
 - **Lokal committen, nicht pushen.**
