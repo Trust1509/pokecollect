@@ -54,7 +54,7 @@ web_gate() {
   echo "── Gate 2/2: Web (Docker-Build: npm ci + tsc + next build; danach Lint) ──"
   # Paritäts-Wächter (lehren.md §5, Panel #72): Gate und CI müssen denselben
   # Lint-Schritt tragen — fehlt er in ci.yml, ist das Gate rot, nicht nur die Doku.
-  grep -q "npm run lint" "$ROOT/.github/workflows/ci.yml" \n    || { echo "FEHLER: ci.yml Web-Job ohne 'npm run lint' — Parität Gate <-> CI verletzt"; exit 1; }
+  grep -q "npm run lint" "$ROOT/.github/workflows/ci.yml" || { echo "FEHLER: ci.yml Web-Job ohne 'npm run lint' — Parität Gate <-> CI verletzt"; exit 1; }
   docker build -t pokecollect-web-gate "$(host_path "$ROOT/web")"
   # Lint separat gegen die Builder-Stage (Prod-Image lintet nicht — next.config.js
   # eslint.ignoreDuringBuilds, Panel-Nacharbeit #72):
