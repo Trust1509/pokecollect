@@ -1,24 +1,63 @@
 # Changelog
 
-## [Unreleased] – Panel-Nacharbeit #43 (Lokaler Bild-Cache: Format-Endung, MIME, Budget)
+## [v1.9.0] – 2026-09-03 (Lokaler Bild-Cache, Herkunfts-Zeile, ehrlichere Preise und Scans) — backup
 
-Hinweis: Der #43-Bau selbst (v1.8.3 → HEAD) hatte hier noch keinen eigenen
-Abschnitt bekommen — diese Zeilen ergänzen die arbitrierte Nacharbeit dazu,
-ohne die Historie einer bestehenden datierten Version umzuschreiben.
+Zwei **additive** Light-Migrationen (`tcgdex_catalog.price_eur_checked`,
+`tcgdex_catalog.image_pfad`) laufen automatisch beim Start — keine
+Datenumwandlung, Bestandszeilen bleiben unverändert. **Backup vor dem Deploy
+empfohlen** (Stufe `backup`).
 
-### Korrigiert (#43)
-- **Katalogbilder werden mit ihrer echten Endung gespeichert** (`.jpg` für
-  JPEG-Quellen wie tcgplayer, `.png`/`.webp` je nach erkanntem PIL-Format)
-  statt bisher immer `.webp` unabhängig vom tatsächlichen Inhalt.
-- **`.webp` wird wieder als `image/webp` ausgeliefert** — in der schlanken
-  Container-Distro kannte die MIME-Registry die Endung sonst nicht und
-  Bilder kamen als `text/plain`.
-- Nächtliches Cache-Budget `60` → `500` Bilder/Nacht (Stufe „owned"/„all"),
-  dazu Download-Härtung (Byte-Kappe, atomares Schreiben, Dateinamen-Kappung
-  für sehr lange Karten-IDs).
+### Neu (#43) — Lokaler Bild-Cache für den Katalog
+- **Katalogbilder können lokal gespeichert werden.** Neue Einstellung
+  „Bild-Cache" mit drei Stufen: *nur URLs* (Standard — wie bisher, kein
+  Überraschungs-Download), *besessene + Wunschliste*, *alle Katalogbilder* (mit
+  Größenschätzung). Gecachte Bilder kommen vom eigenen Server statt vom CDN:
+  schneller, und sie bleiben sichtbar, wenn die Quelle einmal nicht
+  erreichbar ist. Die Einstellungs-Seite zeigt, wie viele Bilder schon lokal
+  liegen.
+- Der Nachtlauf füllt den Cache in Etappen (500 Bilder/Nacht, zufällige
+  Reihenfolge — eine tote Quelle blockiert nicht jede Nacht dieselben Plätze);
+  das Karten-Popup lädt sein Bild bei Bedarf sofort nach. Ein einmal gecachtes
+  Bild wird bei neuer Quell-URL bewusst nicht automatisch erneuert.
+- Katalogbilder liegen mit ihrer echten Endung (JPEG-Quellen wie tcgplayer als
+  `.jpg`), `.webp` wird korrekt als Bild ausgeliefert (im schlanken Container
+  sonst `text/plain`); Download-Härtung: Größenkappe 12 MB, atomares Schreiben,
+  Dateinamen-Kappung für sehr lange Karten-IDs.
+
+### Neu (#47) — Herkunft auf einen Blick
+- **Die Kartendetailansicht zeigt eine dezente Herkunfts-Zeile:** „Daten: … ·
+  Bild: … · Preis: …" — woher Kartendaten, Bild und Preis stammen (TCGdex,
+  TCGplayer, eigenes Foto, manuell). Die Preis-Herkunft aus v1.8.2 wird dabei
+  wiederverwendet.
+
+### Korrigiert (#36) — Scan-Zuschnitt
+- **Der automatische Foto-Zuschnitt beim Scan schnitt bei mehreren Karten im
+  Bild manchmal die Nachbarkarte oder das Label mit.** Unplausible
+  Zuschnitt-Hinweise des Lesemodells werden jetzt verworfen; der Zuschnitt
+  fällt dann auf die nächstbessere Stufe zurück — lieber kein Hinweis als ein
+  falscher.
+
+### Korrigiert (#66) — Katalog-€-Preise froren ein
+- **Der €-Preis im Katalog wurde nur einmal gesetzt und danach nie
+  aktualisiert**, während der $-Preis täglich frisch war — im Grid wirkte das
+  wie ein Widerspruch. Ein rollierender Nachtlauf prüft die €-Preise jetzt
+  laufend nach (die neue Spalte merkt sich, wann eine Zeile zuletzt geprüft
+  wurde).
+
+### Korrigiert (#75) — eine kaputte Karte kippte den Nachtlauf
+- **Eine einzige fehlerhafte Karte in der Katalog-Anreicherung ließ den ganzen
+  Nachtlauf abbrechen** — auch die €-Preis-Prüfung derselben Nacht lief dann
+  nicht. Fehler werden jetzt je Karte abgefangen und gezählt; ein gescheiterter
+  Schritt setzt die Datenbank-Sitzung zurück, statt die Folgeschritte zu
+  vergiften.
 
 ### Korrigiert (#82)
 - **Ein fehlgeschlagener Bild-Re-Upload mit derselben Dateiendung (häufigster Fall: jpg → jpg) konnte das bereits gespeicherte Karten-/Sealed-Foto samt Thumbnail löschen** — die Verarbeitung schreibt jetzt auf eine temporäre Datei und übernimmt erst nach vollständigem Erfolg atomar (tmp+rename); ein Fehlschlag lässt ein vorhandenes Bild unangetastet. Panel-Nacharbeit: auch ein Schreib-/Rename-Fehler meldet sich jetzt einheitlich als 400 statt vorher als 500, das dabei den Bestand mit halben Rohbytes überschreiben konnte.
+
+### Intern
+- Sechs Tests mehrfachlauf-fest (#79). Jeder Slice dieser Version lief durch
+  ein zweistimmiges Panel mit arbitrierter Nacharbeit. Prozess: CI-Dauerregel
+  (ein CI-Lauf je Slice, lokale Gates als Verifikation).
 
 ## [v1.8.3] – 2026-08-14 (Groß-/Kleinschreibung, saubere Fehlermeldungen, Sicherheitsnetz)
 
