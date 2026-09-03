@@ -27,6 +27,7 @@ export default function BurgerMenu() {
   useEffect(() => {
     if (!open) return;
     const panel = panelRef.current;
+    const btn = btnRef.current;
 
     const focusables = () =>
       Array.from(
@@ -61,7 +62,7 @@ export default function BurgerMenu() {
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
-      btnRef.current?.focus();
+      btn?.focus();
     };
   }, [open]);
 

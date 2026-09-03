@@ -1,7 +1,7 @@
 #!/bin/sh
 # Lokale Gates — alles läuft in Docker, kein Node/Python lokal nötig.
 #   Backend: Image bauen + pytest gegen Wegwerf-Postgres (echter Migrationspfad)
-#   Web:     Image bauen = npm ci + tsc + next build (wie Prod)
+#   Web:     Image bauen = npm ci + tsc + next build (wie Prod) + Lint (Builder-Stage)
 # Aufruf:  sh scripts/gates.sh [backend|web|all]     (Default: all)
 set -eu
 
@@ -53,6 +53,12 @@ backend_gate() {
 web_gate() {
   echo "── Gate 2/2: Web (Docker-Build: npm ci + tsc + next build) ──"
   docker build -t pokecollect-web-gate "$(host_path "$ROOT/web")"
+  # Lint separat gegen die Builder-Stage (Prod-Image lintet nicht, Issue #72):
+  # Cache trifft, da dieselbe Stage gerade eben Teil des Builds oben war.
+  # Kein `&&`-Verkettung nötig — set -eu oben lässt jede Zeile einzeln reißen.
+  echo "── Lint (Builder-Stage: npm run lint --max-warnings 0) ──"
+  docker build --target builder -t pokecollect-web-lint "$(host_path "$ROOT/web")"
+  docker run --rm pokecollect-web-lint npm run lint
 }
 
 # Wichtig: KEIN `backend_gate && web_gate` — links von && greift set -e nicht,
