@@ -45,4 +45,29 @@ updates:
     groups:
       npm-monatlich:
         patterns: ["*"]
+    # Generationssprung des Frontend-Stacks (Next 16 / React 19 / Tailwind 4 / TS 7)
+    # ist Owner-Entscheid (#87) und wird bewusst geplant, nicht per Sammel-PR gemergt:
+    # Major-Updates dieser Pakete ignorieren, Minor/Patch laufen weiter, Sicherheits-
+    # Updates bleiben unberührt (Dependabot-Security-PRs beachten ignore nicht).
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "recharts"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "lucide-react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 1
