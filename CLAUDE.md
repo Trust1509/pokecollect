@@ -160,6 +160,23 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
 
 ## Sicherheit
 
+- **DAS REPO IST ÖFFENTLICH** (Owner-Hinweis 04.09.2026). Zwei Folgen:
+  1. **Alles, was committet wird, ist weltweit lesbar — auch die Historie.**
+     Kein Geheimnis, keine echte IP (`<server-ip>` schreiben), keine echten
+     Namen/Adressen in Beispieldaten, keine Kundendaten. Auch in Commit-Texten,
+     Issue-Kommentaren und Panel-Berichten.
+  2. **GitHub Secret Scanning und Push Protection sind aktiv** (gratis für
+     öffentliche Repos, verifiziert 04.09.: `secret_scanning: enabled`,
+     `secret_scanning_push_protection: enabled`, 0 offene Alerts) — ein
+     eigener gitleaks-Job wäre doppelt und wird NICHT gebaut. Push Protection
+     blockiert einen erkannten Schlüssel schon beim Push; wird ein Push
+     deshalb abgelehnt: **nicht umgehen**, sondern den Wert aus der Änderung
+     nehmen und dem Owner melden.
+  Historien-Prüfung 04.09.2026 über alle 233 Commits (API-Key-Muster, private
+  Schlüssel, `192.168.*`/`10.*`, Passwort-Zuweisungen, `.env`-Dateien,
+  E-Mail-Adressen): **ohne Befund** — die einzigen Passwort-Treffer sind
+  Wegwerf-Werte für Gate-Postgres und Teststand.
+
 - **Auth-Zwang (Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein JWT
   (`require_auth` via `include_router`-dependencies); auth-frei sind nur
   `/auth/login`, `/health` und der `/images`-Mount. Neue Router IMMER unter den

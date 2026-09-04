@@ -49,6 +49,10 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    # Wächter-Dichte (Vorlage §24): ohne timeout-minutes läuft ein hängender
+    # Lauf 360 Minuten — bei 100 Minuten Portfolio-Tagesbudget der ganze Tag.
+    # 15 statt 6: gemessen ~1 min, Puffer für kalten Cache/Postgres-Start.
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16-alpine
@@ -94,6 +98,7 @@ jobs:
   web:
     name: Web (tsc + lint + next build)
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # siehe backend-Job
     defaults:
       run:
         working-directory: web
