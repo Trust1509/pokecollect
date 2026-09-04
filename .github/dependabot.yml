@@ -55,6 +55,17 @@ updates:
     # der Detektor für solche Major-only-Fixes ist der Montags-Lauf
     # `npm audit --audit-level=high` in security-scan.yml (nicht-blockierend,
     # Funde triagieren). Minor/Patch-Sicherheitsfixes kommen weiterhin als PR.
+    # ACHTUNG (#91-Nachtrag): Der Detektor deckt nur high/critical ab — ein
+    # Major-only-Fix, der lediglich moderate/low eingestuft ist, kommt WEDER als
+    # Dependabot-PR (s. o.) NOCH als Wochen-Lauf-Fund (Schwellenwert) an: ohne
+    # jedes Signal. Schwelle bleibt bewusst auf high (Owner-Entscheid #91) — ob
+    # sie sinkt, ist eine spätere Owner-Frage, kein technischer Automatismus.
+    #
+    # eslint + eslint-config-next unten aus demselben Grund wie next selbst
+    # (nicht dem Generationssprung, sondern reinem Next-14-Gleichschritt, #91):
+    # eslint-config-next ist an next gekoppelt (SemVer-Major folgt Next-Major)
+    # und ESLint 9 braucht eslint-config-next >= 15 — ein Sprung auf ESLint 9
+    # allein bräche die Lint-Konfiguration, bevor next selbst springt.
     ignore:
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
@@ -75,5 +86,9 @@ updates:
       - dependency-name: "lucide-react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 1
