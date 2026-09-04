@@ -61,5 +61,15 @@ export default defineConfig({
         colorScheme: "light",
       },
     },
+    // #91 Panel-Härtung: /_next/image ist eine Next.js-interne Route, kein
+    // durch das Backend-JWT geschütztes Fach-Endpoint — deshalb KEINE
+    // Abhängigkeit von "setup"/keine storageState nötig. Eigenes Projekt statt
+    // Aufnahme in "smoke": läuft so auch dann, wenn die Anmeldung selbst
+    // scheitert (eigene Aussage, kein Rot-Beweis versteckt hinter dem Login).
+    {
+      name: "bild-optimizer",
+      testMatch: /bildoptimizer\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });
