@@ -9,17 +9,17 @@ Ein Bau-Brief ist der Unterschied zwischen einem Slice, der beim ersten Panel
 durchgeht, und einem, der drei Runden braucht. Die Punkte unten stehen alle,
 weil ihr Fehlen einmal etwas gekostet hat — die Belege in `lehren.md`.
 
-## Pflicht-Gerüst (neun Themen: Block 0 plus acht Blöcke, keiner leer)
+## Pflicht-Gerüst (zehn Themen: Block 0 plus neun Blöcke, keiner leer)
 
 Vor dem Absenden prüfen: `sh scripts/bau-brief-pruefen.sh <brief.md>`.
 
 **Baut der Hauptagent selbst, entfällt der Empfänger — nicht das Gerüst**
-(v1.9.0). Die acht Themen werden dann vor dem ersten Commit durchgegangen. Für
+(v1.9.0). Die neun Themen werden dann vor dem ersten Commit durchgegangen. Für
 dieses Repo ist das der Regelfall bei kleinen Scheiben; #52, #53, #55 und #67
 sind ohne jeden Brief entstanden, und bei #52 hat genau das gefehlt, was Block 5
 verlangt hätte.
 
-**Die acht Themen sind die Pflicht, die Gliederung ist ein Vorschlag** (v1.8.1).
+**Die neun Themen sind die Pflicht, die Gliederung ist ein Vorschlag** (v1.8.1).
 Das Skript sucht die Themen im ganzen Dokument und meldet ein Fehlen als *Fund,
 kein Urteil* — ob ein Thema hier gegenstandslos ist, entscheidet weiterhin der
 Kopf.
@@ -38,7 +38,17 @@ Kopf.
 ## 7 Fixtures           erfunden, nie aus dem Kontext übernommen
 ## 8 Randbedingungen    Vordergrund, lokal committen, nicht pushen,
                         Umfang nicht erweitern
+## 9 Prüffragen         die ACHT Fragen unten, JE EINE ZEILE Antwort —
+                        „trifft nicht zu" ist gültig, Weglassen nicht
 ```
+
+**Warum Block 9 ein eigener Block ist und nicht nur die Fragenliste** (v1.13.0):
+Ein Projekt hat die Prüffragen einen ganzen Slice lang nicht angewendet — sie
+standen seit dem Abgleich in seiner eigenen `bau-brief.md`. *Das Prüfskript
+prüft Themen, nicht Fragen — und was das Skript nicht anmahnt, fällt durch.*
+Als eigener Block fehlt er auffällig, als Liste im Fließtext verschwindet er
+lautlos. Das ist unsere Klasse 10 auf die eigene Neuerung angewandt: Eine
+Regel, deren Auslassung nichts rot macht, ist eine Notiz.
 
 **Block 3 ist der teuerste, wenn er fehlt** — in vier von fünf Projekten kam
 darüber ein Fund, den sonst niemand hatte. Hier ebenfalls: Die Frage nach den
@@ -194,7 +204,7 @@ eine Regression. Drei Regeln:
   Verhalten, kein Ungehorsam.** Der Brief ist Anleitung, kein Dogma;
   verifizierte Gegenbelege gehören in den Report.
 
-## Sechs Prüffragen vor der Landung (v1.12.0 — in jeden Brief-Block 5/8 bzw. vor den Selbst-Commit)
+## Acht Prüffragen vor der Landung (v1.13.0 — Block 9 jedes Briefs bzw. vor den Selbst-Commit)
 
 1. **Schreibt dieser Fix an einer Stelle, die vorher nur las — und wer teilt
    sich die Zielzeilen?**
@@ -208,10 +218,45 @@ eine Regression. Drei Regeln:
 5. **Gilt die Rot-Zahl auch mit Kontext?** „N Tests rot" zählt nur mit
    Lauf-Umfang (eine Datei / ganze Suite) und DB-Zustand (frisch/befüllt).
 6. **Ist jede Behauptung im Brief belegt oder als Annahme markiert?**
+7. **Welchen Pfad benutzt das PRODUKT wirklich?** (v1.13.0) Ein Test, der die
+   Zusage auf einem Pfad beweist, den die Oberfläche nie aufruft, ist eine
+   Beruhigung, keine Prüfung. Der Rot-Beweis stellt den ECHTEN Aufrufweg nach,
+   mit dem Datenpaket der Oberfläche. Bei uns ist das die Naht-Regel aus
+   Klasse 8 zu Ende gedacht: nicht nur DASS die Verdrahtung getestet wird,
+   sondern dass der Test die Tür nimmt, die das Produkt nimmt.
+8. **Zählt der Slice seine eigene Zusage ab?** (v1.13.0) Wer „kein X mehr über
+   Y" verspricht, zählt die Y. Hausbeleg: #82 versprach „ein Fehlschlag
+   vernichtet kein vorhandenes Bild" — die Zusage gilt für DREI Aufrufstellen
+   (Karte, Thumbnail, Originalfoto) und zwei Türen (Karten, Sealed); erst das
+   Abzählen im Brief machte daraus vier Tests statt zwei.
 
 Messauftrag des Owners: je Slice melden, welche Fragen gefangen haben und
 welche Ritual waren (Vorlagen-Rückmeldungs-Issue) — Rituale werden wieder
-herausgeschnitten.
+herausgeschnitten. Stand nach fünf gemessenen Slices: F3 und F6 fangen
+regelmäßig (F6 am häufigsten, sie prüft als einzige den AUFTRAGGEBER mit),
+F5 wirkt beim Briefschreiben statt beim Antworten, F4 hat hier wenig
+Gegenstand.
+
+## Ablage: der Brief gehört dorthin, wo die blinde Stimme ihn findet (v1.13.0)
+
+**Der Bau-Brief wird beim Start des Slices als Issue-Kommentar gepostet** —
+nicht nur an den Bauer übergeben; der Prompt der blinden Stimme nennt dann die
+Fundstelle („Brief: Issue #N, Kommentar vom …"). Alternative: unter
+`docs/agents/briefe/<issue>.md` committen.
+
+Zwei Gründe, beide gemessen. Erstens: Liegt der Brief nur im Scratchpad, kann
+Prüffrage 6 nur gegen Code laufen — in der Vorlage ließ das eine erfundene
+Zahl durch. Zweitens, bei uns der stärkere: In vier von fünf Panels dieser
+Woche trafen Funde **Behauptungen des Briefs oder des Prüfauftrags**, keine
+Codezeile (Prod-Build lintet doch; `ignore` gilt auch für Sicherheits-Updates;
+Lock-Umfang; „14 statische Routen"). Ein Brief im Issue macht genau diese
+Klasse prüfbar, bevor gebaut wird — und **der Owner sieht die Annahmen vor dem
+Bau**.
+
+**Öffentliches Repo (seit 04.09.2026):** Der Brief wird damit weltweit lesbar.
+Er enthält ohnehin keine Geheimnisse — aber Pfade zu Teststand-Zugängen,
+echte Namen oder Bestandsdaten gehören auch nicht hinein (CLAUDE.md,
+Abschnitt Sicherheit).
 
 ## Nacharbeit nach dem Panel
 

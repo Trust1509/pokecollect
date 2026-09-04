@@ -69,3 +69,12 @@ unwahr werden.
 **Prüfen, ob es wirklich läuft** — `curl <server-ip>:3010/health` sagt mehr als
 eine Versionsanzeige: Es liefert die Backend-Version, die mit der Oberfläche
 übereinstimmen muss.
+
+**Rückstands-Check** (Vorlage v1.13.0, bei uns vertagt auf #54): Sobald die
+Betriebs-Überwachung steht, vergleicht die ohnehin laufende
+Erreichbarkeitsprüfung die Version aus `/health` mit dem letzten Git-Tag —
+**null zusätzliche Läufe**. Beleg aus der Vorlage: Eine Site antwortete vier
+Wochen tadellos und war nicht der aktuelle Stand; alle Prüfungen grün, das
+Monitoring stumm. Bis #54 gebaut ist, ist der `curl` oben der manuelle
+Ersatz — und die Reihenfolge Tag (Schritt 7) vor Ausliefern (Schritt 8) ist
+genau deshalb Pflicht: Ohne Tag hat der Check nichts zu vergleichen.

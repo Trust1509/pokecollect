@@ -297,6 +297,15 @@ Rückweg**, beides an der Stelle, an der sie steht. Konkret hier:
 Der Befund ist erst aus der Portfolio-Sicht sichtbar geworden: vier Repos, vier
 Notbremsen, kein Datum. Wer nur das eigene Repo ansieht, hält das für Ordnung.
 
+**Dritte Rückbau-Frage** (Vorlage §11, v1.13.0): *Hat die Messung aus der
+Notzeit die Ausgangsannahme widerlegt?* Wenn ja, wird die Notmaßnahme zur
+Regel mit neuer Begründung und die Rückdreh-Anweisung **gelöscht** — nicht
+pflichtschuldig ausgeführt. Hausbeleg: Unser Rücksetz-Kasten in
+`.github/dependabot.yml` verlangte „am 01.09. zurück auf weekly/limit 5" —
+genau eine der beiden Ursachen des Kontingent-Platzers. Eine sauber datierte,
+sauber bedingte Notiz hätte den Fehler wiederhergestellt; die Messung hatte
+die Annahme („weekly ist normal") längst widerlegt.
+
 **Nachtrag 02.09.2026 — der Rückweg wurde begangen, und das Datum hat gewirkt:**
 Am Stichtag entschied der Owner je Maßnahme *Rückdreh* oder *Dauerregel* — das
 ist der Zweck des Datums, nicht ein automatischer Rückbau. Ergebnis:
@@ -370,6 +379,13 @@ Rückdreh-Bedingung, kein stiller Verzicht.
 **Regeln:**
 - **Pflichtfrage beim Anlegen jeder Prüfung: „Was macht sie rot, ohne dass
   jemand daran denkt?"** Ohne Antwort ist sie eine Notiz, kein Wächter.
+- **Zweite Pflichtfrage (Vorlage §21, v1.13.0): „Wurde der Wächter einmal
+  GENAU SO ausgeführt, wie der Job ihn ausführt?"** Ein Skript, das im Import
+  grün ist, kann beim CI-Aufruf an `ModuleNotFoundError` scheitern. Hausbeleg
+  mit ehrlicher Lücke: Unser Paritäts-Wächter (Gate ↔ CI, `scripts/gates.sh`)
+  wird von der CI GAR NICHT ausgeführt — die CI ruft `gates.sh` nicht auf. Er
+  ist damit ein rein lokaler Wächter; das ist bewusst (die CI spiegelt die
+  Schritte selbst), aber es heißt: Fällt er, merkt es nur, wer lokal baut.
 - Geht der automatische Lauf (noch) nicht: ausdrücklich und **terminiert**
   ersetzen (Datum + Rückdreh-Bedingung) — kein stiller Verzicht.
 - **Abdeckung hat zwei Achsen:** welche Objekte UND in welchen Zuständen.
@@ -405,3 +421,64 @@ pausiert. Unser aktueller Fall: Die CI-Pause (Quota) macht die
 hätte, prüft bis 01.09. niemand automatisch (ehrliche Inventur in Klasse 10).
 **Beim Einrichten jeder Pause/Ausnahme: die Liste dessen, was dadurch
 ungeprüft wird, ausschreiben — sie ist die eigentliche Änderung.**
+
+---
+
+## 13. Wächter-Code ist die defektdichteste Stelle eines Slices
+
+Produkt-Code hat Nutzer, die ihn benutzen. **Wächter-Code hat als einzigen
+Nutzer den Fehlerfall** — und der tritt beim Bauen nie ein. Die Vorlage (§24)
+misst über fünf Panel-Runden: die meisten Funde lagen im Prüfcode, darunter
+beide Blocker.
+
+Hausbeleg, derselbe Slice zweimal: In #72 lagen **beide WICHTIG-Funde des
+Panels im Wächter-Bereich** (der Produktions-Build lintete implizit mit; die
+Parität Gate ↔ CI war unbewacht, obwohl der Brief sie zusicherte). Und der
+Wächter, den wir daraufhin bauten, trug selbst einen Fehler: ein verlorener
+Fortsetzungs-Backslash, `grep` bekam ein Extra-Argument (`439d9ab`). Beide
+Beweise gingen trotzdem richtig aus — der Fehler wäre nie aufgefallen, wenn
+nicht jemand die Zeile gelesen hätte.
+
+Maßnahmen: **Der Wächter-Teil eines Slices wird wie Produktcode geprüft**
+(eigener Rot-Beweis, nicht nur „läuft durch"); jeder CI-Job trägt
+`timeout-minutes` (ohne Grenze läuft ein hängender Lauf 360 Minuten — bei 100
+Minuten Portfolio-Tagesbudget der ganze Tag); und ein Gate, das eine Datei
+prüft, wird einmal MIT verletzter Bedingung ausgeführt, nicht nur ohne.
+
+---
+
+## 14. Freitext in einem `run:`-Block ist Code
+
+Vorlage §25: Ein zitierter Auslieferungsbefehl in Backticks, übergeben in einem
+doppelt gequoteten String, wäre bei jedem roten Monitoring-Lauf **ausgeführt**
+worden — verhindert nur durch zwei Zufälle. Die dortige Leitplanken-Prüfung war
+grün: Sie suchte die ARTEFAKTE des Deploy-Pfads, nicht den AUFRUF.
+
+Regeln: Text, der in einen Befehl fließt, geht per **Heredoc + `--body-file`**,
+nie in `--body "…"`. Und wer „kann nicht ausliefern" behauptet, prüft Rechte,
+Secrets **und den Text aller `run:`-Blöcke**, Zitate eingeschlossen.
+
+Bei uns geprüft (04.09.2026) und **ohne Befund**: kein einziger `gh`-Aufruf in
+den Workflows, Backticks nur in YAML-Kommentaren, die zwei
+Kommandosubstitutionen in `security-scan.yml` sind eigene `curl`/`seq`-Aufrufe.
+Die Klasse bleibt hier stehen, weil sie beim nächsten Workflow mit
+Issue-Kommentar sofort greift — und weil unsere eigene Praxis am Werkzeug
+(`gh` immer mit `--body-file`) genau daraus stammt.
+
+---
+
+## 15. Was einmal richtig gemacht und nicht aufgeschrieben wurde, ist keine Regel
+
+Vorlage §26. Eine einmal gelungene Handlung ist eine **Anekdote**; erst
+aufgeschrieben wird sie zur Regel, die beim strukturgleichen Fall wieder
+gefunden wird (das ist Klasse 11 von der anderen Seite).
+
+Hausbeleg: Die **Äquivalenz-Probe ALT vs. NEU** (dieselbe Aufrufsequenz, beide
+Versionen, byte- dann pixelweise vergleichen) entstand beim #82-Refactor als
+Einfall einer Stimme. Nicht aufgeschrieben — beim Pillow-Sprung zwei Slices
+später musste sie neu erfunden werden. Jetzt steht sie hier: **Für
+Umbau-Slices und Bibliotheks-Sprünge, deren Zusage „Verhalten bleibt gleich"
+lautet, ist die Äquivalenz-Probe der Nachweis** — kein Rot-Beweis kann sie
+ersetzen, weil es keine neue Zusage gibt, die rot werden könnte. Sie fand im
+Pillow-Slice über 307 Vergleichspfade die einzige echte Verhaltensänderung
+(16-Bit-PNG-Thumbnails), die keine Suite gefunden hätte.

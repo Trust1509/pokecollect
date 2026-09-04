@@ -1,6 +1,6 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.12.3** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.13.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
 Titel `Abgleich v1.12.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.

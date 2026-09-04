@@ -1,5 +1,5 @@
 #!/bin/sh
-# Zeigt, WO in einem Bau-Brief die neun Pflicht-Themen behandelt sein koennten.
+# Zeigt, WO in einem Bau-Brief die zehn Pflicht-Themen behandelt sein koennten.
 #
 #   sh scripts/bau-brief-pruefen.sh <brief.md>
 #
@@ -55,7 +55,8 @@ Sichtbares|sichtbares verhalten|verhalten aender|verhalten änder|handbuch|nutze
 Nachweis|rot-beweis|rotbeweis|sabotier|mutation|nachweis
 Kommandos|gates\.sh|pytest|npm |tsc|prüf-kommando|pruef-kommando
 Fixtures|fixture|testdaten|seed
-Randbedingungen|randbedingung|nicht pushen|vordergrund|leitplanke"
+Randbedingungen|randbedingung|nicht pushen|vordergrund|leitplanke
+Prüffragen|prüffrage|prueffrage|welchen pfad|wahr bleiben|zweck-identität"
 
 VERNEINUNG="nicht|kein|entfäll|entfall|braucht.*nicht|erübrigt|weiss ich nicht|weiß ich nicht"
 
@@ -104,13 +105,13 @@ if [ -n "$VERBOTE" ]; then
 fi
 
 if [ "$OHNE" -gt 0 ]; then
-  echo "$OHNE von 9 Themen kommen im Brief NIRGENDS vor."
+  echo "$OHNE von 10 Themen kommen im Brief NIRGENDS vor."
   echo "Das ist der belastbare Teil dieser Pruefung: entweder gegenstandslos"
   echo "(dann eine Zeile Begruendung in den Brief) oder vergessen."
   exit 1
 fi
 
-echo "Zu allen 9 Themen gibt es Kandidaten."
+echo "Zu allen 10 Themen gibt es Kandidaten."
 echo "Ob sie das Thema BEHANDELN, entscheidest du an den Zeilen oben —"
 echo "das Skript kann Erwaehnung, Verneinung und Floskel nicht unterscheiden."
 exit 0

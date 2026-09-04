@@ -62,12 +62,28 @@ ausreichend. Jede Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.
 
 ## Ablauf
 
-0. **Erreichbarkeit der externen Stimmen prüfen, bevor der Slice fertig gemeldet
-   wird.** Stimme 2 braucht einen gepushten Zweig und einen funktionierenden
-   Sandbox-Aufruf, Stimme 3 Guthaben. Beide Ausfälle sind real getroffen — und
-   wer sie erst am Ende bemerkt, hat die Wahl zwischen Warten und stillem
-   Reduzieren.
-1. Prüf-Zweig pushen (Stimme 2 braucht ihn).
+0. **Ausführbarkeit prüfen, nicht Erreichbarkeit** (v1.13.0), bevor der Slice
+   fertig gemeldet wird. Die übliche Vorabprüfung („sag OK") testet den
+   Modell-Aufruf, nicht die Werkzeuge dahinter: Eine Stimme, die nichts
+   ausführen kann, aber weiter antwortet, liefert ein Ergebnis, das äußerlich
+   wie ein geprüftes aussieht — gleiche Form, gleiche Schwere-Angaben, ohne
+   einen ausgeführten Befehl darunter. **Die Vorabprüfung setzt einen BEFEHL
+   ab, dessen Ausgabe zurückkommen muss** — `git rev-parse HEAD` gegen den
+   erwarteten Stand genügt; für Stimme 2 zusätzlich der gepushte Zweig.
+   Kommt die Ausgabe nicht, ist die Stimme ausgefallen und der Ausfall-Vermerk
+   gilt. **Konnte eine Stimme ihre Werkzeuge nicht nutzen, steht das unter
+   IHRER Überschrift im Panel-Kommentar** — eine Freigabe aus reiner Lektüre
+   ist etwas anderes als eine aus Reproduktion.
+1. Prüf-Zweig pushen (Stimme 2 braucht ihn). **Stimmen mit Repo-Zugriff
+   arbeiten in einem eigenen `git worktree` auf dem gemessenen Commit**
+   (v1.13.0); Mutationen, Container und Images tragen ein stimmen-eigenes
+   Präfix, das Aufräumen wird nachgewiesen. Der Hauptagent darf den Hauptbaum
+   währenddessen weiterbewegen — der eigentliche Gewinn: **Die Nacharbeit
+   kann beginnen, bevor die letzte Stimme fertig ist.** Bei uns real
+   getroffen: Eine Erststimme prüfte `cfe0b25`, während im Hauptbaum bereits
+   der nächste Slice entstand; sie musste zwei Stände auseinanderhalten und
+   hat den fremden Commit ausdrücklich benannt. Das ist die Quellen-Regel
+   (`git show <commit>:`) zu Ende gedacht.
 2. **Alle drei parallel starten**, nicht nacheinander — zusammen 20–40 Minuten,
    sequenziell ein Vielfaches.
 3. **Arbitrieren.** Jeden Blocker **am Code oder an der laufenden App
@@ -99,6 +115,13 @@ Verfahren und hatte bisher kein Gegenstück zum Rot-Beweis.
 - **Gegenfrage vor jedem Verwerfen: „Welche Eingabe würde der Stimme recht
   geben?"** Wer sie nicht beantworten kann, hat nicht widerlegt, sondern nicht
   reproduziert.
+- **Wer einen STRUKTURELLEN Befund mit „aktuell nicht erreichbar" abstuft,
+  begründet das** (v1.13.0): Wer garantiert, dass es so bleibt? Das ist die
+  Umkehrung der üblichen Richtung — sonst gewinnt die Messung immer, und
+  genau die Messung, die eine Repo-Stimme stark macht, macht sie hier milder.
+  Hausbeleg (#91-Vorgeschichte): Die Wildcard in `remotePatterns` war
+  strukturell falsch, obwohl „heute niemand im LAN" gemessen stimmte; die
+  Eingrenzung kostete eine Konfigurationszeile.
 - **Auch eine Text-Suche mit null Treffern ist eine verwerfende Sonde (v1.12.3).**
   grep arbeitet zeilenweise — eine Wortgruppe über einem Prosa-Umbruch liefert
   null Treffer, obwohl sie dasteht, und ohne `-i` verfehlt „Synthese" das
