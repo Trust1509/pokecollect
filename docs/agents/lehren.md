@@ -54,6 +54,18 @@ die angelegte Testkarte keine Pokédex-Nummer hatte — die Startseite fragt mit
 `pokedex_view=true` und zeigt solche Karten nie. Kein Produktfehler, sondern
 Testdaten, die den geprüften Fall gar nicht herstellen.
 
+**Git wirkt auf den REPO-ZUSTAND, nicht auf die Absicht — auch beim Push.**
+Bekannt aus `git add -A` und `git checkout --`; am 04.09.2026 in der teuersten
+Variante wiederholt: Ein Push nach zwei Doku-Commits nahm **vier ungepanelte
+Commits eines parallel arbeitenden Bau-Subagenten** mit auf `main` — beide
+hatten auf denselben Branch im selben Baum committet. Der Code war grün, der
+Prozess gebrochen: Die Prüfung fand danach statt, nicht davor. Zwei Regeln,
+die zweite ist die tragende: **(a)** Vor jedem Push `git log --oneline
+@{u}..HEAD` lesen — ein Push landet alles, nicht das Letzte. **(b)** Parallel
+arbeitende Bau-Subagenten bekommen einen eigenen Worktree mit eigenem Branch;
+dann ist das Mitnehmen strukturell unmöglich statt nur verboten. Eine Regel,
+deren Einhaltung von Aufmerksamkeit abhängt, ist eine Notiz (Klasse 10).
+
 **Ein Widerspruch zwischen zwei Dateien ist unsichtbarer als einer in einer.**
 Beim Übernehmen einer neuen Regel habe ich die eine Fundstelle geändert und die
 andere stehen lassen: Der Bau-Brief trug das neue Kriterium für die

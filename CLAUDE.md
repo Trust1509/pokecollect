@@ -51,6 +51,15 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
 2. **Direkt-Push auf `main` ist autorisiert** (Trunk-Workflow, Pipeline ersetzt
    PRs). Releases nur per Tag — Ritual und Risiko-Stufen in
    `docs/agents/release-ritual.md`.
+   **Ein Push landet ALLE lokalen Commits, nicht nur den eigenen letzten.**
+   Vor jedem `git push` deshalb `git log --oneline @{u}..HEAD` lesen und
+   jeden Commit darin verantworten — steht dort ungepanelter Code, wird er
+   mit gelandet. Real passiert (04.09.2026): Ein Doku-Push nahm die vier
+   ungepanelten Commits eines parallel arbeitenden Bau-Subagenten mit.
+   **Deshalb:** Arbeitet ein Bau-Subagent parallel zum Hauptagenten, bekommt
+   er einen eigenen `git worktree` mit eigenem Branch (wie die Panel-Stimmen
+   seit v1.13.0) — dann kann kein fremder Push ihn mitnehmen, und der
+   Hauptbaum bleibt frei.
 3. **Je Issue ein Commit; Gates je CODE-Commit:** Tests + Typecheck + Build
    lokal grün (`scripts/gates.sh`), CI auf main grün. Reine Doku-Commits
    brauchen kein Gate — sie können keines bestehen (`[skip ci]`). Die Prüfungen
