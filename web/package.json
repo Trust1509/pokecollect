@@ -14,21 +14,21 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "2.12.7",
-    "axios": "1.19.0",
-    "react-hot-toast": "2.4.1",
-    "lucide-react": "0.417.0"
+    "axios": "1.20.0",
+    "react-hot-toast": "2.6.0",
+    "lucide-react": "0.577.0"
   },
   "devDependencies": {
-    "@types/node": "20.14.11",
+    "@types/node": "20.19.43",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@typescript-eslint/eslint-plugin": "8.69.0",
     "@typescript-eslint/parser": "8.69.0",
-    "autoprefixer": "10.4.19",
+    "autoprefixer": "10.5.4",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.35",
-    "postcss": "8.4.39",
-    "tailwindcss": "3.4.6",
-    "typescript": "5.5.3"
+    "postcss": "8.5.26",
+    "tailwindcss": "3.4.19",
+    "typescript": "5.9.3"
   }
 }
