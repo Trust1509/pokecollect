@@ -35,7 +35,8 @@ function SealedTile({
         {src ? (
           <Image src={src} alt={product.name} fill className="object-cover" sizes="(max-width: 640px) 45vw, 20vw" />
         ) : product.bild_url ? (
-          // TCGplayer-CDN (#46): next/Image geht auch extern (remotePatterns "**")
+          // TCGplayer-CDN (#46): extern erlaubt, seit #91 aber NUR dieser Host
+                // (next.config.js remotePatterns, keine Wildcard mehr)
           <Image src={product.bild_url} alt={product.name} fill className="object-contain" sizes="(max-width: 640px) 45vw, 20vw" />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-600 text-5xl">📦</div>

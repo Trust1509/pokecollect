@@ -29,6 +29,14 @@ test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {
   });
 
   test("erlaubter Host wird nicht als Fremd-Host abgelehnt", async ({ request, baseURL }) => {
+    // #91-Nacharbeit (Panel): vorher fragte dieser Test ein echtes CDN an
+    // (assets.tcgdex.net, gemessen 404 nach 678 ms echtem Netzverkehr). Der
+    // Rauchtest-Stapel verzichtet sonst bewusst auf Fremdaufrufe
+    // (docker-compose.smoke.yml) — die Zusicherung braucht das Netz auch
+    // nicht. Jetzt in-stack: der eigene API-Origin steht im Muster
+    // (pathname /images/**), die Datei existiert absichtlich nicht. Gemessen:
+    // ein erlaubter Host mit fehlender Datei antwortet 404/500, ein NICHT
+    // erlaubter 400 — die Unterscheidung trägt ohne Fremdnetz.
     // Aus der echten Allowlist gebildet (backend/app/services/tcgdex.py
     // ALLOWED_IMAGE_HOSTS / web/next.config.js remotePatterns) — realer Host,
     // Pfadform wie tcgdex.py::image_url() sie baut ("{base}/{quality}.{format}").
@@ -39,7 +47,8 @@ test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {
     // next/image den Host akzeptiert und die Anfrage tatsächlich hinausgeschickt
     // hat, statt sie schon an der eigenen Tür mit 400 abzuweisen. Mindest-
     // zusicherung laut Bau-Brief #91: „nicht 400".
-    const erlaubt = "https://assets.tcgdex.net/en/base1/4/high.webp";
+    const apiUrl = process.env.API_URL ?? "http://api:8000";
+    const erlaubt = `${apiUrl}/images/test91-gibt-es-nicht.webp`;
     const antwort = await request.get(
       `${baseURL}/_next/image?url=${encodeURIComponent(erlaubt)}&w=64&q=75`,
     );

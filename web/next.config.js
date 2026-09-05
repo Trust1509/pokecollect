@@ -6,6 +6,15 @@
 // verschieden: Prod http://<server-ip>:3010 oder https://pokecollect.lan,
 // Teststand http://localhost:3020, Rauchtest http://api:8000, Default (Code)
 // http://localhost:3010 (web/src/lib/api.ts API_BASE, dieselbe Variable).
+// Gemessen (#91-Nacharbeit): Der Standalone-Server liest diese Muster NICHT
+// zur Laufzeit neu — `next build` backt sie in .next/required-server-files.json
+// ein. Das ist unkritisch, weil NEXT_PUBLIC_API_URL auch die Client-Bundles
+// zur Build-Zeit prägt: angeforderte URL und Muster hängen am SELBEN Wert und
+// driften gemeinsam (alle <Image>-Stellen sind Client-Komponenten). Beleg:
+// Build mit http://build-origin:1111, Laufzeit-Env http://runtime-origin:2222
+// -> der Build-Origin wird durchgelassen (500 am Upstream), der Laufzeit-Wert
+// mit 400 abgelehnt. ACHTUNG für später: Baut je eine SERVER-Komponente eine
+// Bild-URL (dort gilt der Laufzeit-Wert), entsteht genau hier ein Bruch.
 const apiOrigin = new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3010");
 
 const nextConfig = {
@@ -52,7 +61,12 @@ const nextConfig = {
         protocol: apiOrigin.protocol.replace(":", ""),
         hostname: apiOrigin.hostname,
         port: apiOrigin.port || "",
-        pathname: "/images/**",
+        // Pfad-Präfix des Origins mitnehmen (#91-Nacharbeit): bei
+        // NEXT_PUBLIC_API_URL="https://host/prefix" baut imageUrl()
+        // "/prefix/images/…"; ein festes "/images/**" träfe das nicht.
+        // Abschließender Schrägstrich ergibt hier "" (api.ts normalisiert
+        // dieselbe Variable an der Wurzel) — beide Seiten bleiben gleich.
+        pathname: `${apiOrigin.pathname.replace(/\/+$/, "")}/images/**`,
       },
     ],
   },

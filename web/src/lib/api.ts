@@ -1,7 +1,14 @@
 import axios from "axios";
 
 // Zentrale API-Basis-URL — einzige Quelle, keine Kopien in Seiten (Issue #14).
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010";
+// Abschließende Schrägstriche fallen weg (#91-Nacharbeit): imageUrl() hängt
+// "/images/…" an, aus "http://host/" würde sonst "http://host//images/…" —
+// ein Pfad, den das remotePatterns-Muster ("/images/**") NICHT deckt. Am
+// echten Optimizer gemessen: 400 "url parameter is not allowed". Ein
+// abschließender Schrägstrich in der .env ist ein plausibler Tippfehler und
+// hätte still alle eigenen Fotos ausgeblendet.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010")
+  .replace(/\/+$/, "");
 
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
