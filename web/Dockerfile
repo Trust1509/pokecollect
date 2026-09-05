@@ -23,6 +23,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# #98: next/image (sharp) legt seinen Bild-Cache erst beim ersten Abruf an
+# (mkdir '/app/.next/cache/images') — das Verzeichnis existiert nach den COPYs
+# oben noch nicht und alles darüber gehört root; ohne chown scheitert das
+# mkdir mit EACCES, sobald der Prozess als pokecollect (uid 3010) läuft.
+RUN mkdir -p .next/cache/images && chown -R pokecollect:pokecollect .next
+
 USER pokecollect
 
 EXPOSE 3000

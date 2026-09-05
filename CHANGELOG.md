@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Intern
+- `sharp` als feste Produktions-Abhängigkeit ergänzt und den Bild-Cache-Ordner
+  im Runner-Image vor dem Nutzerwechsel angelegt und dem Laufzeit-Nutzer
+  übertragen (#98) — der Standalone-Web-Container schrieb bislang bei jedem
+  optimierten Bild `'sharp' is required to be installed in standalone mode`
+  und `EACCES: permission denied, mkdir '/app/.next/cache'` in die Logs.
+  Bilder wurden trotzdem ausgeliefert (nur unoptimiert, ohne Cache) — jetzt
+  läuft die Bild-Optimierung wirklich, für Nutzer:innen nur als schnellere
+  Auslieferung ab dem zweiten Abruf derselben Bildgröße spürbar.
+
 ## [v1.9.1] – 2026-09-05 (Sicherheits-Auffrischung) — gefahrlos
 
 **Keine Migration, keine neuen Funktionen** — diese Version schließt

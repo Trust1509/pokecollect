@@ -16,7 +16,8 @@
     "recharts": "2.12.7",
     "axios": "1.19.0",
     "react-hot-toast": "2.4.1",
-    "lucide-react": "0.417.0"
+    "lucide-react": "0.417.0",
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@types/node": "20.14.11",
