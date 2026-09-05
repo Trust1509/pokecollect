@@ -66,6 +66,29 @@ arbeitende Bau-Subagenten bekommen einen eigenen Worktree mit eigenem Branch;
 dann ist das Mitnehmen strukturell unmöglich statt nur verboten. Eine Regel,
 deren Einhaltung von Aufmerksamkeit abhängt, ist eine Notiz (Klasse 10).
 
+**Und der Rot-Beweis ist genau so ein Fall — belegt am 05.09.2026.** Mein
+Sabotage-Skript zu #98 nahm jede Mutation mit `git checkout -- <datei>`
+zurück. Das ist richtig, solange die eigene Arbeit **committet** ist — sie war
+es nicht. Der Rückbau setzte drei Dateien auf `HEAD` und löschte damit die
+Nacharbeit, die er schützen sollte; der zweite von drei Rot-Beweisen lief
+dadurch gegen den unsabotierten Stand und war wertlos, ohne dass etwas rot
+wurde. Das Perfide: Ein verunglückter Rot-Beweis meldet sich nicht — er meldet
+**grün**, und grün sieht aus wie Erfolg.
+
+Die Lehre stand zu diesem Zeitpunkt bereits geschrieben (`git checkout --`
+oben in genau diesem Absatz) und hat trotzdem nicht getragen, weil sie eine
+**Warnung** war und kein **Schritt**. Deshalb als Schritt, nicht als Warnung —
+das Rot-Beweis-Muster heißt ab jetzt:
+
+1. **Committen** (`wip`, später amenden) — vor der ersten Mutation, immer.
+2. Eine Mutation setzen. Belegen, dass sie im Baum steht (`grep -c`), bevor
+   gebaut wird — sonst prüft man den unveränderten Stand (Klasse 3).
+3. Messen.
+4. Zurücknehmen, Baum gegenprüfen (`git status --short` muss leer sein).
+
+Schritt 1 kostet fünf Sekunden und macht Schritt 4 gefahrlos. Ohne ihn ist
+`git checkout --` kein Rückbau, sondern ein Datenverlust mit grüner Anzeige.
+
 **Ein Widerspruch zwischen zwei Dateien ist unsichtbarer als einer in einer.**
 Beim Übernehmen einer neuen Regel habe ich die eine Fundstelle geändert und die
 andere stehen lassen: Der Bau-Brief trug das neue Kriterium für die
