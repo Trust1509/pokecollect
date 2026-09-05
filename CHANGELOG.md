@@ -12,6 +12,20 @@
   läuft die Bild-Optimierung wirklich, für Nutzer:innen nur als schnellere
   Auslieferung ab dem zweiten Abruf derselben Bildgröße spürbar.
 
+### Sicherheit
+- **Der Bild-Zwischenspeicher hat jetzt eine harte Obergrenze** (#98,
+  Panel-Nacharbeit). Next.js räumt diesen Speicher von sich aus **nie** auf:
+  keine Verfallsgrenze, keine Größengrenze. Da der Bild-Dienst ohne Anmeldung
+  erreichbar ist, konnte damit jede:r im Netz unbegrenzt Plattenplatz belegen
+  — auf einem geteilten Server hätte eine volle Platte auch fremde Dienste
+  getroffen. Zwei unabhängige Bremsen: Der Speicher liegt jetzt in einem auf
+  256 MB fest gedeckelten Arbeitsspeicher-Bereich (die Platte wird gar nicht
+  mehr berührt), und dieselbe Bilddatei lässt sich nicht mehr über angehängte
+  Fragezeichen-Parameter beliebig oft neu ablegen. Gemessen: 5 Abrufe
+  desselben Bildes mit unterschiedlichen Parametern erzeugten vorher 5
+  zusätzliche Einträge. Keine einzige der 37 372 echten Bild-Adressen im
+  Bestand trägt einen solchen Parameter — für die App ändert sich nichts.
+
 ## [v1.9.1] – 2026-09-05 (Sicherheits-Auffrischung) — gefahrlos
 
 **Keine Migration, keine neuen Funktionen** — diese Version schließt

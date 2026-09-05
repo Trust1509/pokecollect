@@ -44,6 +44,18 @@ services:
     user: "3010:3010"
     ports:
       - "3011:3000"
+    # #98 Panel-Nacharbeit: HARTE Obergrenze für den next/image-Cache.
+    # Next 14 räumt diesen Cache NIE auf — kein LRU, keine Größengrenze,
+    # nur eine Max-Age im Dateinamen (31536000 = ein Jahr). Ohne Deckel kann
+    # jeder, der die Instanz erreicht, unbegrenzt Plattenplatz belegen; auf
+    # einem geteilten Server trifft eine volle Platte auch fremde Dienste.
+    # tmpfs statt Volume, weil der Cache ohnehin flüchtig ist (jeder Deploy
+    # verliert ihn) und RAM sich hart deckeln lässt: gemessen 20 MB in ein
+    # 8-MB-tmpfs geschrieben → exakt 8 MB belegt, Platte unberührt.
+    # uid/gid 3010 = der Nutzer pokecollect aus web/Dockerfile; mode 0700
+    # statt des tmpfs-Standards 1777 (weltschreibbar).
+    tmpfs:
+      - /app/.next/cache/images:size=256m,uid=3010,gid=3010,mode=0700
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3010}
     depends_on:

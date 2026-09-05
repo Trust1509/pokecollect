@@ -36,21 +36,34 @@ const nextConfig = {
     // Host-Prüfung im Backend (backend/app/services/provenance.py Zeile 52ff.,
     // Absicht) — eine bereits gesetzte URL zu einem fremden Host lädt ab jetzt
     // nicht mehr über den Optimizer. Siehe Bau-Bericht #91 für den Befund.
+    // #98 Panel-Nacharbeit: `search: ""` an JEDEM Muster. Ohne diese Zeile
+    // vergleicht Next den Querystring gar nicht (match-remote-pattern.ts
+    // prüft `search` nur, wenn es gesetzt ist) — dieselbe Bilddatei mit
+    // ?n=1, ?n=2, … ergibt dann beliebig viele VERSCHIEDENE Cache-Schlüssel.
+    // Am laufenden Teststand reproduziert: 5 Abrufe desselben Bildes mit
+    // ?cachebust=1..5 → Cache-Einträge 1 → 6. Rot-Beweis: Sperre entfernt →
+    // der Wächter in e2e/tests/bildoptimizer.spec.ts fällt (404 statt 400).
+    // Kein einziger echter Bild-Wert trägt einen Querystring (37.372 Zeilen
+    // im echten Bestand geprüft: 33.953 tcgdex_catalog + 3.030 sealed_catalog
+    // + 389 pokemon_sets + die eigenen Karten — 0 Treffer auf '%?%'), die
+    // Zeile kostet uns also nichts. Zweite, unabhängige Bremse: die
+    // Cache-Größe ist in allen drei Compose-Dateien hart gedeckelt
+    // (tmpfs auf /app/.next/cache/images).
     remotePatterns: [
       // TCGdex-CDN: auto-gesetztes bild_karte_url, Backend erzwingt denselben
       // Host bereits selbst (services/tcgdex.py ALLOWED_IMAGE_HOSTS/image_url()).
-      { protocol: "https", hostname: "assets.tcgdex.net" },
+      { protocol: "https", hostname: "assets.tcgdex.net", search: "" },
       // TCGplayer-CDN: JP-Bildfallback bei Karten (dieselbe ALLOWED_IMAGE_HOSTS)
       // UND Sealed-Produktbilder (services/tcgcsv.py hires_image_url() prüft
       // denselben Host EXAKT — kein Substring —, bevor er in
       // SealedCatalog.image_url landet).
-      { protocol: "https", hostname: "tcgplayer-cdn.tcgplayer.com" },
+      { protocol: "https", hostname: "tcgplayer-cdn.tcgplayer.com", search: "" },
       // Pokédex-Sprite-Platzhalter (web/src/lib/utils.ts pokemonPlaceholderUrl,
       // letztes Glied der cardImageSrc-Kette) — fließt mit Default
       // placeholderEnabled=true tatsächlich in sechs der acht next/image-Stellen
       // (u. a. die Start-Binderansicht), pathname eng auf den einen genutzten
       // Unterpfad.
-      { protocol: "https", hostname: "www.pokemon.com", pathname: "/static-assets/**" },
+      { protocol: "https", hostname: "www.pokemon.com", pathname: "/static-assets/**", search: "" },
       // API-Origin für eigene Fotos + Katalog-Bild-Cache (nur der eine Mount,
       // der Bilder ausliefert: backend/app/main.py app.mount("/images", …)).
       // pathname eng auf /images/** statt "**" — ein offener Proxy auf JEDEN
@@ -67,6 +80,7 @@ const nextConfig = {
         // Abschließender Schrägstrich ergibt hier "" (api.ts normalisiert
         // dieselbe Variable an der Wurzel) — beide Seiten bleiben gleich.
         pathname: `${apiOrigin.pathname.replace(/\/+$/, "")}/images/**`,
+        search: "",
       },
     ],
   },

@@ -55,3 +55,74 @@ test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {
     expect(antwort.status(), await antwort.text()).not.toBe(400);
   });
 });
+
+/**
+ * #98 Panel-Nacharbeit: Wächter für die ZWEI Zusagen des Slices.
+ *
+ * Warum es die braucht (beide Panel-Stimmen, unabhängig): Der Rauchtest
+ * meldete 18/18 grün, WÄHREND beide Fehler bestanden — er war für sie nie
+ * ein Wächter. Grund im Next-Quelltext (v14.2.35 image-optimizer.ts):
+ * Schlägt die Optimierung fehl, fängt ein catch den Fehler und liefert das
+ * UNveränderte Original mit dessen ursprünglichem Content-Type aus
+ * ("If we fail to optimize, fallback to the original image"). Die Seite
+ * sieht deshalb heil aus, obwohl nichts optimiert wird — genau das
+ * beobachtete Verhalten vor dem Fix (Antwort 94 380 B statt 25 694 B).
+ *
+ * Daraus die zwei Assertions, je eine pro Fehler:
+ *  1. `content-type: image/webp`  → sharp hat WIRKLICH transformiert. Ohne
+ *     sharp wirft Next im Standalone-Modus intern 500, der catch greift und
+ *     der Content-Type bleibt der des Originals (image/png).
+ *  2. `x-nextjs-cache: HIT` beim zweiten Abruf → der Cache wurde WIRKLICH
+ *     geschrieben. Bei EACCES auf /app/.next/cache/images bleibt jeder Abruf
+ *     MISS, ohne dass die Antwort selbst kaputtgeht.
+ *
+ * Fixture: `public/icon-512.png` — liegt im Repo und damit in JEDEM Stapel
+ * (Prod, Teststand, Rauchtest); nichts aus der echten Sammlung, kein Fremdnetz.
+ * Lokaler Pfad, deshalb greifen remotePatterns hier nicht — die Zusage ist
+ * sharp + Cache, nicht die Host-Allowlist (die prüfen die Tests oben).
+ */
+test.describe("Bild-Optimizer optimiert und cacht wirklich (#98)", () => {
+  test("sharp transformiert nach webp und der Cache greift beim zweiten Abruf", async ({
+    request,
+    baseURL,
+  }) => {
+    // Eigener q-Wert je Lauf wäre falsch: der Cache-Schlüssel soll zwischen
+    // den beiden Abrufen GLEICH sein. Fester Wert, damit der zweite Abruf
+    // denselben Eintrag trifft.
+    const ziel = `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png")}&w=64&q=75`;
+    // Accept muss webp anbieten: Next wählt das Ausgabeformat daraus
+    // (getSupportedMimeType). Ohne diesen Header bliebe der Content-Type auch
+    // MIT sharp der des Originals — die Assertion würde falsch rot.
+    const kopf = { Accept: "image/webp,image/avif,*/*" };
+
+    const ersterAbruf = await request.get(ziel, { headers: kopf });
+    expect(ersterAbruf.status(), await ersterAbruf.text()).toBe(200);
+    // Zusage 1: sharp läuft. Vor dem Fix stand hier image/png.
+    expect(ersterAbruf.headers()["content-type"]).toBe("image/webp");
+
+    const zweiterAbruf = await request.get(ziel, { headers: kopf });
+    expect(zweiterAbruf.status(), await zweiterAbruf.text()).toBe(200);
+    expect(zweiterAbruf.headers()["content-type"]).toBe("image/webp");
+    // Zusage 2: der Cache ist beschreibbar. Vor dem Fix stand hier MISS.
+    expect(zweiterAbruf.headers()["x-nextjs-cache"]).toBe("HIT");
+  });
+
+  test("Querystring an einem erlaubten Host wird abgelehnt (Cache-Verstärkung)", async ({
+    request,
+    baseURL,
+  }) => {
+    // #98 Panel: Ohne `search: ""` in den remotePatterns vergleicht Next den
+    // Querystring gar nicht — dieselbe Datei mit ?n=1, ?n=2, … erzeugt dann
+    // beliebig viele verschiedene Cache-Einträge. Am laufenden Teststand
+    // reproduziert: 5 Abrufe mit ?cachebust=1..5 → Cache-Einträge 1 → 6.
+    // Derselbe Host und Pfad wie im Test darüber, NUR um einen Querystring
+    // ergänzt: der Unterschied im Ergebnis kann damit nur vom Querystring
+    // kommen.
+    const apiUrl = process.env.API_URL ?? "http://api:8000";
+    const mitQuery = `${apiUrl}/images/test98-gibt-es-nicht.webp?cachebust=1`;
+    const antwort = await request.get(
+      `${baseURL}/_next/image?url=${encodeURIComponent(mitQuery)}&w=64&q=75`,
+    );
+    expect(antwort.status(), await antwort.text()).toBe(400);
+  });
+});
