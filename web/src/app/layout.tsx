@@ -5,6 +5,7 @@ import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import PWARegister from "@/components/PWARegister";
+import WhatsNewModal from "@/components/WhatsNewModal";
 
 export const metadata: Metadata = {
   title: "PokéCollect",
@@ -40,6 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </main>
             <BottomNav />
+            {/* Global, innerhalb von AuthGuard (Sprache verfügbar) — der
+                eigene Pfad-Check im Modal blendet /login aus, siehe
+                Navbar.tsx/BottomNav.tsx (Issue #99). */}
+            <WhatsNewModal />
           </AuthGuard>
           <PWARegister />
         </I18nProvider>

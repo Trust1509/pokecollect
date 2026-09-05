@@ -71,5 +71,16 @@ export default defineConfig({
       testMatch: /bildoptimizer\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    // Issue #99: EIGENER Kontext ohne "setup"-Abhängigkeit/storageState — wie
+    // "bild-optimizer" oben. Der Test steuert localStorage (Anmelde-Status,
+    // "whatsnew_seen_version") bewusst selbst von Grund auf; würde er den
+    // gemeinsamen Anmelde-Stand erben, wäre "aktuelle Version bereits
+    // gesehen" schon gesetzt (siehe WhatsNewModal.tsx) und keine der drei
+    // Zusagen ließe sich mehr unabhängig herstellen.
+    {
+      name: "whatsnew",
+      testMatch: /whatsnew\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });

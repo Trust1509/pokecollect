@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Neu (#99) — „Was ist neu"-Hinweis nach Updates
+- **Nach einem Update zeigt die App einmalig, was sich geändert hat** — eine
+  Box mit der Risiko-Stufe der Version, danach über die Versionsnummer in
+  den Einstellungen jederzeit wieder erreichbar. Beim allerersten Start
+  (frische Installation) erscheint sie nicht.
+
 ### Intern
 - `sharp` als feste Produktions-Abhängigkeit ergänzt und den Bild-Cache-Ordner
   im Runner-Image vor dem Nutzerwechsel angelegt und dem Laufzeit-Nutzer

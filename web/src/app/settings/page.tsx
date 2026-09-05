@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { settingsApi, cardApi, scanApi, pricesApi, catalogApi, dataApi, AppSettings, AppSettingsUpdate, ScanUsage, ScanModelSuggestion } from "@/lib/api";
 import { refreshSettings } from "@/lib/useSettings";
 import { APP_VERSION } from "@/lib/version";
+import { openWhatsNew } from "@/lib/whatsnew";
 import { useI18n } from "@/lib/i18n";
 import BottomNavSettings from "@/components/BottomNavSettings";
 
@@ -263,7 +264,16 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">{t.nav_settings}</h1>
-        <span className="text-gray-500 text-xs">PokéCollect v{APP_VERSION}</span>
+        {/* Wiederöffnen-Weg für die "Was ist neu"-Box (Issue #99): einmal
+            gesehen, danach nur noch über diese Versionsnummer erreichbar. */}
+        <button
+          type="button"
+          onClick={openWhatsNew}
+          aria-label={t.whatsnew_reopen_label(APP_VERSION)}
+          className="text-gray-500 text-xs hover:text-gray-300 underline decoration-dotted underline-offset-2"
+        >
+          PokéCollect v{APP_VERSION}
+        </button>
       </div>
 
       {/* Anzeige */}

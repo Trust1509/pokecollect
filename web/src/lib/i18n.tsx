@@ -594,6 +594,14 @@ const DE = {
   login_submitting: "Anmelden …",
   login_failed: "Anmeldung fehlgeschlagen – Benutzername oder Passwort falsch",
   login_error: "Anmeldung nicht möglich – Server nicht erreichbar",
+
+  // "Was ist neu"-Box nach Updates (Issue #99)
+  whatsnew_title: (v: string) => `Neu in Version ${v}`,
+  whatsnew_close: "Schließen",
+  whatsnew_risk_gefahrlos: "Gefahrlos",
+  whatsnew_risk_backup: "Backup empfohlen",
+  whatsnew_risk_breaking: "Wichtige Hinweise beachten",
+  whatsnew_reopen_label: (v: string) => `Was ist neu in Version ${v} anzeigen`,
 };
 
 const EN: typeof DE = {
@@ -1157,6 +1165,14 @@ const EN: typeof DE = {
   login_submitting: "Signing in …",
   login_failed: "Login failed – wrong username or password",
   login_error: "Login not possible – server unreachable",
+
+  // "What's new" box after updates (Issue #99)
+  whatsnew_title: (v: string) => `New in version ${v}`,
+  whatsnew_close: "Close",
+  whatsnew_risk_gefahrlos: "Safe",
+  whatsnew_risk_backup: "Backup recommended",
+  whatsnew_risk_breaking: "Please read the notes",
+  whatsnew_reopen_label: (v: string) => `Show what's new in version ${v}`,
 };
 
 const translations: Record<Lang, typeof DE> = { DE, EN };

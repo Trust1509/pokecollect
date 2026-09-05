@@ -55,6 +55,11 @@ web_gate() {
   # Paritäts-Wächter (lehren.md §5, Panel #72): Gate und CI müssen denselben
   # Lint-Schritt tragen — fehlt er in ci.yml, ist das Gate rot, nicht nur die Doku.
   grep -q "npm run lint" "$ROOT/.github/workflows/ci.yml" || { echo "FEHLER: ci.yml Web-Job ohne 'npm run lint' — Parität Gate <-> CI verletzt"; exit 1; }
+  # Derselbe Paritäts-Wächter für den neuen "Was ist neu"-Wächter (Issue #99):
+  # ohne diese Zeile könnte der CI-Schritt unbemerkt verschwinden, während das
+  # lokale Gate weiter grün bliebe (lehren.md Klasse 13: Wächter-Code selbst
+  # prüfen, nicht nur "läuft durch").
+  grep -q "npm run check:whatsnew" "$ROOT/.github/workflows/ci.yml" || { echo "FEHLER: ci.yml Web-Job ohne 'npm run check:whatsnew' — Parität Gate <-> CI verletzt"; exit 1; }
   docker build -t pokecollect-web-gate "$(host_path "$ROOT/web")"
   # Lint separat gegen die Builder-Stage (Prod-Image lintet nicht — next.config.js
   # eslint.ignoreDuringBuilds, Panel-Nacharbeit #72):
@@ -63,6 +68,12 @@ web_gate() {
   echo "── Lint (Builder-Stage: npm run lint --max-warnings 0) ──"
   docker build --target builder -t pokecollect-web-lint "$(host_path "$ROOT/web")"
   docker run --rm pokecollect-web-lint npm run lint
+  # "Was ist neu"-Wächter (Issue #99): der Generierungsschritt darf nicht
+  # lautlos ausfallen — prüft die COMMITTETE whatsnew.generated.ts gegen die
+  # aktuelle APP_VERSION, DE/EN nicht leer. Läuft gegen dieselbe Builder-Stage
+  # (Cache trifft, kostet praktisch nichts extra).
+  echo "── Was-ist-neu-Notizen prüfen (npm run check:whatsnew) ──"
+  docker run --rm pokecollect-web-lint npm run check:whatsnew
 }
 
 # Wichtig: KEIN `backend_gate && web_gate` — links von && greift set -e nicht,

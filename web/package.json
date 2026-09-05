@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "generate:whatsnew": "node scripts/generate-whatsnew.mjs",
+    "check:whatsnew": "node scripts/check-whatsnew.mjs"
   },
   "dependencies": {
     "next": "14.2.35",

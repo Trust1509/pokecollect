@@ -44,13 +44,22 @@ Eigentümer, v1.9.0).
 3. **CHANGELOG-Eintrag** ganz oben: Titel, Risiko-Stufe, was der Nutzer merkt.
    In seiner Sprache, nicht in der des Codes: *was er merkt*, nicht welche
    Funktion umgebaut wurde.
-4. **Gates**: `sh scripts/gates.sh all`.
-5. **Rauchtest**: `sh scripts/smoke.sh` — frischer Stapel, damit nicht ein
+4. **„Was ist neu"-Notizen generieren** (Issue #99): `sh
+   scripts/generate-whatsnew.sh` — liest Version + den gerade geschriebenen
+   CHANGELOG-Abschnitt (Schritte 2+3 müssen also VOR diesem Schritt stehen)
+   und schreibt `web/src/lib/whatsnew.generated.ts` neu. **Englisch dazu von
+   Hand pflegen:** `web/src/lib/whatsnew.en.json` auf die neue Version
+   bringen und den Text schreiben — der CHANGELOG ist nur deutsch, maschinell
+   übersetzen wollen wir nicht. Ohne diesen Schritt (oder ohne den
+   EN-Nachtrag) schlägt `npm run check:whatsnew` in Schritt 5 an.
+5. **Gates**: `sh scripts/gates.sh all` — darin hängt seit #99 auch der
+   Wächter für den vorigen Schritt.
+6. **Rauchtest**: `sh scripts/smoke.sh` — frischer Stapel, damit nicht ein
    veralteter Stand geprüft wird.
-6. **Teststand**: `sh scripts/teststand.sh up` und die geänderten Stellen im
+7. **Teststand**: `sh scripts/teststand.sh up` und die geänderten Stellen im
    Browser ansehen. Bei UI-Änderungen **mobil** mitprüfen (Mobile-First-PWA).
-7. Tag + `gh release create`, Notizen aus dem CHANGELOG-Abschnitt.
-8. **Deploy-Anweisung an den Owner** — deployen macht immer er.
+8. Tag + `gh release create`, Notizen aus dem CHANGELOG-Abschnitt.
+9. **Deploy-Anweisung an den Owner** — deployen macht immer er.
 
 ## Notizen schreiben
 
@@ -76,5 +85,5 @@ Erreichbarkeitsprüfung die Version aus `/health` mit dem letzten Git-Tag —
 **null zusätzliche Läufe**. Beleg aus der Vorlage: Eine Site antwortete vier
 Wochen tadellos und war nicht der aktuelle Stand; alle Prüfungen grün, das
 Monitoring stumm. Bis #54 gebaut ist, ist der `curl` oben der manuelle
-Ersatz — und die Reihenfolge Tag (Schritt 7) vor Ausliefern (Schritt 8) ist
+Ersatz — und die Reihenfolge Tag (Schritt 8) vor Ausliefern (Schritt 9) ist
 genau deshalb Pflicht: Ohne Tag hat der Check nichts zu vergleichen.

@@ -1,7 +1,8 @@
 # CI-Gates: EIN Lauf je Slice (Owner-Dauerregel 02.09.2026) — alle Commits tragen
 # [skip ci]; nach der Landung startet der Agent genau einen workflow_dispatch auf
 # dem HEAD. Der push-Trigger bleibt als Netz für Commits ohne Marker.
-# Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc + lint + build.
+# Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc +
+# lint + Was-ist-neu-Check (#99) + build.
 name: CI
 
 # CI-Härtung (Best-Practice-Abgleich 2026-08, E1): Least Privilege — die Gates
@@ -118,6 +119,10 @@ jobs:
         run: npx tsc --noEmit
       - name: Lint
         run: npm run lint
+      - name: Was-ist-neu-Notizen prüfen
+        # Issue #99 — Paritäts-Wächter in scripts/gates.sh:
+        # ohne diesen Schritt schlägt das lokale Gate an.
+        run: npm run check:whatsnew
       - name: Build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3010
