@@ -1,5 +1,48 @@
 # Changelog
 
+## [v1.9.1] – 2026-09-05 (Sicherheits-Auffrischung) — gefahrlos
+
+**Keine Migration, keine neuen Funktionen** — diese Version schließt
+Sicherheitslücken in den verwendeten Fremdbibliotheken und macht den
+Bild-Dienst dicht. Nach dem Deploy sieht die App genauso aus wie vorher.
+
+### Sicherheit
+- **Next.js von 14.2.5 auf 14.2.35.** Damit sind 12 gemeldete Schwachstellen
+  der eingesetzten Version geschlossen, darunter eine als *kritisch*
+  eingestufte (Umgehung der Zugangsprüfung in der Middleware). Für unsere
+  Installation war sie nicht erreichbar — wir benutzen keine Middleware —,
+  aber sie stand in der ausgelieferten Bibliothek.
+- **Der Bild-Dienst nimmt nur noch die eigenen Bildquellen an.** Bisher durfte
+  über die App jede beliebige Bild-Adresse geladen werden (`/_next/image`
+  akzeptierte jeden fremden Server) — die Installation war damit ein offener
+  Bild-Weiterleiter für Dritte im Netz. Jetzt sind nur noch die vier
+  tatsächlich genutzten Quellen erlaubt: TCGdex, TCGplayer, die
+  Pokédex-Platzhalter und der eigene Server. Alle Bilder in der App laden
+  unverändert (152 Musterprüfungen über acht Umgebungen, dazu 13 Proben am
+  laufenden Dienst).
+- **Pillow von 10.4.0 auf 12.3.0** (Bildverarbeitung im Backend). Die
+  Ausgaben sind Byte für Byte identisch zur Vorversion — geprüft über 307
+  Vergleichspfade mit 47 Eingaben, einschließlich absichtlich kaputter
+  Dateien. Einziger Unterschied: 16-Bit-Graustufen-PNGs werden beim Hochladen
+  jetzt angenommen statt abgelehnt.
+
+### Korrigiert
+- Eine falsch geschriebene Server-Adresse in der Konfiguration (ein
+  überzähliger Schrägstrich am Ende) hätte alle eigenen Kartenfotos
+  unsichtbar gemacht — das wird jetzt abgefangen.
+- Im Menü am Handy landete der Tastatur-Fokus nach dem Schließen unter
+  Umständen nicht mehr auf der Menü-Schaltfläche.
+
+### Intern
+- `next lint` läuft jetzt wirklich — als eigener Schritt in den lokalen Gates
+  UND in der CI, mit Warnungen als Fehler (#72); der Produktions-Build lintet
+  bewusst nicht mit.
+- Alle GitHub-Actions auf die aktuelle Hauptversion gezogen (#71), jeder
+  CI-Job hat jetzt eine Zeitgrenze.
+- Dependabot bringt nur noch Aktualisierungen innerhalb der bestehenden
+  Hauptversionen; der große Versionssprung des Frontend-Gerüsts wird als
+  eigene Entscheidung geplant (#87).
+
 ## [v1.9.0] – 2026-09-03 (Lokaler Bild-Cache, Herkunfts-Zeile, ehrlichere Preise und Scans) — backup
 
 Zwei **additive** Light-Migrationen (`tcgdex_catalog.price_eur_checked`,
