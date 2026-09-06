@@ -203,6 +203,21 @@ eine Regression. Drei Regeln:
 - **Der Bauer korrigiert eine falsche Brief-Prämisse mit Beleg — erwünschtes
   Verhalten, kein Ungehorsam.** Der Brief ist Anleitung, kein Dogma;
   verifizierte Gegenbelege gehören in den Report.
+- **Setzt der Brief eine Entscheidung über PRODUKTVERHALTEN, gehört sie in den
+  Prüfauftrag einer Stimme — als „zu widerlegen“, nicht als Kontext.**
+  Erlebt am 06.09.2026 (#99): Der schwerste Fund des Slices war die Folge
+  einer Vorgabe, die der Arbiter selbst in den Brief geschrieben und begründet
+  hatte („frische Installation zeigt nichts“) — übersehen, dass der
+  Schlüssel dafür von genau diesem Slice erst eingeführt wird, also auch jede
+  BESTEHENDE Installation als frisch galt. Die blinde Stimme prüfte gegen die
+  Vorgabe und hakte das Verhalten als „geprüft, ohne Befund“ ab;
+  gefunden hat es die Stimme, die den Brief NICHT kannte. **Wer den Brief
+  kennt, erbt seine blinden Flecken.** Die Klausel „prüfe meine
+  Einschätzung, statt sie zu übernehmen“ trug hier nicht, weil die Vorgabe
+  nicht als Empfehlung dastand, sondern als entschiedene Sache mit Begründung
+  — das liest sich wie Kontext, nicht wie eine offene Frage. Deshalb:
+  Entscheidung wörtlich in den Prüfauftrag, mit dem Auftrag, sie zu kippen.
+  Und mindestens eine Stimme bekommt den Brief gar nicht zu sehen.
 
 ## Acht Prüffragen vor der Landung (v1.13.0 — Block 9 jedes Briefs bzw. vor den Selbst-Commit)
 
