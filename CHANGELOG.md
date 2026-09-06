@@ -11,6 +11,13 @@
   eine neue Installation ist ohnehin alles neu.
 
 ### Intern
+- **Abhängigkeiten aufgefrischt** (#95, #94): SQLAlchemy 2.0.31 → 2.0.52 im
+  Backend sowie acht npm-Pakete im Frontend (u. a. TypeScript 5.5 → 5.9,
+  Tailwind 3.4.6 → 3.4.19, axios 1.19 → 1.20). Reine Wartung — für
+  Nutzer:innen ändert sich nichts. Beide Sprünge über eine Äquivalenz-Probe
+  abgesichert: dieselben 541 Backend-Tests, dieselbe Warnungs-Verteilung,
+  derselbe Rauchtest 27/27 vorher wie nachher; die Geld-Berechnungen liefern
+  über 24 Prüfwerte Byte für Byte dasselbe Ergebnis.
 - `sharp` als feste Produktions-Abhängigkeit ergänzt und den Bild-Cache-Ordner
   im Runner-Image vor dem Nutzerwechsel angelegt und dem Laufzeit-Nutzer
   übertragen (#98) — der Standalone-Web-Container schrieb bislang bei jedem
