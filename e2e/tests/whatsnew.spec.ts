@@ -120,10 +120,18 @@ test.describe("Beide Sprachen kommen an (Wächter 3)", () => {
     // getByText() sieht den gerenderten Text unabhängig davon).
     const reopenBtn = page.getByText(/PokéCollect v/);
     const dialog = page.getByRole("dialog");
+    // NUR den generierten Notiz-Text greifen, nicht den ganzen Dialog: Titel,
+    // Schließen-Knopf und Risiko-Label kommen aus t.whatsnew_* (i18n.tsx) und
+    // unterscheiden sich IMMER zwischen den Sprachen — ein Vergleich auf
+    // dialog.innerText() bliebe deshalb auch dann "verschieden", wenn
+    // ausgerechnet whatsnew.generated.ts::de/en sabotiert und identisch
+    // wären. Am eigenen Rot-Beweis gefunden: siehe WhatsNewModal.tsx,
+    // data-testid="whatsnew-body".
+    const body = dialog.getByTestId("whatsnew-body");
 
     await reopenBtn.click();
     await expect(dialog).toBeVisible();
-    const deText = (await dialog.innerText()).trim();
+    const deText = (await body.innerText()).trim();
     await dialog.getByRole("button", { name: SCHLIESSEN }).first().click();
     await expect(dialog).toHaveCount(0);
 
@@ -132,7 +140,7 @@ test.describe("Beide Sprachen kommen an (Wächter 3)", () => {
 
     await reopenBtn.click();
     await expect(dialog).toBeVisible();
-    const enText = (await dialog.innerText()).trim();
+    const enText = (await body.innerText()).trim();
 
     // NICHT gegen einen fest verdrahteten Satz prüfen (Bau-Brief #99, Block
     // 5 Nr. 3 + Prüffrage F2) — nur gegen die Tatsache, dass beide Texte

@@ -113,7 +113,13 @@ export default function WhatsNewModal() {
             {t[riskKey]}
           </span>
         )}
-        <p className="text-gray-200 text-sm whitespace-pre-line">{body}</p>
+        {/* data-testid bewusst (nicht Rolle/Text): der restliche Dialog trägt
+            immer sprachabhängige Chrome-Texte (Titel, Schließen-Knopf,
+            Risiko-Label aus t.whatsnew_*) — ein Test auf den GANZEN Dialog
+            sähe fälschlich "unterschiedlich", selbst wenn ausgerechnet DIESER
+            generierte Text (de/en aus whatsnew.generated.ts) sabotiert und
+            identisch wäre. Siehe e2e/tests/whatsnew.spec.ts, Wächter 3. */}
+        <p data-testid="whatsnew-body" className="text-gray-200 text-sm whitespace-pre-line">{body}</p>
         <div className="pt-1 text-right">
           <button
             type="button"
