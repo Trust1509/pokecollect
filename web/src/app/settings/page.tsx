@@ -266,10 +266,16 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold text-white">{t.nav_settings}</h1>
         {/* Wiederöffnen-Weg für die "Was ist neu"-Box (Issue #99): einmal
             gesehen, danach nur noch über diese Versionsnummer erreichbar. */}
+        {/* Panel-Nacharbeit (#99, blinde Stimme): Vorher ERSETZTE ein aria-label
+            den sichtbaren Text als Accessible Name ("Show what's new in version
+            1.9.1" gegen sichtbar "PokéCollect v1.9.1") — das verletzt WCAG 2.5.3
+            "Label in Name" (Level A): Sprachsteuerung ("klick PokéCollect v1.9.1")
+            greift dann ins Leere. Jetzt bleibt der sichtbare Text Teil des Namens,
+            der Zweck steht als title-Tooltip daneben. */}
         <button
           type="button"
           onClick={openWhatsNew}
-          aria-label={t.whatsnew_reopen_label(APP_VERSION)}
+          title={t.whatsnew_reopen_label(APP_VERSION)}
           className="text-gray-500 text-xs hover:text-gray-300 underline decoration-dotted underline-offset-2"
         >
           PokéCollect v{APP_VERSION}

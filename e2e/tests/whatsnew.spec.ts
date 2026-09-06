@@ -81,6 +81,46 @@ test.describe("Erscheint nach einem Update, sonst nicht (Wächter 2)", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
   });
 
+  test("bestehende Installation ohne den Schlüssel sieht die Box (Erst-Rollout)", async ({
+    page,
+  }) => {
+    // Panel-Nacharbeit #99 — der BLOCKER der Zweitstimme, am laufenden Stapel
+    // reproduziert (vorher: 0 Dialoge). `whatsnew_seen_version` wird von diesem
+    // Slice EINGEFÜHRT: Wer die App heute benutzt, hat den Schlüssel nach dem
+    // Update nicht — früher galt er damit als "frische Installation", die Box
+    // blieb aus und die Version wurde still vermerkt. Ausgerechnet der erste
+    // Einsatz der Funktion wäre also stumm geblieben.
+    //
+    // Der Unterschied zum Test darüber ist NUR der Anmeldezustand: dort ein
+    // jungfräulicher Browser, hier einer, der die App schon benutzt hat.
+    await page.goto("/login");
+    await login(page);
+    // Angemeldet = Bestandsnutzer (Token liegt im Storage). Den whatsnew-
+    // Schlüssel entfernen stellt den Zustand direkt nach dem Deploy her.
+    await page.evaluate(() => localStorage.removeItem("whatsnew_seen_version"));
+    await page.reload();
+
+    await expect(page.getByRole("dialog")).toBeVisible();
+  });
+
+  test("auf der Anmeldeseite erscheint das Modal nie", async ({ page }) => {
+    // Panel-Nacharbeit #99 (blinde Stimme, mit Sabotage belegt): Der
+    // /login-Ausschluss in WhatsNewModal.tsx war von KEINEM Test gedeckt —
+    // entfernt man ihn, blieben alle Zusagen grün, während das Modal über dem
+    // Anmeldeformular läge. Erreichbar ist der Zustand real: abgelaufene
+    // Sitzung plus alte Version im Storage.
+    await page.goto("/login");
+    await seedSeenVersion(page, "0.0.1");
+    await page.reload();
+
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Gegenprobe, dass die Lage überhaupt die richtige ist: Nach der Anmeldung
+    // MUSS dieselbe Altversion das Modal auslösen — sonst prüfte dieser Test
+    // nur, dass irgendetwas nicht erscheint.
+    await login(page);
+    await expect(page.getByRole("dialog")).toBeVisible();
+  });
+
   test("mit der aktuellen Version als gesehen erscheint das Modal gar nicht", async ({ page }) => {
     await page.goto("/login");
     const version = await currentVersion(page);

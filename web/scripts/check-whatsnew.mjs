@@ -54,6 +54,8 @@ function field(name) {
 const genVersion = field("version");
 const de = field("de") ?? "";
 const en = field("en") ?? "";
+const titleEn = field("titleEn") ?? "";
+const risk = field("risk");
 
 if (genVersion !== appVersion) {
   fail(
@@ -75,4 +77,31 @@ if (!en.trim()) {
   );
 }
 
-console.log(`✓ whatsnew.generated.ts passt zu v${appVersion} (DE ${de.length} / EN ${en.length} Zeichen).`);
+// Panel-Nacharbeit (#99, Zweitstimme WICHTIG): Die Risiko-Stufe ist im
+// Release-Ritual verbindlich, wurde hier aber nie geprüft — fehlte sie in der
+// CHANGELOG-Überschrift, erzeugte der Generator `risk: null`, das Modal ließ
+// das Abzeichen weg und alle Gates blieben grün. (Historisch tragen nur 5 von
+// 57 Versionen eine Stufe; verbindlich ist sie erst seit v1.9.0 — geprüft wird
+// deshalb nur die AKTUELLE Version, nicht die Historie.)
+if (risk === null) {
+  fail(
+    `Keine Risiko-Stufe für Version ${appVersion}. Die Überschrift in CHANGELOG.md muss ` +
+      `auf "— gefahrlos", "— backup" oder "— breaking" enden ` +
+      `(docs/agents/release-ritual.md). Danach: sh scripts/generate-whatsnew.sh`,
+  );
+}
+
+// Panel-Nacharbeit (#99, BEIDE Stimmen): Der Untertitel stand im englischen
+// Dialog auf Deutsch, weil es nur ein Titel-Feld gab. Jetzt gibt es titleEn —
+// und ein Wächter, der eine vergessene Übersetzung rot macht.
+if (!titleEn.trim()) {
+  fail(
+    `Kein englischer Titel für Version ${appVersion}. In web/src/lib/whatsnew.en.json ` +
+      `das Feld "title" auf dieser Version füllen, danach sh scripts/generate-whatsnew.sh`,
+  );
+}
+
+console.log(
+  `✓ whatsnew.generated.ts passt zu v${appVersion} ` +
+    `(DE ${de.length} / EN ${en.length} Zeichen, Risiko: ${risk}).`,
+);

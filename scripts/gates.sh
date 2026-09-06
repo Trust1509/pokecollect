@@ -50,6 +50,17 @@ backend_gate() {
   return "$status"
 }
 
+# Panel-Nacharbeit #99 (BLOCKER der Zweitstimme): `npm run check:whatsnew` läuft
+# IM Web-Build-Image — dort gibt es CHANGELOG.md gar nicht, der Wächter kann die
+# generierte Datei also nur gegen sich selbst prüfen. Eine von Hand hineinge-
+# schriebene oder nach einer CHANGELOG-Änderung veraltete Datei bliebe grün —
+# genau die "zweite Wahrheit", die Issue #99 vermeiden wollte. Deshalb hier, auf
+# REPO-Ebene mit CHANGELOG.md in Reichweite: neu erzeugen und vergleichen.
+whatsnew_paritaet_gate() {
+  echo "── Gate 0/2: Was-ist-neu-Notizen stammen wirklich aus den Quellen ──"
+  MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w node:20-alpine     node web/scripts/generate-whatsnew.mjs --check
+}
+
 web_gate() {
   echo "── Gate 2/2: Web (Docker-Build: npm ci + tsc + next build; danach Lint) ──"
   # Paritäts-Wächter (lehren.md §5, Panel #72): Gate und CI müssen denselben
@@ -80,8 +91,12 @@ web_gate() {
 # ein roter Backend-Gate liefe sonst still in das Erfolgs-Echo durch.
 case "$TARGET" in
   backend) backend_gate ;;
-  web)     web_gate ;;
+  web)
+    whatsnew_paritaet_gate
+    web_gate
+    ;;
   all)
+    whatsnew_paritaet_gate
     backend_gate
     web_gate
     ;;

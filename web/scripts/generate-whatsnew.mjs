@@ -139,11 +139,15 @@ const de = paragraphs
 
 // ── 3) Englisch: handgepflegt, nur bei Versionsgleichstand übernehmen ───────
 let en = "";
+let titleEn = "";
 const enPath = path.join(WEB_ROOT, "src/lib/whatsnew.en.json");
 try {
   const enData = JSON.parse(readFileSync(enPath, "utf8"));
   if (enData.version === version && typeof enData.en === "string" && enData.en.trim()) {
     en = enData.en.trim();
+    // Panel-Nacharbeit (#99): auch der Untertitel muss uebersetzt sein, sonst
+    // stand im englischen Dialog die deutsche CHANGELOG-Ueberschrift.
+    if (typeof enData.title === "string" && enData.title.trim()) titleEn = enData.title.trim();
   } else {
     console.warn(
       `WARNUNG (generate-whatsnew): whatsnew.en.json passt nicht zu v${version} ` +
@@ -163,16 +167,57 @@ const out = `// AUTO-GENERIERT von web/scripts/generate-whatsnew.mjs — NICHT v
 // Neu erzeugen: sh scripts/generate-whatsnew.sh (Release-Ritual).
 export type WhatsNewRisk = "gefahrlos" | "backup" | "breaking" | null;
 
-export const WHATS_NEW: { version: string; title: string; risk: WhatsNewRisk; de: string; en: string } = {
+export const WHATS_NEW: { version: string; title: string; titleEn: string; risk: WhatsNewRisk; de: string; en: string } = {
   version: ${JSON.stringify(version)},
   title: ${JSON.stringify(title)},
+  titleEn: ${JSON.stringify(titleEn)},
   risk: ${risk ? JSON.stringify(risk) : "null"},
   de: ${JSON.stringify(de)},
   en: ${JSON.stringify(en)},
 };
 `;
 
-writeFileSync(path.join(WEB_ROOT, "src/lib/whatsnew.generated.ts"), out, "utf8");
+// Panel-Nacharbeit (#99, blinde Stimme): Vorher meldete der Generator auch bei
+// völlig leerem Ergebnis eine letzte Zeile mit Haken und exit 0 (gemessen mit
+// APP_VERSION=9.9.9: "✓ … (DE 0 Zeichen, EN 0 Zeichen)"). Die Warnung darüber
+// ging unter, Ritual-Schritt 4 sah grün aus. Ohne deutschen Text gibt es nichts
+// zu zeigen — das ist ein Fehler, kein Hinweis.
+if (!de.trim()) {
+  fail(
+    `Kein deutscher Text für v${version} — fehlt der CHANGELOG-Abschnitt "## [v${version}]" ` +
+      `oder ist er leer? (Nichts geschrieben.)`,
+  );
+}
+
+const ZIEL = path.join(WEB_ROOT, "src/lib/whatsnew.generated.ts");
+
+// --check: nichts schreiben, nur prüfen, ob die abgelegte Datei WIRKLICH aus den
+// heutigen Quellen stammt (Panel-Nacharbeit #99, BLOCKER der Zweitstimme:
+// check-whatsnew.mjs prüft nur das Artefakt gegen sich selbst und liest nie den
+// CHANGELOG — damit wäre die generierte Datei eine zweite Wahrheit). Läuft im
+// Repo-Wurzel-Kontext, wo CHANGELOG.md erreichbar ist.
+if (process.argv.includes("--check")) {
+  let vorhanden;
+  try {
+    vorhanden = readFileSync(ZIEL, "utf8");
+  } catch {
+    fail("whatsnew.generated.ts fehlt. Erzeugen: sh scripts/generate-whatsnew.sh");
+  }
+  if (vorhanden !== out) {
+    fail(
+      "whatsnew.generated.ts weicht von dem ab, was CHANGELOG.md + whatsnew.en.json " +
+        "heute ergeben würden — die abgelegte Datei ist veraltet oder von Hand " +
+        "bearbeitet. Erzeugen: sh scripts/generate-whatsnew.sh",
+    );
+  }
+  console.log(
+    `✓ whatsnew.generated.ts stimmt mit den Quellen überein ` +
+      `(v${version}, DE ${de.length} / EN ${en.length} Zeichen, Risiko: ${risk ?? "–"})`,
+  );
+  process.exit(0);
+}
+
+writeFileSync(ZIEL, out, "utf8");
 console.log(
   `✓ whatsnew.generated.ts erzeugt für v${version} ` +
     `(DE ${de.length} Zeichen, EN ${en.length} Zeichen, Risiko: ${risk ?? "–"})`,

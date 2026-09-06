@@ -6,16 +6,49 @@ export type { WhatsNewRisk };
 const SEEN_KEY = "whatsnew_seen_version";
 
 /**
- * Zuletzt vom Nutzer gesehene Version, oder null bei frischer Installation
- * (Schlüssel existiert noch gar nicht). try/catch: privater Modus o. Ä. kann
- * den Storage-Zugriff verweigern — dann eben bei jedem Laden erneut fragen,
- * statt die App abstürzen zu lassen.
+ * Zuletzt vom Nutzer gesehene Version, oder null, wenn der Schlüssel fehlt.
+ *
+ * ACHTUNG, null heißt NICHT "frische Installation" — siehe istFrischeInstallation():
+ * Der Schlüssel wird mit Issue #99 EINGEFÜHRT, eine bestehende Installation
+ * hat ihn nach dem Update also genauso wenig wie ein neuer Browser.
+ *
+ * try/catch: Ist der Storage gesperrt (privater Modus, Richtlinie), kommt hier
+ * null zurück. Panel-Nacharbeit — der frühere Kommentar behauptete, dann werde
+ * "bei jedem Laden erneut gefragt"; tatsächlich schlägt auch markSeen() fehl und
+ * das Modal erscheint dort NIE. Das ist hinnehmbar (ohne Storage lässt sich
+ * "schon gesehen" nicht merken, und ein Modal bei JEDEM Laden wäre schlimmer),
+ * aber es gehört richtig beschrieben.
  */
 export function getSeenVersion(): string | null {
   try {
     return localStorage.getItem(SEEN_KEY);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Ist das hier wirklich eine frische Installation — oder eine BESTEHENDE, die
+ * den Schlüssel nur noch nicht kennt?
+ *
+ * Panel-Nacharbeit (#99, BLOCKER der Zweitstimme, am laufenden Stapel
+ * reproduziert): `whatsnew_seen_version` wird von diesem Slice erst eingeführt.
+ * Wer die App heute benutzt, hat ihn nach dem Update nicht — mit der alten
+ * Logik galt er als "frisch", die Box blieb aus und die Version wurde still
+ * vermerkt. Ergebnis: Ausgerechnet beim ERSTEN Deploy dieser Funktion hätte
+ * niemand etwas gesehen; gewirkt hätte sie erst beim übernächsten Release.
+ * Gemessen vor dem Fix: Bestandsnutzer mit Token → 0 Dialoge.
+ *
+ * Unterscheidungsmerkmal ist deshalb, ob ÜBERHAUPT App-Zustand im Storage
+ * liegt. `token` schreibt die Anmeldung (ADR-0003), `lang` der Sprachschalter
+ * (i18n.tsx) — beides gibt es nur, wenn die App hier schon benutzt wurde.
+ */
+export function istFrischeInstallation(): boolean {
+  try {
+    return localStorage.getItem("token") === null && localStorage.getItem("lang") === null;
+  } catch {
+    // Kein Storage lesbar → wie frisch behandeln (es lässt sich ohnehin nichts merken).
+    return true;
   }
 }
 

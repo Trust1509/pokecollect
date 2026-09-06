@@ -1,8 +1,14 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
-import { WHATS_NEW, getSeenVersion, markSeen, onOpenWhatsNew } from "@/lib/whatsnew";
+import {
+  WHATS_NEW,
+  getSeenVersion,
+  istFrischeInstallation,
+  markSeen,
+  onOpenWhatsNew,
+} from "@/lib/whatsnew";
 
 const RISK_LABEL_KEYS = {
   gefahrlos: "whatsnew_risk_gefahrlos",
@@ -37,6 +43,7 @@ export default function WhatsNewModal() {
   const { t, lang } = useI18n();
   const pathname = usePathname() ?? "/";
   const [show, setShow] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
     markSeen();
@@ -49,9 +56,17 @@ export default function WhatsNewModal() {
   useEffect(() => {
     const seen = getSeenVersion();
     if (seen === null) {
-      // Frische Installation: alles ist neu — nichts zeigen, aber die
-      // aktuelle Version still vermerken (Auftrag Block 4).
-      markSeen();
+      // Kein Eintrag — zwei sehr verschiedene Lagen (Panel-Nacharbeit #99):
+      if (istFrischeInstallation()) {
+        // Wirklich frisch: alles ist neu, es gibt kein "seit zuletzt".
+        // Nichts zeigen, aktuelle Version still vermerken (Auftrag Block 4).
+        markSeen();
+        return;
+      }
+      // BESTEHENDE Installation, die den Schlüssel noch nicht kennt — das ist
+      // der Zustand direkt nach dem Deploy dieser Funktion. Genau hier soll die
+      // Box erscheinen, sonst bliebe ausgerechnet ihr erster Einsatz stumm.
+      setShow(true);
       return;
     }
     if (seen !== WHATS_NEW.version) setShow(true);
@@ -59,17 +74,52 @@ export default function WhatsNewModal() {
 
   useEffect(() => onOpenWhatsNew(() => setShow(true)), []);
 
+  // Panel-Nacharbeit (#99, beide Stimmen): `aria-modal="true"` verspricht, dass
+  // der Hintergrund für die Tastatur nicht existiert — gemessen lagen vorher
+  // ALLE 8 Tab-Stopps AUSSERHALB des Dialogs, auf Bedienelementen unter der
+  // Verdunklung. Fokusfang deshalb nach dem bereits vorhandenen, richtigen
+  // Muster aus BurgerMenu.tsx:27-65 (Kredo/DRY, Prüffrage F3): Anfangsfokus ins
+  // Panel, Tab-Zyklus, Fokus-Rückgabe beim Schließen. ImageLightbox.tsx (das
+  // optische Vorbild) hat dieselbe Lücke — die übrigen Modals nachziehen ist ein
+  // eigener Slice, siehe Panel-Kommentar.
   useEffect(() => {
     if (!show) return;
+    const zuvorFokussiert = document.activeElement as HTMLElement | null;
+
+    const fokussierbare = () =>
+      Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])") ?? [],
+      );
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      if (e.key === "Tab") {
+        const els = fokussierbare();
+        if (els.length === 0) return;
+        const erstes = els[0];
+        const letztes = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === erstes) {
+          e.preventDefault();
+          letztes.focus();
+        } else if (!e.shiftKey && document.activeElement === letztes) {
+          e.preventDefault();
+          erstes.focus();
+        }
+      }
     };
+
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    fokussierbare()[0]?.focus();
+
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      zuvorFokussiert?.focus();
     };
   }, [show, close]);
 
@@ -79,6 +129,13 @@ export default function WhatsNewModal() {
   if (pathname === "/login" || !show) return null;
 
   const body = lang === "EN" ? WHATS_NEW.en : WHATS_NEW.de;
+  // Panel-Nacharbeit (#99, beide Stimmen fanden es unabhängig): Der Untertitel
+  // stammt aus der DEUTSCHEN CHANGELOG-Überschrift und stand deshalb auch im
+  // englischen Dialog auf Deutsch — Zusage "in beiden Sprachen" gebrochen.
+  // titleEn kommt jetzt aus whatsnew.en.json; fällt auf den deutschen Titel
+  // zurück, damit eine vergessene Übersetzung keine leere Zeile erzeugt (der
+  // Wächter macht sie ohnehin rot, siehe check-whatsnew.mjs).
+  const titel = (lang === "EN" ? WHATS_NEW.titleEn : WHATS_NEW.title) || WHATS_NEW.title;
   const risk = WHATS_NEW.risk;
   const riskKey = risk ? RISK_LABEL_KEYS[risk] : null;
 
@@ -91,13 +148,14 @@ export default function WhatsNewModal() {
       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
     >
       <div
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className="bg-pokemon-card rounded-lg shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto p-5 space-y-3"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-white font-bold text-lg">{t.whatsnew_title(WHATS_NEW.version)}</h2>
-            {WHATS_NEW.title && <p className="text-gray-400 text-sm">{WHATS_NEW.title}</p>}
+            {titel && <p className="text-gray-400 text-sm">{titel}</p>}
           </div>
           <button
             type="button"
