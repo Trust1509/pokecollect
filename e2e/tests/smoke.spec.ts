@@ -34,6 +34,33 @@ test.describe("Anmeldung", () => {
     }
   });
 
+  // Panel-Nacharbeit #94 (Zweitstimme WICHTIG): Der 401-Abfangjaeger in
+  // web/src/lib/api.ts war von KEINEM Test gedeckt. Der Test darueber sagt
+  // selbst, dass er gruen bleibt, wenn nur einer der beiden Stricke haelt, und
+  // „falsches Passwort“ trifft ausgerechnet den Aufruf, den der Abfangjaeger
+  // ausnimmt. Beim Sprung axios 1.19 -> 1.20 wurden InterceptorManager.js und
+  // Axios.js umgebaut - eine Regression dort haette niemand bemerkt, obwohl der
+  // Zugangsschutz mit daran haengt (ADR-0003).
+  //
+  // Der Fall ist echt und nicht konstruiert: ein abgelaufenes oder nach einem
+  // Secret-Wechsel ungueltiges Token liegt im Storage, die Oberflaeche haelt
+  // sich fuer angemeldet, und erst die API antwortet mit 401.
+  test("ungueltiges Token: 401 verwirft den Token und fuehrt zur Anmeldung", async ({ page }) => {
+    // Erfundenes Token in gueltiger JWT-Form (drei Punkt-getrennte Teile), damit
+    // es der AuthGuard durchlaesst - der prueft nur, DASS eines da ist.
+    await page.goto("/login");
+    await page.evaluate(() =>
+      localStorage.setItem("token", "eyJhbGciOiJIUzI1NiJ9.e30.ungueltige-signatur"),
+    );
+
+    // Startseite laedt Karten -> erster API-Aufruf antwortet 401.
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/\/login/);
+    const token = await page.evaluate(() => localStorage.getItem("token"));
+    expect(token, "Token wurde beim 401 nicht verworfen").toBeNull();
+  });
+
   test("falsches Passwort kommt nicht hinein", async ({ page }) => {
     await page.goto("/login");
     await page.locator('input[type="password"]').fill("garantiert-falsch");
