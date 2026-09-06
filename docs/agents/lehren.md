@@ -81,10 +81,30 @@ oben in genau diesem Absatz) und hat trotzdem nicht getragen, weil sie eine
 das Rot-Beweis-Muster heißt ab jetzt:
 
 1. **Committen** (`wip`, später amenden) — vor der ersten Mutation, immer.
-2. Eine Mutation setzen. Belegen, dass sie im Baum steht (`grep -c`), bevor
-   gebaut wird — sonst prüft man den unveränderten Stand (Klasse 3).
+2. **Mutation setzen und belegen, dass sie WIRKT** — in zwei Stufen, weil sie
+   getrennt scheitern (05./06.09.2026 dreimal in EINEM Slice erlebt):
+   **(a) im Quelltext:** nicht „ich habe ersetzt“, sondern der gemessene
+   Vergleich. Eine Regex-Ersetzung setzte zwei Felder angeblich auf denselben
+   Wert — nachgemessen 1678 gegen 1671 Zeichen, sie waren nie gleich. Der
+   daraus gezogene Schluss war frei erfunden.
+   **(b) im ARTEFAKT:** liegt zwischen Quelle und Lauf ein Bau, ist die Datei
+   nicht der Beweis. Zweimal getroffen: einmal lagen die Tests in einem
+   ANDEREN Image als der Anwendungscode (nur eines neu gebaut → gegen alte
+   Tests gemessen), einmal scheiterte der Bau still, weil seine Ausgabe nach
+   `/dev/null` ging — der Container lief mit dem alten Image weiter. Also:
+   **Bau mit sichtbarer Ausgabe**, danach die Sabotage im laufenden Artefakt
+   nachweisen. Marker in einen STRING, nie in einen Kommentar: Der
+   Produktionsbau wirft Kommentare weg, der Nachweis meldete „0 Treffer“,
+   obwohl die Sabotage wirkte — ein falsch-negativer Nachweis ist auch eine
+   Falle.
 3. Messen.
 4. Zurücknehmen, Baum gegenprüfen (`git status --short` muss leer sein).
+
+**Warum diese Stufe so teuer ist:** Ein misslungener Rot-Beweis meldet keinen
+Fehler — er meldet **grün**. Und grün ist die Farbe, die man sehen will;
+deshalb prüft dort niemand nach. Alle drei Fälle oben sahen wie gültige
+Messungen aus, und aus zweien habe ich einen falschen Befund abgeleitet,
+bevor er aufflog.
 
 Schritt 1 kostet fünf Sekunden und macht Schritt 4 gefahrlos. Ohne ihn ist
 `git checkout --` kein Rückbau, sondern ein Datenverlust mit grüner Anzeige.
