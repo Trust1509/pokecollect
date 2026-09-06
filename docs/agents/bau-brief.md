@@ -38,7 +38,7 @@ Kopf.
 ## 7 Fixtures           erfunden, nie aus dem Kontext übernommen
 ## 8 Randbedingungen    Vordergrund, lokal committen, nicht pushen,
                         Umfang nicht erweitern
-## 9 Prüffragen         die ACHT Fragen unten, JE EINE ZEILE Antwort —
+## 9 Prüffragen         die ZEHN Fragen unten, JE EINE ZEILE Antwort —
                         „trifft nicht zu" ist gültig, Weglassen nicht
 ```
 
@@ -154,6 +154,28 @@ Beispiele aus dem Gespräch.
 
 ## Randbedingungen, die immer mitmüssen
 
+**Den Herkunftsstempel setzt der HAUPTAGENT, nie der Bauer** (v1.14.0). Ein
+Bauer kennt seine eigene Modell-Kennung nicht; im Vorlagen-Benchmark trugen
+vier von vier Erstbauten einen erfundenen Stempel, auch nach ausdrücklicher
+Auflage. Bau-Briefe geben deshalb den Platzhalter vor:
+
+    Built-With: bau=<vom Orchestrator gesetzt> (<datum>)
+
+**Der Bericht des Bauers ist die Abschlussantwort, keine Datei im Repo**
+(v1.14.0). Zwei von drei Benchmark-Läufen legten ihn in den Baum, einer
+committete ihn. Der Bericht gehört in die Antwort, der Baum bleibt sauber.
+
+**Keine neuen Tests in der letzten Nacharbeitsrunde** (v1.14.0). Der einzige
+am Ende offene Blocker eines Benchmark-Laufs war der in der Schlussrunde neu
+bestellte Test. Was in der letzten Runde noch fehlt, wird ein Folge-Issue.
+
+**Die Form ist Teil der Regel** (v1.14.0): `Risiko: R<n> — Auslöser: …`
+wörtlich, ohne Fettung im Marker, und keine Versalien-Überschriften. Beides
+hat das Prüfskript schon falsch-negativ gemeldet — bei uns fiel
+`Risiko: **R2**` durch das Muster `risiko: r[0-9]`. Das Skript entfernt
+Auszeichnung inzwischen selbst (v1.14.0), die Form bleibt trotzdem verbindlich:
+Das Werkzeug soll sich an den Brief anpassen, nicht der Brief ans Werkzeug.
+
 - **Alle** Prüf-Kommandos nennen, die die CI fährt — nicht nur die
   naheliegenden. Die CI fährt `pytest` (gegen echtes Postgres), `tsc --noEmit`,
   `next lint --max-warnings 0` und `next build`; `scripts/gates.sh all` deckt genau das ab.
@@ -219,7 +241,7 @@ eine Regression. Drei Regeln:
   Entscheidung wörtlich in den Prüfauftrag, mit dem Auftrag, sie zu kippen.
   Und mindestens eine Stimme bekommt den Brief gar nicht zu sehen.
 
-## Acht Prüffragen vor der Landung (v1.13.0 — Block 9 jedes Briefs bzw. vor den Selbst-Commit)
+## Zehn Prüffragen vor der Landung (Block 9 jedes Briefs bzw. vor den Selbst-Commit)
 
 1. **Schreibt dieser Fix an einer Stelle, die vorher nur las — und wer teilt
    sich die Zielzeilen?**
@@ -244,6 +266,25 @@ eine Regression. Drei Regeln:
    vernichtet kein vorhandenes Bild" — die Zusage gilt für DREI Aufrufstellen
    (Karte, Thumbnail, Originalfoto) und zwei Türen (Karten, Sealed); erst das
    Abzählen im Brief machte daraus vier Tests statt zwei.
+9. **Welche Eigenschaft hat die Antwort, die es NUR gibt, wenn die Funktion
+   wirklich läuft?** (v1.14.0, unser Fall aus #98) Ein Test auf „Antwort ist
+   nicht kaputt“ besteht im geheilten UND im kranken Zustand — deshalb war
+   der Rauchtest 18/18 grün, während die Bild-Optimierung wochenlang nichts
+   tat und nur Log-Zeilen schrieb (Next fängt intern und liefert das Original
+   unverändert weiter). Getragen haben zwei Antwort-Kopfzeilen, die es ohne
+   die Funktion nicht gibt: `content-type: image/webp` und
+   `x-nextjs-cache: HIT`. Zwei Zeilen, keine neue Abhängigkeit. Für still
+   ausfallende Funktionen ist das die konkrete Form von Frage 2.
+10. **Wer hat den Schlüssel heute NICHT — und ist das dieselbe Person wie
+    „frische Installation“?** (v1.14.0, unser Fall aus #99) Ein Slice führte
+    einen Schlüssel ein, an dem er „gesehen“ festmacht, und behandelte
+    „Schlüssel fehlt“ als Erstinstallation. Jeder Bestandsnutzer hatte ihn
+    nicht — der Erst-Rollout hätte niemandem etwas gezeigt. Der
+    Owner-Entscheid war richtig und wurde trotzdem zum Fehler: **Ein
+    Owner-Entscheid ist eine Anforderung, kein Abnahmekriterium**
+    (`lehren.md` Klasse 17) — die Abnahme denkt den Rollout auf den Bestand
+    mit. Die Frage kostet eine Zeile; in 27 Review-Läufen des Vorlagen-
+    Benchmarks wurde der Fall einmal gefunden.
 
 Messauftrag des Owners: je Slice melden, welche Fragen gefangen haben und
 welche Ritual waren (Vorlagen-Rückmeldungs-Issue) — Rituale werden wieder

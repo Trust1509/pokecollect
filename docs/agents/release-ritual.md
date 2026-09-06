@@ -37,9 +37,19 @@ Eigentümer, v1.9.0).
 ## Ablauf
 
 1. **Alles gelandet**, CI grün auf dem gelandeten Endstand — **EIN
-   `workflow_dispatch` je Slice** (CI-Dauerregel 02.09.2026, CLAUDE.md), den Lauf
-   **run-id-gepinnt** beobachten (`gh run watch <id> --exit-status`), nie über
-   eine Listenposition.
+   `workflow_dispatch`**, run-id-gepinnt beobachtet.
+
+   **„Kein Lauf zum `headSha` gefunden“ ist ROT, nicht „noch nicht da“**
+   (v1.14.0/v1.14.1). Der Nachweis lautet: Es gibt einen grünen Lauf ZU DIESEM
+   Commit — nicht „oben in der Liste steht etwas Grünes“. Ein Lauf, den es nie
+   gab, hinterlässt nichts; der grüne Lauf des Vorgängers steht dann ganz oben
+   und wird als der eigene gelesen. Probe:
+
+       gh run list --repo <repo> --limit 5 --json headSha,conclusion,databaseId
+
+   **Owner-Skripte werden auf dem Owner-Host geprobt** (`lehren.md` Klasse 18).
+   `deploy.sh` läuft auf dem Server des Owners; wir können es hier nur
+   nachstellen. Jede Aussage über den Deploy wird als Nachstellung benannt.
 2. **Version an beiden Stellen** ziehen.
 3. **CHANGELOG-Eintrag** ganz oben: Titel, Risiko-Stufe, was der Nutzer merkt.
    In seiner Sprache, nicht in der des Codes: *was er merkt*, nicht welche

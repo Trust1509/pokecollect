@@ -99,6 +99,28 @@ ausreichend. Jede Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.
    Erstbau (`bau-brief.md`) plus den Block „Ausdrücklich abgeräumt — hier ist
    nichts zu tun".
 
+**Fund und Schwere werden GETRENNT arbitriert** (v1.14.0). Ein Fund kann
+bestehen bleiben, während seine Begründung zusammenbricht — das dritte Urteil
+(„richtiger Instinkt, falsche Begründung“) gilt in BEIDE Richtungen, nicht
+nur beim Verwerfen. Unser Beleg (#98): Ein BLOCKER hing an der Mengenannahme
+„~34 000 Bilder laufen durch diesen Pfad“; die messende Stimme wies nach,
+dass sie einen anderen Pfad nehmen. Die Rechnung war um Größenordnungen zu
+hoch — der Rest-Grund (geteilter Server, volle Platte trifft fremde Dienste)
+stand unabhängig davon, und der Fund wurde gebaut. Eine Regel, die aus
+„Prämisse widerlegt“ ein „Fund erledigt“ macht, wäre schädlich.
+
+Daraus die Gegenrichtung zur v1.13.0-Begründungspflicht: **Wer strukturell
+HOCHstuft, benennt die Mengenannahme, auf der die Schwere ruht.** Und der
+Arbiter stuft nach EINER Regel über alle Runden — die Schwere folgt der
+Klasse, nicht der Stimme, die den Fund zuerst nannte.
+
+**Widersprechen sich zwei Stimmen, entscheidet die Reproduktion**, nicht die
+Mehrheit und nicht die Plausibilität der Begründung. Hausbeleg (#94): Eine
+Stimme meldete „12/12 Icons unverändert“, die andere „7 von 12 geändert“.
+Der Arbiter hat selbst gemessen — gegen die AUSGELIEFERTEN Pakete, nicht
+gegen die Upstream-Quellen: 12/12 identisch. Die widerlegte Stimme hatte am
+falschen Artefakt gemessen (Quelldateien statt kompiliertem Paket).
+
    **Die Prüfpflicht hängt am GELANDETEN ZUSTAND, nicht am Slice** (v1.8.0): Was
    am Ende auf `main` liegt, ist geprüft — egal in wie vielen Anläufen es dorthin
    kam. Nacharbeit ist damit automatisch erfasst. Eine verkürzte zweite Runde
@@ -141,6 +163,32 @@ Probe-`PUT` schrieb Unsinn in die Einstellungen und legte danach jeden
 Settings-Aufruf lahm).
 
 ## Prüfaufträge, die sich bewährt haben
+
+- **„Zählt der Slice seine eigene Zusage ab?“** — Prüffrage 8 des Bau-Briefs
+  **als Auftrag an die STIMMEN**, nicht nur an den Bauer (v1.14.0). Ein Bauer,
+  der seine Zusage nicht abzählt, beantwortet auch die Frage danach mit „ja“.
+  Im Prüfauftrag gestellt, erzeugte sie bei uns den schwersten Befund eines
+  Panels (#98): Der Slice hatte zwei Zusagen, der Bauer meldete beide als
+  erfüllt und die Suite als grün — beide Stimmen fanden unabhängig, dass die
+  Suite vor UND nach dem Fix identisch grün war.
+- **Jede Verhaltensvorgabe des Bau-Briefs steht im Auftrag mindestens einer
+  Stimme als „diese Vorgabe ist zu widerlegen“** — nicht als Kontext
+  (v1.14.0, unser Fall aus #99). Wer den Brief kennt, erbt seine blinden
+  Flecken; die einzige Stimme, die den Erst-Rollout-Blocker fand, war die,
+  die den Brief nicht kannte.
+- **Eine widerlegte Behauptung des Prüfauftrags ist selbst ein Fund** —
+  der Prüfauftrag stammt vom Orchestrator und geht sonst durch keine Prüfung.
+
+**Vor jeder Serie die Verfügbarkeit messen** (v1.14.0): Sitzungskontingent
+und Guthaben, bevor Stimmen losgeschickt werden. Bei uns sind in dieser
+Woche vier Bau-Subagenten am Sitzungslimit gestorben, zweimal mitten im
+Rot-Beweis. Ein Ausfall ist stimmen-neutral, aber er kostet die Runde.
+
+**Messartefakte gehören nicht in den Baum, den Stimmen lesen** (v1.14.0):
+Fehlerkontexte, Screenshots und Zwischenberichte gitignoren — in
+`git status --short` sind sie unsichtbar, für eine Repo-Stimme aber lesbar,
+und eine Stimme hat die Fehlerkontexte des Orchestrators schon als eigenen
+Beleg zitiert. Probe: `git status --short --ignored`.
 
 Nicht „prüfe den Diff", sondern **eine Behauptung zum Widerlegen**:
 

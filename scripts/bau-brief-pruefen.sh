@@ -10,6 +10,11 @@
 #                    faellt, liefert null Treffer, obwohl sie dasteht
 #                    (gemessen an umbrochener Markdown-Prosa, 08/2026).
 #                    Einzelwoerter koennen nicht umbrochen werden.
+#                    UND: wer diesem Skript eine eigene Suche zur Seite
+#                    stellt, setzt LC_ALL=C.UTF-8 davor — ohne Locale faltet
+#                    "grep -i" keine Umlaute (gemessen: 1 von 2 Zeilen), und
+#                    zwar nur bei Nicht-ASCII, also ausgerechnet bei den
+#                    deutschen Fachwoertern.
 #   EIN Treffer   -> unbelastbar. Es kann Behandlung sein, Erwaehnung,
 #                    Verneinung, Nachbarwort oder wiederverwendete Floskel.
 #
@@ -51,18 +56,32 @@ THEMEN="Risiko|risiko: r[0-9]|risiko r[0-9]
 Auftrag|auftrag|zu bauen|gebaut wird|umzusetzen
 Befund|befund|beleg|verifiziert|festgestellt|gemessen|ausgangslage
 Konsumenten|konsument|ruft .* auf|aufrufer|caller|wer ruft
-Sichtbares|sichtbares verhalten|verhalten aender|verhalten änder|handbuch|nutzer-doku|sichtbar
+Sichtbares|sichtbares verhalten|verhalten .nder|handbuch|nutzer-doku|sichtbar
 Nachweis|rot-beweis|rotbeweis|sabotier|mutation|nachweis
-Kommandos|gates\.sh|pytest|npm |tsc|prüf-kommando|pruef-kommando
+Kommandos|gates\.sh|pytest|npm |tsc|pr..?f-kommando
 Fixtures|fixture|testdaten|seed
 Randbedingungen|randbedingung|nicht pushen|vordergrund|leitplanke
-Prüffragen|prüffrage|prueffrage|welchen pfad|wahr bleiben|zweck-identität"
+Prüffragen|pr..?ffrage|welchen pfad|wahr bleiben|zweck-identit.t"
 
-VERNEINUNG="nicht|kein|entfäll|entfall|braucht.*nicht|erübrigt|weiss ich nicht|weiß ich nicht"
+# UMLAUTFREI: "grep -i" faltet ohne Locale kein Ü/Ä/Ö (gemessen: eine
+# Versalien-Ueberschrift "## 9 PRÜFFRAGEN" fiel als [KEIN TREFFER] durch,
+# obwohl der Block vollstaendig war — in genau der Richtung, die dieses
+# Skript belastbar nennt). "pr..?ffrage" trifft prüffrage, prueffrage und
+# PRÜFFRAGE (zwei Bytes Umlaut oder "ue"), analog "zweck-identit.t",
+# "pr..?f-kommando", "verhalten .nder", "entf.ll", "er.brigt".
+VERNEINUNG="nicht|kein|entf.ll|braucht.*nicht|er.brigt|weiss ich nicht|wei. ich nicht"
+
+# AUSZEICHNUNG VOR DER SUCHE ENTFERNEN: "Risiko: **R2**" fiel durch das Muster
+# "risiko: r[0-9]" — ein falsch-negativer Treffer durch Markdown-Fettdruck,
+# also ein Bruch der Asymmetrie. Das Werkzeug passt sich dem Brief an, nicht
+# der Brief dem Werkzeug. Zeilennummern bleiben erhalten (sed arbeitet je Zeile).
+BEREINIGT=$(mktemp)
+sed 's/[*_`]//g' "$BRIEF" > "$BEREINIGT"
+trap 'rm -f "$BEREINIGT"' EXIT
 
 OHNE=0
 echo "Bau-Brief: $BRIEF"
-echo "Kein Treffer ist belastbar. Ein Treffer ist ein KANDIDAT — bitte lesen."
+echo "Kein Treffer ist belastbar (bei Einzelwort-Mustern). Ein Treffer ist ein KANDIDAT — bitte lesen."
 echo
 
 OLDIFS=$IFS
@@ -71,7 +90,7 @@ IFS='
 for Z in $THEMEN; do
   NAME=$(echo "$Z" | cut -d'|' -f1)
   MUSTER=$(echo "$Z" | cut -d'|' -f2-)
-  TREFFER=$(grep -n -i -E "$MUSTER" "$BRIEF" | head -2 || true)
+  TREFFER=$(grep -n -i -E "$MUSTER" "$BEREINIGT" | head -2 || true)
 
   if [ -z "$TREFFER" ]; then
     printf '  [KEIN TREFFER]  %s\n' "$NAME"

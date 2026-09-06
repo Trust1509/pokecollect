@@ -1,0 +1,29 @@
+#!/bin/sh
+# Der Ueberspring-Marker gehoert in die Betreffzeile oder gar nicht.
+#
+# Warum (lehren.md Klasse 19, Vorlage v1.14.1): Die Plattform liest die GANZE
+# Commit-Nachricht, nicht nur die Betreffzeile. Ein Satz, der den Marker
+# erklaert, zitiert oder VERNEINT, enthaelt ihn — der Commit loest dann null
+# CI-Laeufe aus. Keinen roten, keinen abgebrochenen, gar keinen. Und ein Lauf,
+# den es nie gab, hinterlaesst nichts: Wer danach in die Lauf-Liste sieht,
+# findet den gruenen Lauf des Vorgaengers ganz oben und liest ihn als seinen
+# eigenen.
+#
+# Unsere CI-Dauerregel ("ein Lauf je Slice") fuehrt dazu, dass wir den Marker
+# staendig erklaeren — in Abgleich-Commits, in Nacharbeits-Commits, in jeder
+# Begruendung. Je disziplinierter die Regel dokumentiert wird, desto eher
+# stolpert man. Deshalb mechanisch statt als Notiz (lehren.md Klasse 10).
+#
+# Wer im Rumpf ueber den Marker schreiben muss, umschreibt ihn:
+# "der Ueberspring-Marker", "die Ueberspring-Kennung".
+#
+# Aktivieren (einmalig je Arbeitskopie):
+#     git config core.hooksPath .githooks
+
+if tail -n +2 "$1" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no[ -]ci|skip[ -]actions|actions[ -]skip)\]'; then
+  echo "FEHLER: Ueberspring-Marker ab Zeile 2 der Commit-Nachricht."
+  echo "        Die Plattform liest die ganze Nachricht — der Commit wuerde"
+  echo "        NULL CI-Laeufe ausloesen. Marker nur in der Betreffzeile;"
+  echo "        im Rumpf umschreiben. Siehe docs/agents/lehren.md Klasse 19."
+  exit 1
+fi

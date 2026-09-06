@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.13.0** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.14.1** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.12.1`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.14.1`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -60,7 +60,17 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    er einen eigenen `git worktree` mit eigenem Branch (wie die Panel-Stimmen
    seit v1.13.0) — dann kann kein fremder Push ihn mitnehmen, und der
    Hauptbaum bleibt frei.
-3. **Je Issue ein Commit; Gates je CODE-Commit:** Tests + Typecheck + Build
+3. **In einer Commit-Nachricht steht der Überspring-Marker NUR als Marker.**
+   Nie erklärt, zitiert oder verneint — die Plattform liest die ganze
+   Nachricht, nicht nur die Betreffzeile, und ein Satz ÜBER den Marker
+   enthält ihn. Der Commit löst dann null Läufe aus: keinen roten, keinen
+   abgebrochenen, gar keinen. Wer im Rumpf darüber schreiben muss,
+   umschreibt ihn („der Überspring-Marker“). In Dateien und Issue-Texten
+   ist die wörtliche Nennung unbedenklich. Mechanisch erzwungen durch
+   `.githooks/commit-msg` — **einmalig je Arbeitskopie aktivieren:**
+   `git config core.hooksPath .githooks`. Hintergrund und Vorfall:
+   `docs/agents/lehren.md` Klasse 19.
+4. **Je Issue ein Commit; Gates je CODE-Commit:** Tests + Typecheck + Build
    lokal grün (`scripts/gates.sh`), CI auf main grün. Reine Doku-Commits
    brauchen kein Gate — sie können keines bestehen (`[skip ci]`). Die Prüfungen
    laufen **einmal auf dem finalen Baumzustand**, egal von wem: dieselbe Suite
@@ -70,7 +80,11 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    beteiligt waren: `Built-With: bau=<m>; nacharbeit=<m>; arbitriert=<m>
    (<datum>)`. Ohne ihn ist nach vier Wochen nicht feststellbar, wer was gebaut
    hat — und jede Aussage über Modellverhalten bleibt Anekdote.
-4. **Die Tabelle besitzt die PRÜFTIEFE** (wer prüft, wie tief) — sie ist der
+   **Den Stempel setzt der HAUPTAGENT, nie der Bauer** (v1.14.0): Ein Bauer
+   kennt seine eigene Modell-Kennung nicht; im Vorlagen-Benchmark trugen vier
+   von vier Erstbauten einen erfundenen Stempel, auch nach ausdrücklicher
+   Auflage. Bau-Briefe geben `bau=<vom Orchestrator gesetzt>` vor.
+5. **Die Tabelle besitzt die PRÜFTIEFE** (wer prüft, wie tief) — sie ist der
    einzige Eigentümer der Auslöser. **Das RELEASE-GATE (wer vor Release
    freigibt) ist eine eigene, projekteigene Größe** und darf breiter sein als
    R4 (v1.12.1). Unsere Entscheidung dazu: Das frühere breitere Gate („jede
@@ -78,16 +92,16 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    Owner-gebilligt** auf die R4-Auslöser verengt (#78, veto-fähig vorgelegt,
    kein Veto) — sie bleibt gültig. Unverändert: Gefahrloses (R0/R2) + Gates
    grün + Teststand verifiziert → Release autonom.
-5. **Verifikation real, nicht nur Tests:** Änderungen in der laufenden App
+6. **Verifikation real, nicht nur Tests:** Änderungen in der laufenden App
    prüfen (lokaler Teststand, siehe unten), bevor „fertig" gemeldet wird.
-6. **Grilling vor großen/riskanten Designs;** Lock-Spec als Issue-Kommentar.
-7. **Echte Umlaute** (ä/ö/ü/ß) in allen deutschen Texten; interne ASCII-Werte
+7. **Grilling vor großen/riskanten Designs;** Lock-Spec als Issue-Kommentar.
+8. **Echte Umlaute** (ä/ö/ü/ß) in allen deutschen Texten; interne ASCII-Werte
    nie roh ins UI (Label-Maps). UI ist zweisprachig DE/EN (`web/src/lib/i18n.tsx`)
    — neue UI-Texte immer in beiden Sprachen pflegen.
-8. **Lehren verankern:** Fehlerklassen nach `docs/agents/lehren.md`, Fachliches
+9. **Lehren verankern:** Fehlerklassen nach `docs/agents/lehren.md`, Fachliches
    nach `CONTEXT.md`/ADRs. Ist die Lehre **übertragbar** (klebt nicht am Stack),
    zusätzlich als Issue in die Vorlage.
-9. **Versionierung und Auslieferung:** `docs/agents/release-ritual.md` — dort
+10. **Versionierung und Auslieferung:** `docs/agents/release-ritual.md` — dort
    stehen die zwei Versionsstellen, die Risiko-Stufen und der Ablauf. Hier
    bewusst kein Auszug: Die Doppelpflege Kurzfassung/Langfassung war in zwei
    Projekten die Ursache, dass eine Pflichtregel unwirksam blieb (v1.8.0).
@@ -116,7 +130,7 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   kostet 2–4 Min. Deshalb:
   - **Alle Commits tragen `[skip ci]`** — Bau, Panel, Nacharbeit, Doku. Die
     **lokalen Gates auf dem finalen Baum sind die Verifikation** (Pflicht,
-    Arbeitsregel 3); im Issue steht `Gates lokal grün auf <SHA>`.
+    Arbeitsregel 4); im Issue steht `Gates lokal grün auf <SHA>`.
   - **Nach der Landung eines Slices genau EIN `workflow_dispatch` auf dem HEAD**
     (`gh workflow run ci.yml`, dann `gh run watch <id> --exit-status`,
     run-id-gepinnt) — die CI ist die **Gegenprobe**, nicht die Prüfung. Wird sie
@@ -130,7 +144,7 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
     `open-pull-requests-limit: 1` — Sicherheits-Updates unberührt. Kein
     „weekly/limit 5" mehr; die frühere Rücksetz-Notiz war falsch.
   - **Releases:** nach grüner CI-Gegenprobe erlaubt; wo unser Release-Gate ein
-    Owner-Gate verlangt (Migrationen, Geld — Arbeitsregel 4), **vorher fragen**.
+    Owner-Gate verlangt (Migrationen, Geld — Arbeitsregel 5), **vorher fragen**.
     Zeitplan-Läufe (Security-Scan) laufen wieder normal.
   - Kostet ein Lauf deutlich mehr als 2–4 Min: im Rückmeldungs-Issue der
     Vorlage melden (der Owner fährt einen Budget-Wächter über alle Repos).
@@ -185,6 +199,31 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
   Schlüssel, `192.168.*`/`10.*`, Passwort-Zuweisungen, `.env`-Dateien,
   E-Mail-Adressen): **ohne Befund** — die einzigen Passwort-Treffer sind
   Wegwerf-Werte für Gate-Postgres und Teststand.
+
+  **Nachgemessen am 06.09.2026** (Abgleich v1.14.1, Owner-Auftrag):
+  `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`,
+  Sichtbarkeit `public`, **0 offene Alerts**. `secret_scanning_validity_checks`
+  steht auf `disabled` — das ist eine Owner-Entscheidung, kein Mangel.
+  **Ein eigener Geheimnis-Scanner wird NICHT gebaut**: Die Plattform liefert
+  ihn für öffentliche Repos gratis; ein zweiter wäre doppelte Wartung.
+
+- **Vier Regeln liegen bei öffentlichen Repos anders** (Vorlage v1.14.0,
+  Owner-Entscheid):
+  1. **Geheimnis-Scan kommt von der Plattform** — siehe oben. Private Repos
+     haben das nicht und brauchen einen eigenen Wochenlauf; wir nicht.
+  2. **Die PII-Grenze ist für Code gegenstandslos, für DATEN scharf.** Unser
+     Code enthält keine Personendaten. Was zählt, sind Fixtures und
+     Beispieldaten — **die Fixtures-Regel ist hier die eigentliche
+     Schutzlinie, keine Hygiene**: Testdaten werden ERFUNDEN, nie aus dem
+     echten Bestand übernommen. Ein Fixture aus der echten Sammlung ist in
+     einem privaten Repo eine Unsauberkeit und hier eine Veröffentlichung.
+  3. **Das Suchverbot für Panel-Stimmen ist Integritätsschutz, nicht
+     Sparsamkeit.** In einem öffentlichen Repo kann eine Stimme den eigenen
+     Code im Netz finden und ihre „unabhängige“ Prüfung daran ausrichten.
+  4. **Test-Zugänge stehen nie im Repo.** Auch keine Wegwerf-Passwörter für
+     den Teststand in Dateien, die jeder lesen kann — dazu #96.
+  Bei einem Sichtbarkeitswechsel wird die Historie einmal vollständig
+  geprüft (bei uns am 04.09. geschehen, ohne Befund).
 
 - **Auth-Zwang (Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein JWT
   (`require_auth` via `include_router`-dependencies); auth-frei sind nur

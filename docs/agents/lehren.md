@@ -97,8 +97,25 @@ das Rot-Beweis-Muster heißt ab jetzt:
    Produktionsbau wirft Kommentare weg, der Nachweis meldete „0 Treffer“,
    obwohl die Sabotage wirkte — ein falsch-negativer Nachweis ist auch eine
    Falle.
-3. Messen.
-4. Zurücknehmen, Baum gegenprüfen (`git status --short` muss leer sein).
+3. **Messen — den Exit-Code OHNE Pipe.** Selbst hineingelaufen (06.09.): Eine
+   Hilfsfunktion schickte jeden Lauf durch `| tail -1`, und der Exit-Code der
+   Pipe ist der von `tail`, also immer 0. Vier Wächter meldeten damit
+   scheinbar `exit=0`, obwohl sie korrekt mit 1 abbrachen.
+4. **Zurücknehmen und den Baum gegenprüfen** (`git status --short` leer).
+
+Dazu drei Regeln aus der Vorlage (v1.14.0), alle dort gemessen:
+
+- **Die Mutation trifft die GESAMTE betroffene Menge.** Wer für den Beweis
+  „leere Abschnitte werden rot“ nur den ersten Abschnitt leert, bekommt
+  einen grünen Wächter und hält ihn für widerlegt.
+- **Ein Rot-Beweis mutiert eine Zeile, die im Diff steht.** Grüne Tests gegen
+  null geänderte Zeilen bestätigen die Ausgangslage, nicht den Slice.
+- **Mutationen gehören in einen Wegwerf-Worktree** auf dem gemessenen Commit
+  (`git worktree add --detach <pfad> <commit>`). Der lebende Code bleibt
+  unberührt, die Rücknahme entfällt, und der Prüfgegenstand kann nicht
+  beschädigt zurückbleiben. Bei uns ist das der strukturelle Ersatz für
+  Schritt 1: Genau unser Fall — `git checkout --` löschte uncommittete
+  Nacharbeit — kann im Wegwerf-Worktree gar nicht entstehen.
 
 **Warum diese Stufe so teuer ist:** Ein misslungener Rot-Beweis meldet keinen
 Fehler — er meldet **grün**. Und grün ist die Farbe, die man sehen will;
@@ -537,3 +554,94 @@ lautet, ist die Äquivalenz-Probe der Nachweis** — kein Rot-Beweis kann sie
 ersetzen, weil es keine neue Zusage gibt, die rot werden könnte. Sie fand im
 Pillow-Slice über 307 Vergleichspfade die einzige echte Verhaltensänderung
 (16-Bit-PNG-Thumbnails), die keine Suite gefunden hätte.
+
+---
+
+## 16. Ein hängender Hintergrund-Lauf ist ein aufgeschobenes Kommando
+
+Übernommen aus der Vorlage (§27), weil wir Läufe routinemäßig in den
+Hintergrund legen — in einer einzigen Sitzung mehrfach gleichzeitig.
+
+Dort hingen fünf Hintergrund-Shells stundenlang an einem Kommando, das auf
+eine Eingabe wartete. Sie sahen untätig aus. **Beim Beenden liefen sie nicht
+ab, sondern weiter:** Alles, was in derselben Kommandozeile HINTER dem
+hängenden Aufruf stand, wurde ausgeführt — gegen ein Repo, das viele Commits
+weiter war. Eine dieser Shells committete, pushte den Hauptzweig und verschob
+einen Release-Tag zwangsweise auf einen ungeprüften Stand.
+
+**Regeln:** Vor dem Beenden lesen, was hinter dem hängenden Aufruf steht.
+Danach den Zustand prüfen (`git log`, `git status`, Tags), nicht annehmen.
+Ein Aufruf, der hängen kann, steht am ENDE seiner Zeile — nie mit einem
+Commit oder Push dahinter.
+
+**Für uns besonders:** Unsere Bau- und Prüfläufe enden regelmäßig mit
+`down -v`, `git checkout --` oder einem Aufräum-Schritt in derselben Zeile.
+Genau diese Ketten sind der Schaden, wenn der Anfang hängt.
+
+---
+
+## 17. Ein Owner-Entscheid ist eine Anforderung, kein Abnahmekriterium
+
+Unser eigener Fall (#99), in der Vorlage als §30 verallgemeinert.
+
+Der Owner entschied für die „Was ist neu“-Box: **eine frische Installation
+zeigt nichts.** Richtig entschieden. Der Slice führte den Schlüssel ein, an
+dem „gesehen“ hängt, und behandelte „Schlüssel fehlt“ als frische
+Installation. **Jeder Bestandsnutzer hatte den Schlüssel nicht** — der
+Erst-Rollout hätte niemandem etwas gezeigt, die Funktion erst ab dem
+übernächsten Release gewirkt. Ausgerechnet der Fall, der im Issue als Anlass
+stand. Am laufenden Stapel reproduziert: 0 Dialoge.
+
+Die blinde Stimme, die den Brief kannte, hakte das Verhalten als
+„geprüft, ohne Befund“ ab — sie prüfte gegen den Entscheid. Gefunden hat es
+die Stimme, die ihn nicht als gesetzt kannte.
+
+**Die Klasse:** Ein Entscheid beschreibt den ZIELZUSTAND. Zwischen heute und
+dem Zielzustand liegt der Rollout auf den Bestand, und der hat eine eigene
+Semantik. Wer einen Schlüssel heute nicht hat, ist nicht dieselbe Person wie
+„frisch“.
+
+**Regel:** Die Abnahme denkt den Rollout auf Bestandsnutzer mit — als
+Prüffrage 10 im Bau-Brief verankert.
+
+---
+
+## 18. Was der Owner ausführt, wird auf seinem Rechner gemessen
+
+Übernommen aus der Vorlage (§31). Dort war ein Ritual-Skript im Container
+grün und auf dem Windows-Host rot — keine Panel-Stimme kann das sehen, weil
+keine auf dem Host läuft.
+
+**Bei uns einschlägig:** `deploy.sh` läuft auf dem Server des Owners, nicht
+bei uns; SSH ist für Agenten geblockt. Alles, was wir über den Deploy
+behaupten, ist deshalb eine Nachstellung — und die gehört als solche benannt.
+Belegt am 06.09.: Ob der tmpfs-Deckel aus #98 beim Deploy überhaupt ankommt,
+hatte vorher nichts geprüft. Nachgestellt an einem Wegwerf-Stapel (alter
+Stand hoch, neue Compose-Datei, `up -d`) zeigte `/proc/mounts` danach
+`tmpfs … size=262144k,mode=700,uid=3010,gid=3010` — vorher 0 Einträge.
+
+---
+
+## 19. Ein Satz ÜBER den Überspring-Marker verschluckt den CI-Lauf
+
+Schwesterfall zu Klasse 14 („Freitext in einem `run:`-Block ist Code“),
+übernommen aus Vorlagen-v1.14.1 als eingetretener Vorfall eines anderen
+Projekts.
+
+Ein Commit landete auf dem Hauptzweig und löste **null** Läufe aus — keinen
+roten, keinen abgebrochenen, gar keinen. Die Ursache stand in seiner eigenen
+Nachricht: ein Satz, der erklärte, dass der VORIGE Commit den Marker bewusst
+nicht trägt. **Die Plattform liest die ganze Commit-Nachricht, nicht nur die
+Betreffzeile.** Die Nachricht tat genau das, wovon sie sich distanzierte.
+
+**Warum das uns besonders trifft:** Unsere CI-Dauerregel führt dazu, dass wir
+den Marker ständig erklären — in Abgleich-Commits, in Nacharbeits-Commits, in
+jeder Begründung. Je disziplinierter die Regel dokumentiert wird, desto eher
+stolpert man. Verschärfend: **Ein Lauf, den es nie gab, hinterlässt nichts.**
+Wer danach in die Lauf-Liste sieht, findet den grünen Lauf des Vorgängers
+ganz oben und liest ihn als seinen eigenen.
+
+**Regel:** In einer Commit-Nachricht steht der Marker nur als Marker — nie
+erklärt, zitiert oder verneint. Wer über ihn schreiben muss, umschreibt ihn.
+In Dateien und Issue-Texten bleibt die wörtliche Nennung unbedenklich.
+**Mechanisch erzwungen** durch `.githooks/commit-msg`.
