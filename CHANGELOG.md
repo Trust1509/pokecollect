@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [v1.9.2] – 2026-09-06 (Was ist neu-Box, echte Bild-Optimierung) — gefahrlos
+
+**Keine Migration, keine Änderung an deinen Daten.** Sichtbar ist vor allem
+eines: Nach diesem Update begrüßt dich die App einmalig mit einer Box, die
+sagt, was sich geändert hat. Genau diese hier.
+
 
 ### Neu (#99) — „Was ist neu"-Hinweis nach Updates
 - **Nach einem Update zeigt die App einmalig, was sich geändert hat** — eine
