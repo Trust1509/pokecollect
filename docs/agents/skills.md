@@ -18,14 +18,15 @@ Prozess.**
 
 Der `review`-Skill fährt mehrere Subagenten **desselben Anbieters**. Das ist
 wertvoll als Vorstufe, aber **nicht unabhängig** im Sinne des Panels: Das lebt
-von anderen Anbietern (Stimme 2 und 3) und von der blinden Erststimme.
+davon, dass der Fremdprüfer von einem anderen Anbieter kommt und Blind- wie
+Gegenprüfer den Bau-Kontext nicht kennen (Namen seit Vorlage v1.15.0).
 `review` ersetzt das Panel nicht — siehe `panel.md`.
 
 ## Nach Prozess-Phase
 
 | Phase | Skill | Wozu hier |
 |---|---|---|
-| Vor dem Bauen | `grilling`, `/grill-with-docs` | Große oder riskante Designs durchleuchten, bevor eine Zeile entsteht (CLAUDE.md Regel 6). Lock-Spec als Issue-Kommentar. |
+| Vor dem Bauen | `grilling`, `grill-me`, `/grill-with-docs` | Große oder riskante Designs durchleuchten, bevor eine Zeile entsteht (CLAUDE.md, Arbeitsregel 7). Lock-Spec als Issue-Kommentar. |
 | Vor dem Bauen | `domain-modeling`, `ubiquitous-language` | Begriffe scharf halten — hier besonders wichtig, weil Fremdquellen dieselben Wörter anders benutzen (Folierung, Muster, Variante). Ergebnis nach `CONTEXT.md`. |
 | Zerlegen | `/to-prd`, `/to-issues` | Aus einer Diskussion eine Spec, aus der Spec vertikale Slices. Passt zu „ein Issue, ein Commit". |
 | Fundament | `codebase-design`, `design-an-interface` | Modul-/Schnittstellenschnitt bei größeren Umbauten. |
@@ -34,6 +35,7 @@ von anderen Anbietern (Stimme 2 und 3) und von der blinden Erststimme.
 | Prüfen | `review` | Vorstufe zum Panel, kein Ersatz (siehe oben). |
 | Aufräumen | `/improve-codebase-architecture` | Architektur-Schwachstellen scannen, wenn eine Welle abgeschlossen ist. |
 | Triage | `/triage`, `qa` | Issue-Status pflegen; QA-Sitzungen mit dem Owner in Issues überführen. |
+| Sitzungswechsel | `handoff` | Übergabe an die nächste Sitzung, wenn der Kontext knapp wird. |
 | Unklar | `/ask-matt` | Router, wenn nicht klar ist, welcher Skill passt. |
 
 ## Was hier NICHT über Skills läuft

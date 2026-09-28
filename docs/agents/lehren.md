@@ -8,6 +8,12 @@ Klasse:** Die Frage beim Lesen ist nicht „was ist damals passiert", sondern
 Die Einzelfälle stehen in den GitHub-Issues und im CHANGELOG; hier steht, was
 übertragbar ist. Prozessregeln stehen in `CLAUDE.md`, das Panel in `panel.md`.
 
+Verweise auf eine Lehre schreiben wir `§N`. Nur diese Form prüft der
+Verweis-Wächter (Gate P), und nur in `CLAUDE.md` und `docs/agents/*.md`. In
+Code-Kommentaren steht noch die ältere Form „Klasse N" (`.githooks/commit-msg`,
+`e2e/tests/whatsnew.spec.ts`, `web/scripts/check-whatsnew.mjs`) — die prüft
+niemand; beim Umnummerieren mitsuchen (`grep -rn "Klasse [0-9]"`).
+
 Der gemeinsame Prozess-Stand kommt aus `Trust1509/agent-projekt-template`.
 Fällt hier eine Lehre an, die **nicht am eigenen Stack klebt**, gehört sie als
 Issue dorthin (Label `prozess-lehre`) — nicht nur in diese Datei, sonst erfahren
@@ -15,7 +21,7 @@ die anderen Projekte nie davon.
 
 ## Vor jedem Slice: fünf Fragen
 
-Sieben Abschnitte liest man einmal. Die Kurzfassung, die tatsächlich vor den
+24 Abschnitte liest man einmal. Die Kurzfassung, die tatsächlich vor den
 Slice gehört — wer sie beantwortet, hat die teuersten Klassen unten abgedeckt:
 
 1. **Womit beweist dieser Slice, dass er wirkt** — und war dieser Beweis je rot?
@@ -26,6 +32,14 @@ Slice gehört — wer sie beantwortet, hat die teuersten Klassen unten abgedeckt
    macht?** (Ein Datenstand, den der Schreiber selbst setzt, ist keine Prüfung.)
 5. **Was kann ich nicht prüfen** — und wo steht das, damit es nicht still zur
    Schuldenliste wird?
+
+**Und wenn etwas schiefging: Ein Eintrag hier endet mit einer Regel oder einem
+Wächter, nie mit einem Vorsatz.** „Künftig sorgfältiger prüfen" ist keine
+Gegenmaßnahme, sondern das Eingeständnis, keine gefunden zu haben. Beim
+Aufschreiben die Ursachen einzeln prüfen, nicht nur die erste: **Quelle,
+Werkzeug, Umgebung, Messung, Annahme, Prozess** — wer nur die erste nennt,
+baut eine Gegenmaßnahme, die den zweiten Weg offen lässt (aus der Vorlage,
+Abgleich v1.17.2).
 
 ---
 
@@ -64,7 +78,7 @@ die zweite ist die tragende: **(a)** Vor jedem Push `git log --oneline
 @{u}..HEAD` lesen — ein Push landet alles, nicht das Letzte. **(b)** Parallel
 arbeitende Bau-Subagenten bekommen einen eigenen Worktree mit eigenem Branch;
 dann ist das Mitnehmen strukturell unmöglich statt nur verboten. Eine Regel,
-deren Einhaltung von Aufmerksamkeit abhängt, ist eine Notiz (Klasse 10).
+deren Einhaltung von Aufmerksamkeit abhängt, ist eine Notiz (§10).
 
 **Und der Rot-Beweis ist genau so ein Fall — belegt am 05.09.2026.** Mein
 Sabotage-Skript zu #98 nahm jede Mutation mit `git checkout -- <datei>`
@@ -77,54 +91,35 @@ wurde. Das Perfide: Ein verunglückter Rot-Beweis meldet sich nicht — er melde
 
 Die Lehre stand zu diesem Zeitpunkt bereits geschrieben (`git checkout --`
 oben in genau diesem Absatz) und hat trotzdem nicht getragen, weil sie eine
-**Warnung** war und kein **Schritt**. Deshalb als Schritt, nicht als Warnung —
-das Rot-Beweis-Muster heißt ab jetzt:
+**Warnung** war und kein **Schritt**. Daraus wurde eine Schrittfolge — und
+die steht seit dem Abgleich v1.17.2 **nur noch in `bau-brief.md`, „Der
+Rot-Beweis ist eine Schrittfolge"** (fünf Schritte: 2b weist die Sabotage
+im Artefakt nach, 4 prüft den Baum mit `git status --short --ignored`, 5
+ist die Gegenprobe). Hier stand bis dahin eine eigene Fassung mit vier
+Schritten, die neben der längeren Vorlagen-Fassung still veraltet wäre. Die
+Fälle, aus denen die Schritte stammen, sind unsere — dreimal in EINEM Slice
+(05./06.09.2026):
 
-1. **Committen** (`wip`, später amenden) — vor der ersten Mutation, immer.
-2. **Mutation setzen und belegen, dass sie WIRKT** — in zwei Stufen, weil sie
-   getrennt scheitern (05./06.09.2026 dreimal in EINEM Slice erlebt):
-   **(a) im Quelltext:** nicht „ich habe ersetzt“, sondern der gemessene
-   Vergleich. Eine Regex-Ersetzung setzte zwei Felder angeblich auf denselben
-   Wert — nachgemessen 1678 gegen 1671 Zeichen, sie waren nie gleich. Der
-   daraus gezogene Schluss war frei erfunden.
-   **(b) im ARTEFAKT:** liegt zwischen Quelle und Lauf ein Bau, ist die Datei
-   nicht der Beweis. Zweimal getroffen: einmal lagen die Tests in einem
-   ANDEREN Image als der Anwendungscode (nur eines neu gebaut → gegen alte
-   Tests gemessen), einmal scheiterte der Bau still, weil seine Ausgabe nach
-   `/dev/null` ging — der Container lief mit dem alten Image weiter. Also:
-   **Bau mit sichtbarer Ausgabe**, danach die Sabotage im laufenden Artefakt
-   nachweisen. Marker in einen STRING, nie in einen Kommentar: Der
-   Produktionsbau wirft Kommentare weg, der Nachweis meldete „0 Treffer“,
-   obwohl die Sabotage wirkte — ein falsch-negativer Nachweis ist auch eine
-   Falle.
-3. **Messen — den Exit-Code OHNE Pipe.** Selbst hineingelaufen (06.09.): Eine
-   Hilfsfunktion schickte jeden Lauf durch `| tail -1`, und der Exit-Code der
-   Pipe ist der von `tail`, also immer 0. Vier Wächter meldeten damit
-   scheinbar `exit=0`, obwohl sie korrekt mit 1 abbrachen.
-4. **Zurücknehmen und den Baum gegenprüfen** (`git status --short` leer).
+- Eine Regex-Ersetzung setzte zwei Felder angeblich auf denselben Wert —
+  nachgemessen 1678 gegen 1671 Zeichen, sie waren nie gleich.
+- Die Tests lagen in einem ANDEREN Image als der Anwendungscode; nur eines
+  war neu gebaut, gemessen wurde gegen die alten Tests.
+- Ein Bau scheiterte still, weil seine Ausgabe nach `/dev/null` ging — der
+  Container lief mit dem alten Image weiter.
 
-Dazu drei Regeln aus der Vorlage (v1.14.0), alle dort gemessen:
+Dazu am 06.09. ein vierter, beim Messen: Eine Hilfsfunktion schickte jeden
+Lauf durch `| tail -1`; vier Wächter meldeten damit `exit=0`, obwohl sie
+korrekt mit 1 abbrachen.
 
-- **Die Mutation trifft die GESAMTE betroffene Menge.** Wer für den Beweis
-  „leere Abschnitte werden rot“ nur den ersten Abschnitt leert, bekommt
-  einen grünen Wächter und hält ihn für widerlegt.
-- **Ein Rot-Beweis mutiert eine Zeile, die im Diff steht.** Grüne Tests gegen
-  null geänderte Zeilen bestätigen die Ausgangslage, nicht den Slice.
-- **Mutationen gehören in einen Wegwerf-Worktree** auf dem gemessenen Commit
-  (`git worktree add --detach <pfad> <commit>`). Der lebende Code bleibt
-  unberührt, die Rücknahme entfällt, und der Prüfgegenstand kann nicht
-  beschädigt zurückbleiben. Bei uns ist das der strukturelle Ersatz für
-  Schritt 1: Genau unser Fall — `git checkout --` löschte uncommittete
-  Nacharbeit — kann im Wegwerf-Worktree gar nicht entstehen.
-
-**Warum diese Stufe so teuer ist:** Ein misslungener Rot-Beweis meldet keinen
+**Warum ein misslungener Rot-Beweis so teuer ist:** Er meldet keinen
 Fehler — er meldet **grün**. Und grün ist die Farbe, die man sehen will;
-deshalb prüft dort niemand nach. Alle drei Fälle oben sahen wie gültige
+deshalb prüft dort niemand nach. Die drei Fälle aus dem einen Slice sahen wie gültige
 Messungen aus, und aus zweien habe ich einen falschen Befund abgeleitet,
 bevor er aufflog.
 
-Schritt 1 kostet fünf Sekunden und macht Schritt 4 gefahrlos. Ohne ihn ist
-`git checkout --` kein Rückbau, sondern ein Datenverlust mit grüner Anzeige.
+Der erste Schritt (committen) kostet fünf Sekunden und macht die Rücknahme
+gefahrlos. Ohne ihn ist `git checkout --` kein Rückbau, sondern ein
+Datenverlust mit grüner Anzeige.
 
 **Ein Widerspruch zwischen zwei Dateien ist unsichtbarer als einer in einer.**
 Beim Übernehmen einer neuen Regel habe ich die eine Fundstelle geändert und die
@@ -201,6 +196,14 @@ belegen, dass die Mutation überhaupt ankam.**
 Fälle, an die wir gedacht haben. Für die Rechenkerne gilt die Eigenschaft — ein
 angezeigter Preis stammt **immer** aus den Quelldaten, nie aus einer Rechnung.
 
+**Wer eine Zahl gegen die Wirklichkeit prüft, umhüllt die GRENZE, nicht die
+Stelle, die er verdächtigt** (Vorlage §9, v1.17.0). Dort druckte eine Probe
+eine Aufrufzahl, die zu hoch schien; ein Zähler in der verdächtigten Funktion
+bestätigte den Verdacht — es gab aber eine zweite Stelle, die denselben
+Befehl startet, und die ursprüngliche Zahl war richtig. Eine Messung, die nur
+die vermutete Stelle instrumentiert, ist eine Bestätigungsmaschine. Die
+Grenze ist der Systemaufruf, die HTTP-Anfrage, der Datenbank-Treffer.
+
 ---
 
 ## 2. Migrationen ohne Framework
@@ -268,6 +271,20 @@ nach Sonden aufräumen.
 Auswahl-Türen: ein Sprachmodell kann „das sind alle" sonst nicht von „das ist
 der Anfang" unterscheiden.
 
+Zwei Regeln aus einem Prod-Fund der Vorlage (§5, v1.17.0: ein
+Wartungsschritt konnte einen Container nicht starten, schrieb eine Warnung
+ins Protokoll und lief weiter — der Container stand elf Tage in „Created"):
+
+- **Jede Prod-Wirkung braucht einen Meldeweg in die Oberfläche — am
+  sichersten einen Zustand, den die Oberfläche selbst MISST**, nicht eine
+  Meldung, die jemand lesen muss. Ein Urteil über Zeitstempel unterscheidet
+  nicht zwischen „läuft und tut nichts" und „läuft nicht". Bei uns
+  betrifft das jeden Hintergrundjob, etwa die geplanten Preis-Aktualisierungen.
+- **Die Tür-Probe misst die QUELLE, nicht die Anwesenheit.** „Der Container
+  läuft" ist auch mit falscher Mount-Quelle wahr (Docker Desktop legt eine
+  fehlende Quelle als Verzeichnis an). Geprüft wird, WAS eingehängt ist
+  (`docker inspect … .Mounts`), nicht DASS etwas läuft.
+
 ---
 
 ## 4. Fremde Datenquellen
@@ -310,9 +327,14 @@ der Anfang" unterscheiden.
 - **Prüfungen, die schreiben, gehören auf eine Wegwerf-Umgebung.** Der Teststand
   trägt den echten Bestand des Owners und dessen API-Schlüssel; `teststand.sh
   reset` löscht ihn samt Schlüssel.
-- **package-locks nur im Node-Container erzeugen.** Der lokale npm-Wrapper
-  schreibt Locks einer anderen Hauptversion — lokal und in der CI grün, im
-  Abbild kaputt.
+- **package-locks nur im Node-Container erzeugen.** Der lokale npm schreibt
+  Locks einer anderen Hauptversion (lokal npm 11; Abbild und CI npm 10.8.2,
+  gemessen 28.09.2026) — lokal grün, im Abbild und in der CI rot. Allgemein (Vorlage §21, v1.15.0): **Das lokale Gate läuft
+  im Werkzeug-Major der CI, und jeder übersprungene Schritt nennt sein
+  lokales Äquivalent** — sonst ist „lokal grün" eine Aussage über ein
+  anderes Werkzeug. Bei uns: npm 11 lokal, npm 10.8.2 in Container und CI
+  (gemessen 28.09.2026), deshalb laufen `gates.sh` und die Sperrdateien im
+  Container.
 - **CI-Läufe run-id-gepinnt beobachten** (`gh run watch <id> --exit-status`),
   nie über eine Listenposition — sonst wartet man auf den falschen Lauf.
   Verschärfung (v1.9.1): `gh run list --limit 1` **unmittelbar nach dem Push**
@@ -325,6 +347,13 @@ der Anfang" unterscheiden.
   Rot-Beweis als „exit=0" gemeldet). Und: **„nicht gestartet" ist auch ein
   Fehlschlag** — ein roter Lauf mit null Schritten ist „Infrastruktur weg",
   nicht „Code kaputt"; die Reaktionen sind gegensätzlich.
+  **Und ein ABGEBROCHENER Lauf ist für den Beobachter ein Erfolg**
+  (Vorlage §6, v1.17.0): `gh run watch <id> --exit-status` endet mit **0**, wenn der
+  Lauf abgebrochen wurde — auch ohne Pipe. Der Exit des Wartens beantwortet
+  „habe ich zu Ende gewartet", nicht „ist es gut ausgegangen". Das Ergebnis
+  deshalb nach dem Warten abfragen: `gh run view <id> --json
+  status,conclusion` — und dieser Wert gehört in den Bericht, nicht das
+  Wort „grün" (Verfahren: `release-ritual.md`, Schritt 9).
 - **Gepinnte Actions altern still.** SHA-Pins sind sicher, aber unsere lagen im
   August 2026 drei Hauptversionen zurück (Node-20-Abkündigung in den
   Lauf-Annotationen). Beim Übernehmen prüfen, ob die Hauptversion noch aktuell
@@ -332,6 +361,40 @@ der Anfang" unterscheiden.
 - **Ein Push kostet CI-Minuten.** Reine Doku- oder Konfigurations-Commits, die
   keine Prüfung beweisen können, mit `[skip ci]` pushen — und die Verifikation
   einmal per `workflow_dispatch` fahren statt durch wiederholtes Pushen.
+- **Umgebungsaussagen in `CLAUDE.md` sind Behauptungen und werden gemessen**
+  (Vorlage §28; `abgleich.md` der Vorlage, 2f) — beim Abgleich und vor jedem
+  Ritual-Slice je Aussage ein Kommando mit Exit-Code. Hausbeleg (Abgleich
+  v1.17.2): „Kein Node/npm lokal" stand bei uns seit dem 14.07.2026
+  (`428fe52`) und war falsch
+  (node v24.18.0, npm 11.16.0, beide Exit 0), und „SSH ist für Agenten
+  geblockt" beschrieb eine Umstands-Sperre als eingerichtete — in den
+  Agenten-Einstellungen steht keine SSH-Regel.
+- **Wer sein eigenes Gate startet, wählt dessen Umgebung** (Vorlage §8,
+  v1.16.0) — für JEDEN Eingang: Interpreter, Einstellungspfad, Programme aus
+  `PATH`, `PYTHONPATH`, das Verzeichnis für Zwischenergebnisse, parallele
+  Prozesse. Was trägt: Interpreter und Pfade **verdrahtet** statt gesucht,
+  jedes Urteil in Python mit `-I`, Zwischenergebnisse an einem Ort, den nur
+  der eigene Lauf kennt — und die verbliebene Grenze benannt statt verneint.
+  Bei uns: Das Prozess-Gate läuft im Container mit `/usr/local/bin/python3.12`
+  (über den Symlink `python3` war die Wächter-Selbstprobe rot, gemessen
+  28.09.2026).
+- **Werte holt man von dem Werkzeug, das die Datei ohnehin liest, nicht vom
+  eigenen Parser** (Vorlage §6, v1.17.0) — für eine Umgebungsdatei die
+  Konfigurations-Abfrage des Werkzeugs (`docker compose config`), der eigene
+  Parser nur als Rückfall. Dort fanden vier Stimmen an einem selbst
+  geschriebenen Dotenv-Parser je ANDERE Fälle.
+- **Keine relativen Bind-Quellen, sobald Compose je aus einem CONTAINER
+  heraus gefahren wird** (Vorlage §6, v1.17.0): `./datei` löst dann gegen das
+  Dateisystem dieses Containers auf, nicht gegen den Host. Bei uns fährt
+  `deploy.sh` auf dem Host — die Regel greift, sobald der Deploy über einen
+  Verwaltungs-Container läuft.
+- **Eine zweimal behobene Defektklasse gehört in einen Wächter, nicht in
+  einen Kommentar** (Vorlage §8): Dieselbe Invariante wurde dort in einer
+  Datei dreimal hintereinander verletzt, beim dritten Mal vier Zeilen unter
+  dem Kommentar, der davor warnte. Und die Bauform folgt der Lage des
+  Defekts: Ein Wächter, der von außen durch die Tür fährt, erreicht nur den
+  FRÜHESTEN Ablehnungsweg — lebt der Defekt am spätesten, braucht es
+  zusätzlich eine Prüfung, die alle Wege sieht.
 
 ---
 
@@ -386,13 +449,13 @@ bleiben dauerhaft (kosten keine Qualität); Dependabot kommt nur halb zurück
 (monthly, Limit 1 — der Rücksetz-Kasten mit „weekly/limit 5" war in die falsche
 Richtung geschrieben); `[skip ci]` wird von der Notmaßnahme zum Standard mit
 EINEM `workflow_dispatch` je Slice (CLAUDE.md, CI-Dauerregel). Die
-Aussetzungs-Hinweise „bis 01.09." in den Klassen 10 und 12 sind damit historisch.
+Aussetzungs-Hinweise „bis 01.09." in §10 und §12 sind damit historisch.
 
 ---
 
 ## 8. Eine Prüfung rutscht zu dem, was leichter zu messen ist
 
-Zwei eigene Fälle an einem Tag, beide gegen den Prüfenden selbst (v1.10.0 §19):
+Zwei eigene Fälle an einem Tag, beide gegen den Prüfenden selbst (Vorlage v1.10.0 §19):
 
 - **Präsenz geprüft, Struktur nicht.** Nach dem Abbruch eines Bau-Subagenten
   mitten im Rot-Beweis suchte die Kontrolle per `grep`, ob der Schutz
@@ -408,13 +471,21 @@ Zwei eigene Fälle an einem Tag, beide gegen den Prüfenden selbst (v1.10.0 §19
 Dritter eigener Fall derselben Familie: **Eine Prüfung, deren Ergebnis eine
 Entscheidung steuern soll, darf nie im selben verketteten Kommando laufen wie
 die Entscheidung** — der Exit-Code hinter einer Pipe/`&&`-Kette gehörte schon
-zweimal uns (Rot-Beweis als „exit=0" gemeldet; §17-Suche lief, aber der Commit
+zweimal uns (Rot-Beweis als „exit=0" gemeldet; die Suche nach Vorlage §17 lief, aber der Commit
 wartete nicht auf ihr Ergebnis). Seit v1.12.0 Vorlagen-Regel.
 
 Diagnose beide Male: *Die Prüfung maß etwas, das leichter zu messen war als das
 Gemeinte.* Keine Nachlässigkeit, sondern die Richtung, in die jede Prüfung von
 selbst rutscht. Gegenfrage vor dem Vertrauen: **„Messe ich die Wirkung oder nur
 ihr Anzeichen?"**
+
+**Die dritte Rutschrichtung: vorhanden, aber falsch** (Vorlage §19,
+v1.15.0). Ein Typ erzwang, dass für jede Sprache ein Eintrag existiert —
+`tsc` Exit 0 —, und der Wert war Unsinn. „Vollständigkeit ist typerzwungen"
+war belegt, aber nur für das Vorhandensein des Schlüssels, nicht für die
+Richtigkeit des Werts. Eine Mutation, die den Wert kaputt macht und den
+Schlüssel stehen lässt, gehört deshalb zu jedem Vollständigkeits-Wächter —
+bei uns etwa zu jeder Prüfung auf „DE und EN nicht leer" (Issue #99).
 
 ---
 
@@ -448,16 +519,42 @@ CI-Aussetzung (Quota, bis 01.09.) macht **keine** unserer Suiten automatisch
 etwas rot — das ist die nach §7 zulässige, **terminierte** Ersetzung mit
 Rückdreh-Bedingung, kein stiller Verzicht.
 
-**Regeln:**
-- **Pflichtfrage beim Anlegen jeder Prüfung: „Was macht sie rot, ohne dass
-  jemand daran denkt?"** Ohne Antwort ist sie eine Notiz, kein Wächter.
-- **Zweite Pflichtfrage (Vorlage §21, v1.13.0): „Wurde der Wächter einmal
+**Regeln** — darunter drei Wächterfragen (bis zum Abgleich v1.17.2
+„Pflichtfragen", umbenannt wie in der Vorlage seit v1.15.2):
+- **Erste Wächterfrage, beim Anlegen jeder Prüfung: „Was macht sie rot, ohne
+  dass jemand daran denkt?"** Ohne Antwort ist sie eine Notiz, kein Wächter.
+- **Zweite Wächterfrage (Vorlage §21, v1.13.0): „Wurde der Wächter einmal
   GENAU SO ausgeführt, wie der Job ihn ausführt?"** Ein Skript, das im Import
   grün ist, kann beim CI-Aufruf an `ModuleNotFoundError` scheitern. Hausbeleg
   mit ehrlicher Lücke: Unser Paritäts-Wächter (Gate ↔ CI, `scripts/gates.sh`)
   wird von der CI GAR NICHT ausgeführt — die CI ruft `gates.sh` nicht auf. Er
   ist damit ein rein lokaler Wächter; das ist bewusst (die CI spiegelt die
   Schritte selbst), aber es heißt: Fällt er, merkt es nur, wer lokal baut.
+- **Dritte Wächterfrage (Vorlage §21, v1.14.0; hier übernommen im Abgleich
+  v1.17.2): „Wer liest das Rot — und woran merkt er es?"** Ein Wächter ohne
+  Leser ist nicht neutral: Er erzeugt den Eindruck von Abdeckung und
+  verhindert die Frage, die sonst jemand gestellt hätte. **Hausbeleg, beim
+  Übernehmen gemessen (28.09.2026):** Unser wöchentlicher Security-Scan war
+  seit seiner Einrichtung am 06.08. in **9 von 9** Läufen rot, jedes Mal in
+  allen drei Jobs (`npm audit` mit einer kritischen Lücke, `pip-audit` mit
+  16, Schemathesis mit fünf 500ern) — und niemand hat einen Lauf gelesen,
+  weil kein Schritt im Ablauf ihn liest (#105). „Bewusst kein Push-Gate" war
+  richtig; es hätte einen Leser gebraucht. Der Leser steht seit dem Abgleich
+  im Release-Ritual (letzten Lauf jedes Zeitplan-Workflows lesen).
+- **Ein Zeitplan-Wächter ist zwischen Bau und erstem planmäßigem Lauf
+  unbewiesen** (Vorlage §21, v1.14.0): Wer einen `schedule`-Job anlegt oder
+  umbaut, löst ihn einmal von Hand aus. Die Antwort auf die zweite
+  Wächterfrage ist der **Exit-Code ohne Pipe**; ein „lief durch" aus einer
+  Pipeline beantwortet sie nicht.
+- **Eine Regel braucht einen Erzwingungsweg, sonst ist sie eine Notiz** —
+  auch eine Regel über Läufe: Unsere Dauerregel „ein CI-Lauf je Slice" gilt
+  erst als eingehalten, wenn ein grüner Lauf zum gelandeten `headSha`
+  nachgewiesen ist. Umgekehrt: Eine Styleguide-Regel, die nirgends geprüft
+  wird, ist eine Absichtserklärung.
+- **Anwesenheit, Richtigkeit, Parität und Abdeckung sind vier Prüfungen**
+  (Vorlage §21). Ein Paritäts-Wächter prüft nur die Paare, die
+  existieren; die fehlenden Gegenstücke sieht er nie. „Was fehlt" braucht
+  einen Zähler über die Menge mit begründeter Ausnahmeliste.
 - Geht der automatische Lauf (noch) nicht: ausdrücklich und **terminiert**
   ersetzen (Datum + Rückdreh-Bedingung) — kein stiller Verzicht.
 - **Abdeckung hat zwei Achsen:** welche Objekte UND in welchen Zuständen.
@@ -490,7 +587,7 @@ Struktur unter anderem Namen?**
 einem Hook oder einer Notmaßnahme wird scharf, sobald der Normalpfad
 pausiert. Unser aktueller Fall: Die CI-Pause (Quota) macht die
 `[skip ci]`-Praxis zur einzigen Wahrheit — alles, was NUR die CI geprüft
-hätte, prüft bis 01.09. niemand automatisch (ehrliche Inventur in Klasse 10).
+hätte, prüft bis 01.09. niemand automatisch (ehrliche Inventur in §10).
 **Beim Einrichten jeder Pause/Ausnahme: die Liste dessen, was dadurch
 ungeprüft wird, ausschreiben — sie ist die eigentliche Änderung.**
 
@@ -511,10 +608,36 @@ Fortsetzungs-Backslash, `grep` bekam ein Extra-Argument (`439d9ab`). Beide
 Beweise gingen trotzdem richtig aus — der Fehler wäre nie aufgefallen, wenn
 nicht jemand die Zeile gelesen hätte.
 
+Weitere Regeln der Vorlage (§24), jede dort gemessen:
+
+- **Ausnahmelisten eines neuen Wächters sind Teil des Diffs** — je Ausnahme
+  ein Grund und ein Issue, und „bewusst" widerlegbar formuliert.
+- **Ein neuer Wächter mit null Funden am ersten Tag verdient Misstrauen.**
+  Die Rot-Probe gegen einen absichtlich eingebauten Fall entscheidet, nicht
+  die Null.
+- **Eine hohe Fallzahl der Selbstprobe ist keine Breite** — sie zählt
+  Umgebungen, nicht nur Fälle. Bei uns gemessen: Die Wächter-Selbstprobe
+  zählt unter Python 3.14 518 Erwartungen, unter Python 3.12 521 — unter
+  Linux wie unter Windows, die Zahl hängt an der Python-Version, nicht an
+  der Plattform (Gegenprüfer, Abgleich v1.17.2; Linux mit 3.14 nachgemessen:
+  518).
+- **Eine Ersatzschreibweise im Muster muss die Byte-Zahl treffen** (ein
+  Umlaut ist in UTF-8 zwei Bytes). Und: **Geschlossen heißt nicht
+  umgesetzt.**
+- **Wird ein Artefakt aus Quellen erzeugt, prüft ein Paritäts-Gate
+  „Artefakt == Generator(Quellen)"** — es fängt, was Feldprüfungen
+  durchlassen. Bei uns genau so gebaut: `whatsnew_paritaet_gate` in
+  `scripts/gates.sh` erzeugt die Was-ist-neu-Notizen neu und vergleicht (#99).
+- **Jede Schwelle sagt, was sie ist:** unter dem gemessenen Stand ein
+  Regressionswächter, darüber eine Zusage mit Plan — beides mit dem Abstand
+  zum gemessenen Stand genannt.
+- **Eine neue Bedingung trägt ihre Trefferzahl** — wie oft feuert sie, an
+  wie vielen Fällen? Dort sahen drei Mechanismen gebaut aus und feuerten nie.
+
 Maßnahmen: **Der Wächter-Teil eines Slices wird wie Produktcode geprüft**
 (eigener Rot-Beweis, nicht nur „läuft durch"); jeder CI-Job trägt
-`timeout-minutes` (ohne Grenze läuft ein hängender Lauf 360 Minuten — bei 100
-Minuten Portfolio-Tagesbudget der ganze Tag); und ein Gate, das eine Datei
+`timeout-minutes` (ohne Grenze läuft ein hängender Lauf 360 Minuten — mehr als
+das ganze Tagesbudget, Schwellen-Inventar in `CLAUDE.md`); und ein Gate, das eine Datei
 prüft, wird einmal MIT verletzter Bedingung ausgeführt, nicht nur ohne.
 
 ---
@@ -543,7 +666,7 @@ Issue-Kommentar sofort greift — und weil unsere eigene Praxis am Werkzeug
 
 Vorlage §26. Eine einmal gelungene Handlung ist eine **Anekdote**; erst
 aufgeschrieben wird sie zur Regel, die beim strukturgleichen Fall wieder
-gefunden wird (das ist Klasse 11 von der anderen Seite).
+gefunden wird (das ist §11 von der anderen Seite).
 
 Hausbeleg: Die **Äquivalenz-Probe ALT vs. NEU** (dieselbe Aufrufsequenz, beide
 Versionen, byte- dann pixelweise vergleichen) entstand beim #82-Refactor als
@@ -578,6 +701,14 @@ Commit oder Push dahinter.
 `down -v`, `git checkout --` oder einem Aufräum-Schritt in derselben Zeile.
 Genau diese Ketten sind der Schaden, wenn der Anfang hängt.
 
+**Das Stoppen eines Treibers stoppt seine Kinder nicht** (Vorlage §27,
+v1.15.0): Ein gestoppter Hintergrund-Treiber ließ seine Shell weiterlaufen,
+der Neustart unter demselben Namen kollidierte mit ihr (gleiche
+Container-Namen, gleiche Ausgabedateien). Nach jedem Stopp die Prozessliste
+prüfen; **jeder Neustart bekommt einen eigenen Namensraum** (Präfix,
+Ausgabeordner). Bei uns heikel: `scripts/gates.sh` benutzt feste
+Container-, Netz- und Image-Namen (`pokecollect-gate-db`, `pokecollect-gate`).
+
 ---
 
 ## 17. Ein Owner-Entscheid ist eine Anforderung, kein Abnahmekriterium
@@ -602,7 +733,11 @@ Semantik. Wer einen Schlüssel heute nicht hat, ist nicht dieselbe Person wie
 „frisch“.
 
 **Regel:** Die Abnahme denkt den Rollout auf Bestandsnutzer mit — als
-Prüffrage 10 im Bau-Brief verankert.
+Prüffrage 10 im Bau-Brief verankert, inzwischen an die Form gebunden
+(„Welche real verschiedenen Ausgangszustände …") statt an den
+Speicher-Schlüssel. In einem späteren Vergleich der Vorlage stand derselbe
+Fehler in vier von fünf unabhängigen Umsetzungen, gemessen am laufenden
+Stapel.
 
 ---
 
@@ -613,18 +748,31 @@ grün und auf dem Windows-Host rot — keine Panel-Stimme kann das sehen, weil
 keine auf dem Host läuft.
 
 **Bei uns einschlägig:** `deploy.sh` läuft auf dem Server des Owners, nicht
-bei uns; SSH ist für Agenten geblockt. Alles, was wir über den Deploy
-behaupten, ist deshalb eine Nachstellung — und die gehört als solche benannt.
+bei uns; Agenten haben keinen SSH-Zugang (kein Schlüssel — eine
+Umstands-Sperre, keine eingerichtete, `CLAUDE.md`). Alles, was wir über den
+Deploy behaupten, ist deshalb eine Nachstellung — und die gehört als solche
+benannt.
 Belegt am 06.09.: Ob der tmpfs-Deckel aus #98 beim Deploy überhaupt ankommt,
 hatte vorher nichts geprüft. Nachgestellt an einem Wegwerf-Stapel (alter
 Stand hoch, neue Compose-Datei, `up -d`) zeigte `/proc/mounts` danach
 `tmpfs … size=262144k,mode=700,uid=3010,gid=3010` — vorher 0 Einträge.
 
+**Der Exit-Code allein ist als Kriterium widerlegt** (Vorlage §31, Nachtrag
+v1.15.0): Auf dem Rechner des Owners vernichtete eine Umsetzung desselben
+Ritual-Skripts die Übersetzung mit Exit 0 und Erfolgsmeldung; zwei andere
+schrieben korrekt und endeten mit Exit 1, weil die Konsole das Häkchen der
+Erfolgsmeldung nicht darstellen konnte. Kriterium ist die Wirkung: **Hash der
+Zieldatei vorher und nachher**, dazu der Exit-Code (Verfahren:
+`release-ritual.md`). Die zweite ungeprüfte Umgebung ist der **Server**:
+Kommandos, die der Owner dort tippt, werden in genau der Form geprobt, in
+der er sie tippt; eine nicht geprobte Zeile steht als Einschränkung in der
+Anweisung.
+
 ---
 
 ## 19. Ein Satz ÜBER den Überspring-Marker verschluckt den CI-Lauf
 
-Schwesterfall zu Klasse 14 („Freitext in einem `run:`-Block ist Code“),
+Schwesterfall zu §14 („Freitext in einem `run:`-Block ist Code“),
 übernommen aus Vorlagen-v1.14.1 als eingetretener Vorfall eines anderen
 Projekts.
 
@@ -645,3 +793,182 @@ ganz oben und liest ihn als seinen eigenen.
 erklärt, zitiert oder verneint. Wer über ihn schreiben muss, umschreibt ihn.
 In Dateien und Issue-Texten bleibt die wörtliche Nennung unbedenklich.
 **Mechanisch erzwungen** durch `.githooks/commit-msg`.
+
+**Dasselbe gilt für Schließ-Schlüsselwörter** (Vorlage §25):
+`Fixes #N`, `Closes #N` und ihre Verwandten schließen Issues — auch in einem
+Satz, der erklärt, warum ein Issue gerade NICHT geschlossen wird. Issue-Bezüge
+in Commit-Texten deshalb ohne Verb davor („zu #N"). Das erzwingt kein Hook;
+es ist Disziplin.
+
+---
+
+## 20. Zeit wird in drei Zuständen gezählt, nicht als eine Wandzeit
+
+_Übernommen aus der Vorlage (§33), Abgleich v1.17.2._
+
+Ein Vergleich meldete „9 h 34 gegen 1 h 46" — und war irreführend: Der längere
+Lauf enthielt Stunden, in denen niemand arbeiten konnte, weil ein fremdes
+Kontingent erschöpft war. Neu gerechnet lagen beide in derselben
+Größenordnung. **Wartezeit auf fremde Kapazität ist keine Umsetzungszeit**, und
+wer sie addiert, misst den Tarif, nicht den Prozess.
+
+**Regel** (Owner-Entscheid, gilt für jede Bilanz):
+
+| Zustand | Bedeutung | wird |
+|---|---|---|
+| **ACTIVE** | es wird gearbeitet — auch verworfene Arbeit | summiert |
+| **PAUSED_EXTERNAL_CAPACITY** | Sitzungslimit, Guthaben, Kontingent eines Anbieters | **gezählt** (Anzahl, Dauer), nicht summiert |
+| **MIXED** | Block, der sich nachträglich nicht trennen lässt | ausgewiesen, **nie geschätzt** |
+
+Jede Bilanz nennt drei Zahlen: brutto, aktiv, Ausfälle. Eine Untergrenze („≥ 1 h
+40") wird als Untergrenze geschrieben, nie als Zahl. **Warten auf eine
+Entscheidung des Owners** ist weder ACTIVE noch PAUSED und bleibt aus der
+Vergleichsgröße heraus (gemessen: eine Lücke von 7 h 35 in einem Slice). Der
+Orchestrator wird mitgezählt — seine Zeit ist Teil des gemessenen Systems
+(Vorlage §28). **Reparaturen am Prüfstand werden getrennt bilanziert**
+(Vorlage §28): Wer zwischen zwei Läufen seine Messumgebung repariert, meldet
+den zweiten Lauf nicht als Verbesserung des Geprüften.
+
+## 21. Ein Commit, der Dateien still verliert
+
+_Übernommen aus der Vorlage (§34), Abgleich v1.17.2._
+
+Zwei Release-Commits der Vorlage löschten zusammen **zwölf Dateien** — CI-,
+Abhängigkeits- und Hook-Vorlagen, das Werkzeug der dritten Stimme, die
+Beispiel-Umgebung, die Geheimnis-Übersicht, die englischen Fassungen samt
+Prüfskript. Keine Commit-Nachricht und kein CHANGELOG-Eintrag erwähnte es. Die
+Doku verwies **25 bzw. 13 Tage** lang weiter auf die fehlenden Dateien, durch
+mehrere Panels und Abgleiche hindurch; gefunden hat es erst eine
+Bestandsprüfung, und dort nur zwei von vier Prüfern.
+
+**Wie es entsteht:** Ein Release-Commit wird aus einer Arbeitskopie gebaut,
+die nicht alle Dateien enthält — ein Teilbestand wird bearbeitet und als
+Ganzes übernommen. Das Muster beider Commits passt dazu: Geändert wurden nur
+Dateien, die ohnehin in Arbeit waren; gelöscht wurden genau die, die niemand
+anfasste. Kein Prüfschritt sah hin, weil jeder den **Inhalt** des Diffs las —
+eine Löschung hat keinen Inhalt, den man lesen könnte, und fällt in einer
+langen Diff-Statistik als eine Zeile unter vielen nicht auf.
+
+**Warum es still bleibt:** Eine gelöschte Datei macht nichts rot. Die
+Verweise auf sie stehen in Prosa, und Prosa wird nicht ausgeführt (Vorlage §17). Wer
+eine Datei sucht, die fehlt, hält das für einen Fehler seines eigenen Klons.
+
+**Regel (Ritualschritt, im Release-Skript ein Wächter):** Vor jedem Tag listet
+`liste=$(git -c core.quotepath=off log -m --no-renames --diff-filter=D --name-only --format= <letzter-tag>..HEAD) || exit 1`, dann `printf '%s\n' "$liste" | sort -u` (die Zuweisung trägt den Exit — eine Pipe verschluckt ihn, ein falscher Tag sähe aus wie „nichts verloren"; Form und Begründung in `release-ritual.md`, Schritt 8)
+jede gelöschte oder verschobene Datei — `log` statt `diff`, weil ein Diff
+Anfang gegen Ende vergleicht und eine Datei übersieht, die nach dem Tag
+angelegt, verlinkt und wieder gelöscht wurde; ohne `--no-renames` fällt eine
+verschobene Datei als Umbenennung durch, ohne `core.quotepath=off` ein Name
+mit Umlaut als maskierter Pfad, den keine Suche findet —, jede steht mit Grund
+im Notizen-Eintrag, und `git grep -n -i -F "<dateiname>"` (bei Umlaut oder
+Leerzeichen auch in URL-kodierter Form, bei einem ganzen Verzeichnis der
+Verzeichnisname **ohne** Schrägstrich) findet keinen Verweis mehr, der nicht
+gewollt ist; sonst ROT
+(`release-ritual.md`, Schritt 8). Der Schritt prüft nicht, ob
+eine Löschung richtig ist, sondern dass sie **gesagt** wurde und nichts mehr
+auf sie zeigt; das genügt, weil beide Fälle oben keine Absicht waren. Als
+Schritt im Ritual ist er Disziplin — erst im Release-Skript macht sein
+Auslassen etwas rot (§10).
+
+## 22. Ein Zeitlimit beendet nichts
+
+_Übernommen aus der Vorlage (§35), Abgleich v1.17.2._
+
+Ein Messbefehl lief in sein Zeitlimit. Die Umgebung verschob ihn in den
+Hintergrund und meldete das — eine Zeile, die aussah wie ein Abschluss. Der
+Aufrufende wiederholte die Messung eine Minute später auf einem anderen Weg
+und ließ den ersten Lauf liegen: **Er lief anderthalb Stunden weiter**, bis er
+jemandem auffiel. Kein Schaden, weil er nur in ein Wegwerf-Verzeichnis
+schrieb — das war Glück, keine Vorkehrung.
+
+**Warum das strukturell ist:** Ein Zeitlimit ist eine Grenze für das *Warten*,
+nicht für den *Prozess*. Die Meldung „in den Hintergrund verschoben" beendet
+den Dialog und wird deshalb wie ein Ergebnis gelesen; danach ist der Lauf aus
+der Aufmerksamkeit, aber nicht aus der Maschine. Dasselbe gilt für jeden
+Abbruch: Ein Abbruch der ANZEIGE ist kein Abbruch der ARBEIT.
+
+**Warum es gerade den Orchestrator trifft:** Die Regel „Läufe im Vordergrund,
+Zeitlimits explizit, keine Hintergrundprozesse" steht im Pflicht-Gerüst des
+Bau-Briefs — sie erreicht damit den Bauer und **nicht den, der sie verteilt**.
+Genau der startet Stimmen, Bauer, Proben und Gates in **fremden Bäumen** (Vorlage §28:
+den Orchestrator prüft niemand). Ein vergessener Lauf hält dort einen
+Worktree, eine Sperre, ein Temp-Verzeichnis oder einen Port — und die nächste
+Stimme misst einen Baum, der sich bewegt.
+
+**Was macht die Regel rot?** Kein Wächter — deshalb trägt sie die Form:
+**Jeder Bau- und Panel-Bericht endet mit der Zeile „Eigene Läufe am Ende: …"**
+(`panel-kommentar.md`). Eine fehlende Zeile springt ins Auge, ein vergessener
+Prozess nicht — dieselbe Mechanik wie die festen Überschriften im
+Panel-Kommentar. Ein bewusst gestarteter Hintergrundlauf ist erlaubt (Stimmen
+laufen parallel); er gehört in diese Zeile, nicht in die Stille.
+
+**Regel (Wächterfrage; nach jedem Zeitlimit, jedem Abbruch und jedem „in den
+Hintergrund verschoben"):** *Welcher Prozess läuft noch, was hält er (Worktree,
+Sperre, Temp-Verzeichnis, Port), und ist er gestoppt?* Erst dann die nächste
+Messung. Die Antwort gehört ins Ergebnis, auch wenn sie „keiner" lautet —
+eine Zusage, die nie gesagt werden muss, wird nie geprüft (§10).
+
+**Verwandt, gleiche Wurzel — ein Hintergrundlauf wird für inert gehalten:**
+§16 (das Beenden führt aus, was hinter dem hängenden Kommando steht) und das
+Hintergrund-Warte-Muster in `bau-brief.md` (der Bauer wartet auf seinen eigenen
+Hintergrund-Gate und endet ohne Bericht). Die Folge fürs Panel steht in
+`panel.md`, „Eine Stimme, ein Worktree": vor dem Start einer Stimme ist der
+Baum leer **und kein eigener Lauf mehr offen, der in diesen Baum schreibt** —
+andere Stimmen laufen bewusst parallel und zählen nicht; und **je Runde ein
+neuer Worktree, nie umhängen** — eine Stimme, die mit offener Hintergrundarbeit
+berichtet, gilt als laufend (v1.15.4).
+
+## 23. Eine Nacharbeit behebt den Fund im gemessenen Umfang
+
+_Übernommen aus der Vorlage (§36), Abgleich v1.17.2._
+
+Ein Prüfer meldet einen Fund an EINER Stelle: der Tür, dem Pfad, der Eingabe,
+die er gezeigt hat. Der Bauer der Nacharbeit „löst ihn mit" und zieht die
+Prüfung in eine gemeinsame Routine, die jede Tür und jede Bestandszeile sieht —
+und baut damit den nächsten Blocker: Ein gesperrter Beleg mit einer Alt-Zeile,
+die die neue Regel nicht erfüllt, ist nicht mehr überführbar, weil gesperrt
+nicht korrigierbar heißt (Rückmeldung P1, Slice mit drei Nacharbeitsrunden;
+die Nachbarfunktion trug als Kommentar die ältere Auflage „Alt-Daten dürfen
+unverbundene Änderungen nicht blockieren").
+
+Die Klasse: **Ein Fund wird über seinen GEMESSENEN Umfang hinaus behoben.**
+Nacharbeit ist Arbeit unter Zeitdruck mit der Versuchung, das Nachbarloch gleich
+mitzustopfen — und genau dort fehlt der Blick auf Bestandsdaten, den ein
+Bau-Brief für den Erst-Bau erzwingt (Block 2 Befund mit Konsumentenliste,
+Prüffrage 10 „real verschiedene Ausgangszustände"). Die Auflage der Nacharbeit
+kommt als Prüferzeile, nicht als Befund.
+
+**Regel:** Eine Nacharbeit behebt den Fund im gemessenen Umfang. Wer den Fix auf
+weitere Türen, Aufrufer oder Bestandsdaten ausdehnt, beantwortet VORHER
+Prüffrage 3 (Geschwister-Routinen) und Prüffrage 10 (Ausgangszustände) für die
+Erweiterung — sonst wird die Erweiterung ein eigener Slice. Im
+Nacharbeits-Brief steht die Zeile „Umfang der Behebung = gemessener Umfang"
+und je Erweiterung ihre Begründung (`bau-brief.md`, Nacharbeit).
+
+---
+
+## 24. Ein Skript, das sich selbst aktualisiert, läuft mit seinen alten Funktionen weiter
+
+_Übernommen aus der Vorlage (§37), Abgleich v1.17.2._
+
+Ein Ein-Klick-Update holt den neuen Stand und macht dann weiter — mit der
+Fassung, die die Shell **vor** dem Auschecken gelesen hat. Die Datei auf der
+Platte ist neu, der laufende Prozess ist alt. Jede Änderung, die Skript **und**
+Konfiguration gemeinsam braucht, greift deshalb erst ab dem **übernächsten**
+Update: Das Update AUF die Fix-Version trägt den Fehler noch einmal.
+
+Gemessen in einem Kind-Repo: Der Fix am Update-Pfad war korrekt, und trotzdem
+hätte der nächste Lauf ihn nicht benutzt — gefunden hat es die Panel-Runde, nicht
+der Bau.
+
+**Regel:** Wer ein sich selbst ersetzendes Skript ändert, entscheidet
+ausdrücklich zwischen zwei Wegen und schreibt die Wahl in die Release-Notiz:
+nach dem Auschecken per `exec` in die neue Fassung wechseln, oder den Übergang
+dokumentieren („dieses eine Update von außen fahren"). Ein dritter Weg —
+„fällt niemandem auf" — ist keiner.
+
+Die Frage dazu steht in `panel.md` („Fragen, die überdurchschnittlich oft etwas
+finden"): **Läuft der geänderte Code beim Übergang zwischen zwei Versionen
+überhaupt schon, oder noch die alte Fassung mit der neuen Konfiguration?** Sie
+gilt über Skripte hinaus — für Migrationen, Hooks, Gate-Zeilen und jede
+Konfiguration, die von einem Programm gelesen wird, das sich mit ihr ändert.

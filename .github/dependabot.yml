@@ -4,8 +4,9 @@
 #
 # WICHTIG, Merge-Ritual:
 # * npm-PRs: package-lock.json wird NUR im Node-Container erzeugen/geprüft
-#   (CLAUDE.md „Kein Node/npm lokal auf diesem PC" — der lokale npm-Wrapper
-#   schreibt inkompatible Locks). Nach dem Merge zur Sicherheit einmal
+#   (CLAUDE.md, „Build, Gates, Teststand": lokal läuft npm 11, Abbild und CI
+#   npm 10.8.2 — ein lokal erzeugter Lock ist dort inkompatibel; die frühere
+#   Aussage „kein Node/npm lokal" war falsch). Nach dem Merge zur Sicherheit einmal
 #   `docker run --rm -v "$PWD/web":/w -w /w node:20-alpine npm install
 #   --package-lock-only` laufen lassen, bevor der nächste Release-Build läuft.
 #   Deshalb npm nur MONATLICH und gruppiert — wenig PRs, ein Ritual-Lauf.
@@ -17,8 +18,8 @@
 # `open-pull-requests-limit: 1` je Ökosystem. Hintergrund: Dependabot rebaset
 # jeden offenen PR bei jeder Bewegung von main und löst je Rebase einen
 # CI-Lauf aus — weekly/limit 5 war eine der beiden Ursachen des
-# Kontingent-Platzers (2701/3000 Min am 14.08.). Das Portfolio-Tagesbudget
-# über alle Repos ist 100 Min; ein Lauf hier kostet 2–4 Min.
+# Kontingent-Platzers (2701/3000 Min am 14.08.). Tagesbudget und übliche
+# Laufdauer stehen im Schwellen-Inventar von CLAUDE.md.
 # SICHERHEITS-Updates laufen davon unberührt weiter.
 # Die am 14.08. geschlossenen Versions-PRs (#49-#51, #57-#62) kommen mit
 # Limit 1 EINZELN nacheinander wieder — Merge nur nach grünen Gates am PR.

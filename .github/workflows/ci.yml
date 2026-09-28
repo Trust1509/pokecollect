@@ -51,7 +51,8 @@ jobs:
     name: Backend (pytest)
     runs-on: ubuntu-latest
     # Wächter-Dichte (Vorlage §24): ohne timeout-minutes läuft ein hängender
-    # Lauf 360 Minuten — bei 100 Minuten Portfolio-Tagesbudget der ganze Tag.
+    # Lauf 360 Minuten — mehr als das ganze Tagesbudget (Schwellen-Inventar
+    # in CLAUDE.md).
     # 15 statt 6: gemessen ~1 min, Puffer für kalten Cache/Postgres-Start.
     timeout-minutes: 15
     services:

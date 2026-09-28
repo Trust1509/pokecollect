@@ -2,72 +2,123 @@
 
 Kopiervorlage für das Panel-Ergebnis am Issue. **Die Form ist der Mechanismus** —
 eine leere Überschrift springt ins Auge, ein fehlender Absatz nicht. Deshalb
-bleiben alle drei Stimmen stehen, auch wenn eine nichts gefunden hat oder
-ausgefallen ist.
+bleiben alle drei Stimmen-Überschriften stehen, auch wenn eine Stimme nichts
+gefunden hat, ausgefallen ist oder bei dieser Risikoklasse nicht besetzt wurde;
+bei R3 und R4 ebenso die Überschrift der Tür-Probe.
 
-Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Stimme weglassen.
+Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Überschrift weglassen —
+auch nicht die einer gelaufenen Zusatzstimme (optionaler Block unten in der
+Vorlage).
 
-**Modell und Stand gehören in jede Überschrift** (v1.8.0). Ohne sie ist die
-Herkunfts-Regel nach vier Wochen nicht durchsetzbar, und jede Aussage über
-Modellverhalten bleibt Anekdote — Anbieter ziehen still nach.
-
-**Panel-Bilanzen (Meldung an die Vorlage) tragen ab v1.11.3 Risikoklasse UND
-Diff-Typ** — ohne beides sind Zahlen über Projekte hinweg nicht vergleichbar
-(der Fragetyp bestimmt, was ein Panel wert ist).
-
-**Eine Stimme zählt mit ihren Funden, nie mit ihrer Freigabe.** Ein „keine
-Funde" beschreibt die Reichweite dieser Stimme, es ist kein Argument fürs
-Landen. In der Arbitrierung wird begründet, was geprüft und widerlegt wurde —
-nie „zwei von drei Stimmen sahen nichts".
-
-> Warum das hier steht: In diesem Repo lief das Panel bereits **zweistimmig**,
-> ohne dass es jemandem auffiel — der Kommentar war Fließtext plus Fund-Tabelle
-> und las sich vollständig (siehe #38). Eine Regel ohne Form hält nicht; diese
-> Datei **ist** die Form.
+Der Kommentar endet mit der Zeile **„Eigene Läufe am Ende: …"** (`lehren.md`
+§22): Hintergrundläufe des Orchestrators sind erlaubt, unbemerkte nicht.
+Derselbe Satz gehört in den Prüfauftrag jeder Stimme, als Anweisung und nicht
+nur als Formfeld. Den Wortlaut führt `panel.md` („Pflichtzeile in jedem
+Prüfauftrag") — hier steht er absichtlich NICHT, weil zwei wortgleiche Fassungen
+beim nächsten Ändern auseinanderlaufen. Gemessen in einem Kind-Repo: Ein Blindprüfer
+ließ eine Python-Sitzung vier Stunden offen und erwähnte sie nur als Nebensatz
+— der Owner sah sie zuerst.
 
 ---
 
 ```markdown
 ## Panel ⟨Slice / Issue⟩
 
-Basis: `⟨commit-a⟩..⟨commit-b⟩` · Risiko: R⟨n⟩ — Auslöser: ⟨…⟩ ·
-Diff-Typ: ⟨backend/frontend/config/gemischt⟩ · Umfang: ⟨was geprüft wurde⟩
+Basis: `⟨commit-a⟩..⟨commit-b⟩` · Umfang: ⟨was geprüft wurde⟩
 
-### Stimme 1 — Claude, blinde Erststimme (⟨modell⟩, ⟨datum⟩)
-⟨Nur Diff + Repo, kein Bau-Brief, kein Bericht des Bauers. Je Fund: Schwere,
-Datei:Zeile, Nachweis. „Keine Funde" ist ein gültiges Ergebnis und wird
-hingeschrieben.⟩
+Runde: ⟨Erstrunde / Nacharbeit N — Grenze siehe `CLAUDE.md`, Zeile „Nacharbeit"⟩
 
-### Stimme 2 — GPT über Codex (⟨modell⟩, ⟨datum⟩)
-⟨Über denselben Diff, Zweig `review/⟨issue⟩-⟨kurzname⟩`.⟩
+### Stimme 1 — Blindprüfer (⟨Modell, Datum⟩)
+⟨Frischer Reviewer-Subagent: nur Diff + Repo, kein Bau-Brief, kein Bericht des
+Bauers. Je Fund: Schwere, Datei:Zeile, Nachweis. „Keine Funde" ist ein
+gültiges Ergebnis und wird hingeschrieben; „nicht entschieden — Probe X"
+ebenfalls.⟩
 
-### Stimme 3 — ⟨R3: zweite blinde Claude-Repo-Stimme, adversarial (⟨modell⟩, ⟨datum⟩) · R2: entfällt (Klasse)⟩
-⟨Bei R3: eigener Prüf-Fokus, adversarial gerahmt. Bei R2 bleibt die
-Überschrift stehen mit „entfällt — R2-Mindestprüfung".⟩
+### Stimme 2 — Fremdprüfer (⟨Modell, Datum⟩)
+⟨Über denselben Diff, eigener Review-Zweig. In einer Nacharbeitsrunde:
+„nicht eingesetzt — Nacharbeit, Blindprüfer genügt" oder der Grund, warum doch.⟩
+
+### Stimme 3 — ⟨R2: diff-only-Fremdstimme oder Gegenprüfer / R3: Gegenprüfer⟩ (⟨Modell, Datum⟩)
+⟨Gegenprüfer: Widerlegungsauftrag, eigener Baum. In einer Nacharbeitsrunde nur,
+wenn eine neue Tür angefasst wurde — sonst hier die Begründung. Diff-only-Stimme:
+kurz; bekanntes Muster: irrt Richtung zu-streng, liest gelegentlich die
+Vorher-Seite eines Diffs.⟩
+
+### Zusätzlich, nicht gezählt — ⟨diff-only-Stimme⟩ (⟨Modell, Datum⟩)
+⟨Optional: nur, wenn neben den gezählten Stimmen eine diff-only-Fremdstimme
+als Konvergenz-Gegenprobe lief (bei R3 erlaubt, `panel.md`, „Verfahren je
+Risikoklasse"). Lief keine — auch wenn sie mit Guthabenende abbrach —,
+entfällt dieser Block ohne Vermerk; lief eine, bleibt er stehen. Zählt mit
+ihren Funden, nie mit ihrer Freigabe.⟩
+
+### Tür-Probe (R3/R4)
+⟨Nur bei R3/R4; bei R2 entfällt dieser Block. Was geprobt wurde (welche Tür,
+auf welchem Stand, mit welchem Aufruf) — Ergebnis. Oder: „teilweise
+ausgefallen — ⟨Grund, bis wohin geprobt⟩"; dann gilt die Folge aus `CLAUDE.md`,
+Review-Panel: vor der Auslieferung nachholen oder ausdrückliche
+Owner-Freigabe ohne sie, beides hier vermerkt.⟩
 
 ### Arbitrierung
-⟨Je Fund eines von DREI Urteilen: reproduziert · verworfen · richtiger Instinkt,
-falsche Begründung. Dazu WIE reproduziert (Kommando, Test, Messung) und die
-Attribution: welche Stimme hatte ihn, welche nicht. Vor jedem Verwerfen die
-Gegenfrage beantworten: „Welche Eingabe würde der Stimme recht geben?"
-Schwere-Umstufungen kennzeichnen (`KLEIN → WICHTIG (arb.)`).
+⟨Je Fund: reproduziert / verworfen / umgangen (nicht entschieden) — und WIE
+reproduziert (Kommando, Test, Messung, aus einer anderen Quelle als dem
+Geprüften). Dazu die Attribution: welche Stimme hatte ihn, welche nicht.
 Prüfer-Konvergenz ersetzt keine Reproduktion.⟩
 
-**Urteil:** ⟨landen / nacharbeiten⟩
+**Orchestrator-Quote:** ⟨N von M bestätigten Funden trafen einen Text des
+Orchestrators (Brief, Prüfauftrag, Issue-Text, Notiz)⟩
+
+**Urteil:** ⟨landen / nacharbeiten / nach Nacharbeit 2: landen mit Folge-Issue #⟨N⟩ (nur Nicht-Blocker offen) / anhalten — Blocker nach Nacharbeit 2, Owner fragen⟩
+
+**Eigene Läufe am Ende:** ⟨keine — oder: welcher Lauf, was er hält, gestoppt ja/nein⟩
 ```
 
 ---
 
 ## Wenn eine Stimme fehlt
 
-Überschrift **stehen lassen**, Grund darunter:
+Überschrift **stehen lassen**, Grund darunter. Die Schritte, auf die sich das
+Muster beruft, stehen in `panel.md`, Abschnitt „Wenn eine Stimme ausfällt"
+(vier nummerierte Schritte; Punkt 2 und 4 des Abschnitts „Klumpenrisiko" sind
+die Ersatzregeln). **Wer `panel.md` im eigenen Repo in eigenen Worten führt,
+nummeriert die Schritte dort** — sonst zeigt dieses Muster ins Leere
+(gemessen in einem Kind-Repo: Verweis ohne Ziel, monatelang unbemerkt, weil er
+nur im Ausfall gelesen wird).
 
 ```markdown
-### Stimme 3 — zweite blinde Claude-Repo-Stimme (adversarial)
-Ausgefallen: Session-Limit mitten im Lauf (stimmen-neutral — auch die eigene
-Stimme fällt aus). Ersatz nach Klumpenregel: GPT adversarial über den
-Review-Zweig, gestartet am ⟨Datum⟩.
+### Stimme 2 — Fremdprüfer
+Ausgefallen: Kontingent des Werkzeugs gesperrt um ⟨Uhrzeit⟩ (kein Warten).
+Schritt 2 (Ersatzregel Fremdprüfer): Ersatz über ⟨API-Leitung des anderen
+Anbieters⟩, Modell ⟨Name⟩, agentisch/diff-only, gestartet ⟨Datum Uhrzeit⟩ auf
+Commit ⟨SHA⟩ — Ergebnis unten. ⟨oder: Guthabenende auf der Leitung → Folge nach
+`panel.md`, Klumpenrisiko Punkt 4; Owner gefragt am ⟨Datum⟩⟩
+
+### Stimme 3 — Gegenprüfer (R3)
+Ausgefallen: Sitzungslimit um ⟨Uhrzeit⟩.
+Schritt 2 (Ersatzregel Gegenprüfer, nur R3): Fremdprüfer übernimmt die Widerlegungsrahmung
+in einem zweiten Lauf — Ergebnis unten. ⟨oder: Fremdprüfer ebenfalls nicht
+verfügbar, weiter mit Schritt 3⟩
+Schritt 3: Neustart gegen denselben Commit ⟨SHA⟩ im nächsten
+Kontingentfenster, Prüfauftrag archiviert unter ⟨Pfad⟩.
+⟨nur wenn der Slice nicht warten kann — Schritt 4: Owner informiert am
+⟨Datum⟩; ausgeliefert wird erst nach dem Nachholen oder mit seiner
+ausdrücklichen Freigabe ohne diese Stimme.⟩
 ```
 
 Ein Slice ohne vollständiges oder so vermerkt-verkürztes Panel gilt als **nicht
-geprüft** und wird nicht ausgeliefert.
+geprüft** und wird nicht ausgeliefert. Ein **Ausfall** ist keine Verkürzung —
+siehe `CLAUDE.md`, Review-Panel.
+
+---
+
+## Projektnotiz
+
+Formular oben: Vorlage v1.17.2, der eine Lehren-Verweis in unserer Zählung.
+Warum die feste Form hier steht: In diesem Repo lief das Panel bereits
+**zweistimmig**, ohne dass es jemandem auffiel — der Kommentar war Fließtext
+plus Fund-Tabelle und las sich vollständig (#38). Eine Regel ohne Form hält
+nicht; diese Datei **ist** die Form.
+
+**Stimme 3 ist bei uns immer der Gegenprüfer**, wenn sie besetzt ist — die
+diff-only-Fremdstimme ist nicht besetzt, auch nicht unter „Zusätzlich, nicht
+gezählt" (`panel.md`, Projektabschnitt). Die Überschrift dafür bleibt im
+Formular, damit es der Vorlage gleich bleibt.

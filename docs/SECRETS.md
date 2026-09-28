@@ -56,18 +56,22 @@ benutzen, das den Zugang im Schlüsselspeicher des Betriebssystems ablegt.
 
 ## Zugriff des Agenten auf die Produktivinstanz
 
-Heute: **lesend über HTTP** (`curl <server-ip>:3010/health`), sonst nichts. SSH
-ist für Agenten geblockt, deployen macht der Owner, und es gibt keinen
+Heute: **lesend über HTTP** (`curl <server-ip>:3010/health`), sonst nichts.
+Ein SSH-Zugang für Agenten ist nicht eingerichtet (keine SSH-Regel in den
+Agenten-Einstellungen, gemessen 28.09.2026; die Messung steht in
+`CLAUDE.md`, „Deploy“). Ob ein Schlüssel auf diesem Rechner auf dem Server
+gälte, ist nicht gemessen. Deployen macht der Owner, und es gibt keinen
 MCP-Server mit schreibenden Werkzeugen.
 
 Ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) ist deshalb
 **heute gegenstandslos** — aber die Entscheidung hängt an einer einzigen
 Bedingung:
 
-> **Sobald ein Produktiv-Token oder das Prod-Passwort in den Kontext eines
-> Agenten gerät, wird der Wächter sofort nötig.** Dann ist die Sperre keine
-> strukturelle mehr, sondern nur noch der Umstand, dass der Agent die
-> Zugangsdaten nicht kennt.
+> **Sobald ein Produktiv-Token, das Prod-Passwort oder ein SSH-Weg zum Server
+> in den Kontext eines Agenten gerät, wird der Wächter sofort nötig.** Heute
+> ist die Sperre keine strukturelle, sondern nur der Umstand, dass der Agent
+> die Zugangsdaten nicht kennt — mit dem ersten Zugang in seinem Kontext
+> fällt auch dieser Umstand weg.
 
 Wenn es soweit ist: Die **Quelle** des Wächters gehört ins Repo (versioniert,
 testbar), **ausgeführt** wird eine Kopie **außerhalb** — ein Schutz, den der
