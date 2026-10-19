@@ -58,9 +58,9 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    ungepanelten Commits eines parallel arbeitenden Bau-Subagenten mit.
    **Deshalb:** Arbeitet ein Bau-Subagent parallel zum Hauptagenten, bekommt
    er einen eigenen `git worktree` mit eigenem Branch (wie der Fremdprüfer;
-   Blind- und Gegenprüfer bekommen seit Vorlage v1.18.0 einen
-   `git archive`-Auszug) — dann kann kein fremder Push ihn mitnehmen, und der
-   Hauptbaum bleibt frei.
+   Blind- und Gegenprüfer bekommen einen `git archive`-Auszug — der
+   Gegenprüfer seit Vorlage v1.15.0, der Blindprüfer seit v1.18.0) — dann
+   kann kein fremder Push ihn mitnehmen, und der Hauptbaum bleibt frei.
 3. **In einer Commit-Nachricht steht der Überspring-Marker NUR als Marker.**
    Nie erklärt, zitiert oder verneint — die Plattform liest die ganze
    Nachricht, nicht nur die Betreffzeile, und ein Satz ÜBER den Marker
@@ -236,7 +236,8 @@ muss, ist deshalb Standard, nicht Option. Konkret:
     Nie zum Prüfen pushen.
   - **Dauerhaft, weil sie keine Qualität kosten:** ein pytest-Job, **kein
     `pull_request`-Trigger** (es gibt keine menschlichen PRs), `concurrency` mit
-    `cancel-in-progress` (Tag-Refs ausgenommen), `paths-ignore` für reine Doku.
+    `cancel-in-progress` (in `ci.yml` Tag-Refs ausgenommen), `paths-ignore`
+    für reine Doku.
   - **Dependabot** (`.github/dependabot.yml`): `interval` bleibt `monthly`,
     `open-pull-requests-limit: 1` — Sicherheits-Updates unberührt. Kein
     „weekly/limit 5" mehr; die frühere Rücksetz-Notiz war falsch.
@@ -284,8 +285,7 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   - In `~/.ssh` liegt seit dem 18.10.2026 ein privater Schlüssel für Agenten
     (Kommentar `claude-homelab`), vom Owner für andere Geräte im Heimnetz
     angelegt; keine `~/.ssh/config`, kein laufender Schlüssel-Agent
-    (`ssh-add -l` → 2). Am 28.09.2026 lagen dort nur `known_hosts` und
-    `known_hosts.old`.
+    (`ssh-add -l` → 2).
   - **Ob dieser Schlüssel auf dem Server gilt, ist NICHT gemessen** — das
     zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben
     eines Agenten. Owner-Frage im Issue „Abgleich v1.18.13"; die Folge steht
@@ -385,9 +385,11 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   erfüllt. **Welcher Wächter, hängt am Weg:** Der Prod-Wächter der Vorlage
   (`docs/vorlagen/prod-readonly-hook.py`) entscheidet nur über MCP-Werkzeuge
   eines Namensraums; einen `ssh`-Aufruf über Bash oder PowerShell sieht er
-  nicht. Für den SSH-Weg gehört eine Sperrregel für `ssh`, `scp` und `plink`
-  in die Agenten-Einstellungen (beide Shells; trägt der Owner ein), mit
-  eigener Probe — oder der Schlüssel gilt dort nicht. Bis zur Antwort benutzt
+  nicht. Für den SSH-Weg trägt **strukturell nur eines: der Schlüssel gilt auf
+  dem Server nicht.** Eine Sperrregel nach Kommandonamen (`ssh`, `scp`, `plink`)
+  in den Agenten-Einstellungen wäre nur eine Teil-Sperre und umgehbar
+  (`sftp`, `rsync -e ssh`, ein absoluter Pfad, eine SSH-Bibliothek) — eine
+  Denylist, keine fail-closed-Allowlist. Bis zur Antwort benutzt
   kein Agent diesen Schlüssel gegen den Server (Disziplin, keine Sperre).
   Einzelheiten: `docs/SECRETS.md`.
 

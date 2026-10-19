@@ -344,7 +344,7 @@ Ergebnis.
   Zeitlimit (`../../CLAUDE.md`, „Build, Gates, Teststand": nacktes `python`
   ist ein Alias, der still wechseln kann). Im Abgleich v1.18.13 lief die
   Ersatzleitung (OpenRouter, `openai/gpt-6.1-sol`, agentisch, 21 Runden):
-  zwei WICHTIG, beide bestätigt.
+  zwei WICHTIG, beide bestätigt (Panel-Kommentar im Issue „Abgleich v1.18.13").
 
 ### PII-Grenze
 
