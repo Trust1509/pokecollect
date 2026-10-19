@@ -283,11 +283,85 @@ die Selbstprobe laufen; sie liest diesen Abschnitt.*
 - **Lokal committen, nicht pushen.** Landen entscheidet der Hauptagent nach dem Panel.
 - Bei neuen Datenbank-Tests: Engine im `tearDown` entsorgen, gegen eine echt
   migrierte DB testen statt gegen ein frisch erzeugtes Schema.
+- **Parallelität: innerhalb eines Laufs höchstens ⟨n⟩ Worker und ⟨n⟩ Browser;
+  jeden schweren Lauf nur unter der Rechner-Sperre** — die Zahlen aus dem
+  Schwellen-Inventar der `CLAUDE.md` stehen HIER, im Brief; ein Zeiger auf die
+  `CLAUDE.md` erreicht den Bauer nicht. Hier stehen NUR die Zahlen; wie das
+  Werkzeug sie setzt (eine Option des Testlaufs), gehört in Block 6 — sonst
+  erfüllt dieser Punkt ein anderes Thema des Prüfskripts, sobald das Werkzeug
+  in dessen Wortschatz steht (gemessen, Blindprüfer v1.18.9).
+  Auf einem geteilten Rechner halten Shards eines Testlaufs das Mehrfache an
+  Speicher (gemessen: mehrere Interpreter mit je rund 350 MB), ohne schneller
+  fertig zu sein. Gemessen in einem Kind-Repo: Ein Rechner mit 64 GB lief auf
+  94 %, als drei Sitzungen gleichzeitig bauten; der Anteil der Agenten daran lag
+  grob bei 7 GB, die Hauptlast kam aus dem Betriebssystem — der Agenten-Anteil
+  war aber vermeidbar, und eine Zahl hatte niemand verlangt. **Die
+  Rechner-Sperre** gilt für jeden schweren Lauf (volle Suite, Gate-Skript,
+  Browser, Container, Mutationslauf über die ganze Suite; im Zweifel schwer) und
+  hat für alle Projekte denselben Pfad, sonst sperren zwei Projekte einander
+  nicht aus. **Nehmen, Lauf und Freigeben stehen in EINEM Aufruf**, und die
+  Sperre nimmt, wer den Lauf startet — nie ein Skript darin:
+
+  ```sh
+  S="$HOME/.sperre-schwerer-lauf"; until mkdir "$S" 2>/dev/null; do sleep 30; done
+  echo "⟨Projekt⟩ ⟨Rolle⟩ $(date +%FT%T)" > "$S/wer"; cat "$S/wer"
+  ```
+
+  Im selben Aufruf folgt der schwere Lauf aus Block 6, danach:
+
+  ```sh
+  rc=$?; rm -f "$HOME/.sperre-schwerer-lauf/wer"; rmdir "$HOME/.sperre-schwerer-lauf"; exit $rc
+  ```
+
+  Der Lauf selbst steht nicht in diesem Punkt: Diese Randbedingung steht
+  wörtlich in Block 8, und ein hier eingesetzter Lauf erfüllte das Thema zu
+  Block 6 im Prüfskript, sobald sein Werkzeug in dessen Wortschatz steht — ein
+  Brief ohne Block 6 kam dann als vollständig durch (gemessen, Blindprüfer
+  v1.18.6 und v1.18.9). Deshalb nennt dieser Satz weder ein Werkzeug noch das
+  Thema beim Namen.
+
+  Der Pfad steht beim Freigeben ausgeschrieben: Claude Code blockiert ein `rm`
+  auf eine Variable, deren Ziel es nicht auflösen kann — gemessen in einer
+  Sitzung, in einer anderen nicht; es hängt vermutlich am Berechtigungsmodus.
+  `$HOME` löst es in beiden auf.
+
+  Ein Skript, das die Sperre selbst nähme, wartete auf den, der es startete. Ein
+  Nehmen in einem eigenen Aufruf hielte sie fest, wenn dieser Aufruf in den
+  Hintergrund wandert und niemand mehr arbeitet. Und ein `trap`, der freigibt,
+  löschte beim Abbruch während des Wartens die FREMDE Sperre (alle drei
+  gemessen, Blindprüfer v1.18.6). Wandert der Aufruf in den Hintergrund, gilt
+  die Regel zum Bericht oben: Er wird gestoppt, bevor es weitergeht; bis dahin
+  hält er die Sperre zu Recht. Gestoppt wird der ganze Prozessbaum des schweren
+  Laufs, nicht nur dessen Prozessnummer: Ein Gate-Skript, ein Testlauf mit
+  Workern oder ein Browser startet Kindprozesse, und die liefen sonst als Waisen
+  weiter, während die Shell die Sperre schon freigibt (gemessen, Blindprüfer
+  v1.18.9). Unter Git Bash erfasst `taskkill //T` die Kinder nicht, die die
+  Shell per Fork gestartet hat, und eine eigene Prozessgruppe legt eine Shell
+  ohne Aufforderung nicht an (beides gemessen). Das leistet
+  `sh docs/vorlagen/baum-stoppen.sh <pid>`: Es hält den Baum an, beendet ihn
+  und endet mit Exit 0 erst, wenn keiner der gefundenen Prozesse mehr lebt —
+  erst dann ist die Sperre frei. Exit 1 heißt: Die Sperre bleibt, bis der Rest
+  beendet ist. Was es nicht finden kann, steht unter GRENZEN im Kopf des
+  Werkzeugs — darunter ein Container (`docker run`), ein Nachkomme, der sich
+  vom Baum löst, bevor sein Elternprozess angehalten ist, und unter Git Bash
+  ein Hintergrundkind vor einem `exec` in ein natives Programm oder ein Enkel,
+  den ein Programm über einen kurzlebigen Zwischenprozess startet. Nach Exit 0
+  zeigt `docker ps` die Container und unter Git Bash `ps -W` (auch native
+  Prozesse), sonst `ps -eo pid,ppid,lstart,args`, welche Programme noch
+  laufen; ob eines zum Lauf gehört, sagen Name und Startzeit, nicht die
+  Elternnummer. Erst danach ist die Sperre frei. Wer stattdessen nur die Shell stoppt, findet den Rest mit dem
+  Werkzeug nicht mehr (ohne lebende Wurzel endet es mit Exit 2), beendet ihn
+  über die Nummern aus `ps` und gibt die Sperre nur frei, wenn
+  `cat "$HOME/.sperre-schwerer-lauf/wer"` seine eigene Zeile zeigt (Block 1 gibt
+  sie beim Nehmen aus).
+  Eine fremde Sperre wird nie gebrochen: Hängt sie länger als 60 Minuten,
+  meldet das der Bericht. `mkdir` ist atomar und überall da, `flock` fehlt unter
+  Git Bash.
 - Wenn parallel ein anderer Slice läuft: **welche Dateien tabu sind** — und
   **welche knappe Größe** er belegt. Zwei Pakete können streiten, ohne eine
   gemeinsame Zeile anzufassen: beide wollen dieselben CI-Minuten, dasselbe
-  Guthaben, dieselben Ports, dieselbe Owner-Zeit. Gemessen in einem fremden
-  Projekt (zwei Pakete, jedes für sich maßvoll, zusammen über der Grenze) und
+  Guthaben, dieselben Ports, dieselbe Owner-Zeit, denselben Speicher. Gemessen
+  in einem fremden Projekt (zwei Pakete, jedes für sich maßvoll, zusammen über der Grenze) und
   bei uns (drei Slices parallel am selben Prüf-Kontingent, keiner landete).
   Zwei Pakete an derselben knappen Größe laufen nicht parallel.
 - **Der Einrichtungsblock ist in einer leeren Umgebung ausprobiert**, nicht
@@ -316,6 +390,14 @@ der Themen Sichtbares, Nachweis und Fixtures und hielten sie ohne den
 jeweiligen Block grün (Exit 0); die drei Formulierungen sind seitdem
 geändert (CHANGELOG v1.15.2). Wer hier ändert, lässt die Selbstprobe laufen;
 sie liest diesen Abschnitt.*
+
+**Plattform.** Ein Test, der eine Ausnahme aus Betriebssystem oder C-Bibliothek
+erwartet, läuft vor der Landung einmal auf der Zielplattform — bei einer
+Container-Anwendung im Wegwerf-Container mit dem App-Abbild. Geht das vor der
+Landung nicht, bleiben plattformabhängige Eingaben aus dem Test: jede, deren
+erwartete Ausnahme aus Betriebssystem oder C-Bibliothek kommt, auch wenn sie
+vermutlich überall gleich wirft. Eingaben, die nur auf einer Plattform werfen,
+gehören nie in den Beweis, dass der Test rot werden kann (`lehren.md` §5).
 
 **Datenmigration.** Treffermenge kumulativ eng fassen. Downgrade muss den
 *Rollback-Pfad* heil lassen, nicht nur das Schema. Prüfen, ob Altbestand nach
@@ -867,11 +949,13 @@ Nummer angehängt, nie zwischen die Vorlagen-Fragen geschoben
 
 ## Projektspezifisch: Prüf-Kommandos und Hausbelege dieses Repos
 
-Alles oberhalb dieser Linie ist die Vorlage (v1.17.2), mit zwei Ausnahmen:
-Ihre vier Lehren-Verweise stehen hier in UNSERER Zählung (`abgleich.md` der
-Vorlage, 2d, einzeln nachgeschlagen), und Verweise auf Dateien, die es nur in
-der Vorlage gibt (`abgleich.md`, `betrieb.md`), tragen den Zusatz „der
-Vorlage“. Dieser Abschnitt steht bewusst am Ende:
+Alles oberhalb dieser Linie ist die Vorlage (v1.18.13), mit zwei Ausnahmen:
+Ihre fünf Lehren-Verweise stehen hier in UNSERER Zählung (`abgleich.md` der
+Vorlage, 2d, einzeln nachgeschlagen: Vorlage-Lehre §21 zweimal als unsere §10,
+Vorlage-Lehre §35 als §22, Vorlage-Lehre §36 als §23, Vorlage-Lehre §10 als
+§5), und Verweise auf Dateien, die es nur in der Vorlage gibt
+(`abgleich.md`, `betrieb.md`), tragen den Zusatz „der Vorlage“. Dieser
+Abschnitt steht bewusst am Ende:
 `scripts/bau-brief-pruefen-selbsttest.sh` liest die Prüffragen, die
 Pflicht-Randbedingungen und die Typischen Fallen **der Vorlage** und baut
 daraus seinen Muster-Brief — eine projekteigene Zeile dort landete in jedem
@@ -890,6 +974,12 @@ Die CI fährt `pytest` gegen echtes Postgres (SQLite ist ausgeschlossen),
 `npm run check:whatsnew`; `scripts/gates.sh all` deckt das ab und prüft
 darüber hinaus (Was-ist-neu-Parität, Paritäts-Prüfung Gate ↔ CI,
 Prozess-Werkzeuge — alle drei nur lokal).
+
+Alle drei Kommandos oben sind **schwere Läufe** (sie starten Container) und
+gehören zwischen die beiden Blöcke der Rechner-Sperre (Randbedingung
+„Parallelität" oben). Die Zahlen für dieselbe Randbedingung stehen im
+Schwellen-Inventar (`CLAUDE.md`, Zeile „Parallelität innerhalb eines
+Laufs") — im Brief ausgeschrieben, nicht als Zeiger.
 
 ### Projekt-Auflagen für Block 7 (Fixtures) und Block 8 (Randbedingungen)
 
@@ -914,14 +1004,6 @@ setzt `node-version: 20`). Ein lokal erzeugter `package-lock.json` kann in der
 CI scheitern. Lock-Änderungen deshalb nur so:
 
     MSYS_NO_PATHCONV=1 docker run --rm -v "<web>":/w -w //w node:20-alpine npm install --package-lock-only
-
-### Ein Verweis in einem byte-identischen Werkzeug
-
-`scripts/bau-brief-pruefen-selbsttest.sh` verweist in Zeile 11 auf eine Lehre
-in der Zählung der Vorlage (Vorlage §21: Wächter ohne erzwungenen Lauf, bei uns
-§10). Die Datei bleibt byte-identisch; seit unsere eigene §21 existiert
-(Abgleich v1.17.2), trifft der Verweis still eine andere Lehre. Der
-Verweis-Wächter prüft `scripts/` nicht. An die Vorlage gemeldet.
 
 ### Hausbelege
 

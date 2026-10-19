@@ -56,22 +56,27 @@ benutzen, das den Zugang im Schlüsselspeicher des Betriebssystems ablegt.
 
 ## Zugriff des Agenten auf die Produktivinstanz
 
-Heute: **lesend über HTTP** (`curl <server-ip>:3010/health`), sonst nichts.
-Ein SSH-Zugang für Agenten ist nicht eingerichtet (keine SSH-Regel in den
-Agenten-Einstellungen, gemessen 28.09.2026; die Messung steht in
-`CLAUDE.md`, „Deploy“). Ob ein Schlüssel auf diesem Rechner auf dem Server
-gälte, ist nicht gemessen. Deployen macht der Owner, und es gibt keinen
-MCP-Server mit schreibenden Werkzeugen.
+Gewollt ist: **lesend über HTTP** (`curl <server-ip>:3010/health`). Deployen
+macht der Owner, und für dieses Projekt gibt es keinen MCP-Server (gemessen
+19.10.2026: keiner in der Client-Konfiguration).
 
-Ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) ist deshalb
-**heute gegenstandslos** — aber die Entscheidung hängt an einer einzigen
-Bedingung:
+**SSH, gemessen am 19.10.2026 ohne Verbindung** (Kommandos in `CLAUDE.md`,
+„Deploy“): In den Agenten-Einstellungen steht keine SSH-Regel. Auf diesem
+Rechner liegt aber seit dem 18.10.2026 ein SSH-Schlüssel für Agenten
+(`~/.ssh`, Kommentar `claude-homelab`), den der Owner für andere Geräte im
+Heimnetz angelegt hat. **Ob er auf dem Server gilt, ist nicht gemessen** — das
+zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben eines
+Agenten. Die Frage steht beim Owner (Issue „Abgleich v1.18.13“).
+
+Ob ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) nötig
+ist, hängt an einer einzigen Bedingung:
 
 > **Sobald ein Produktiv-Token, das Prod-Passwort oder ein SSH-Weg zum Server
-> in den Kontext eines Agenten gerät, wird der Wächter sofort nötig.** Heute
-> ist die Sperre keine strukturelle, sondern nur der Umstand, dass der Agent
-> die Zugangsdaten nicht kennt — mit dem ersten Zugang in seinem Kontext
-> fällt auch dieser Umstand weg.
+> für einen Agenten erreichbar ist, wird der Wächter sofort nötig.** Ein
+> Schlüssel auf der Platte gehört dazu: Er muss nicht gekannt werden, ein
+> Aufruf mit `-i` genügt. Bis der Owner die Frage oben beantwortet hat,
+> benutzt kein Agent diesen Schlüssel gegen den Server — das ist Disziplin,
+> keine Sperre.
 
 Wenn es soweit ist: Die **Quelle** des Wächters gehört ins Repo (versioniert,
 testbar), **ausgeführt** wird eine Kopie **außerhalb** — ein Schutz, den der

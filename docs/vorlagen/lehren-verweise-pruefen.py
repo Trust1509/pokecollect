@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Prueft, dass jeder Verweis der Form "§N" einen Abschnitt trifft, den es gibt.
 
-    python docs/vorlagen/lehren-verweise-pruefen.py --lehren <lehren.md> <datei> …
-    python docs/vorlagen/lehren-verweise-pruefen.py --lehren <lehren.md> --ausser "B-KUVG|ASVG" <datei> …
-    python docs/vorlagen/lehren-verweise-pruefen.py --selbstprobe
+    python -I -S docs/vorlagen/lehren-verweise-pruefen.py --lehren <lehren.md> <datei> …
+    python -I -S docs/vorlagen/lehren-verweise-pruefen.py --lehren <lehren.md> --ausser "B-KUVG|ASVG" <datei> …
+    python -I -S docs/vorlagen/lehren-verweise-pruefen.py --selbstprobe
+    python -I -S docs/vorlagen/lehren-verweise-pruefen.py --lehren <lehren.md> --vorlage-selbst <datei> …   (nur IN der Vorlage)
 
 Exit 0 = jeder gepruefte Verweis trifft einen Abschnitt; **1 = mindestens einer
 nicht ODER die Ausnahme hat einen treffenden Verweis mitgenommen** (dann ist das
 Muster zu weit, siehe unten); 2 = Aufruf- oder Lesefehler (fehlende Argumente,
-Datei nicht lesbar).
+Datei nicht lesbar, Lauf ohne -I -S).
 
 WOFUER: Beim Uebernehmen einer Lehre aus der Vorlage werden die Nummern
 repo-lokal (abgleich.md, Schritt 2d). Die Verweise IM TEXT der uebernommenen
@@ -30,8 +31,10 @@ stehen gelassener Verweis eine existierende andere Lehre — dazu unten.
 VERWEISE IN DIE ZAEHLUNG DER VORLAGE (abgleich.md 2d: "Vorlage §N") werden
 erkannt und NICHT gegen die eigene Zaehlung geprueft. Ein Verweis gehoert der
 Vorlage, wenn das Wort "Vorlage" am Wortanfang hoechstens 20 Zeichen vor ihm
-steht, ohne Satzteil-Trenner (Komma, Semikolon, Strich, Satzende) und ohne
-anderen Verweis dazwischen. Die Meldung nennt ihre Zahl.
+steht, ohne Satzteil-Trenner und ohne anderen Verweis dazwischen. Trenner sind
+Komma, Semikolon, Gedankenstrich (– und —) sowie Punkt, Doppelpunkt, Ausrufe-
+und Fragezeichen vor Leerraum; ein ASCII-Bindestrich mit Leerraum (" - ")
+trennt NICHT. Die Meldung nennt ihre Zahl.
 
 WAS ES NICHT PRUEFT — hier steht die Grenze, nicht im Urteil des Lesers
 ----------------------------------------------------------------------
@@ -50,15 +53,18 @@ WAS ES NICHT PRUEFT — hier steht die Grenze, nicht im Urteil des Lesers
   LEERE zeigen** — dafuer ist sie da, denn fremde Zaehlungen treffen keinen
   Abschnitt. Nimmt sie einen mit, der TRIFFT, ist das Muster zu weit: Exit 1 mit
   der Zahl. Und die Erfolgsmeldung nennt Muster, uebersprungene Zeilen und
-  entfernte Verweise; die Zahlen gehoeren in das Abgleich-Issue.
-  Wer Gesetzestexte fuehrt, setzt das Muster im
-  Gate-Kommando und nennt es dort. Ein Waechter, der falsch alarmiert, wird
-  abgeschaltet — und dann schuetzt er nichts mehr.
-  Dazu gehoert dieses Skript selbst: Seine Selbstprobe traegt Beispiel-Verweise
-  im Quelltext. Wer die .py-Dateien mitprueft, nimmt es mit --ausser heraus;
-  das Gate-Kommando oben prueft die Textdateien. Das Muster gehoert ENG gesetzt:
-  Die Meldung nennt die Zahl der uebersprungenen Zeilen UND der dabei entfernten
-  Verweise, und beide gehoeren ins Abgleich-Issue.
+  entfernte Verweise; beide Zahlen gehoeren in das Abgleich-Issue. Wer
+  Gesetzestexte fuehrt, setzt das Muster ENG im Gate-Kommando und nennt es
+  dort. Ein Waechter, der falsch alarmiert, wird abgeschaltet — und dann
+  schuetzt er nichts mehr. Dazu gehoert dieses Skript selbst: Seine Selbstprobe
+  traegt Beispiel-Verweise im Quelltext. Wer die .py-Dateien mitprueft, nimmt es
+  mit --ausser heraus; das Gate-Kommando oben prueft die Textdateien.
+  Steht ein Lehren-Verweis mit einem Zitat in EINER Zeile ("Nach §1 gilt die
+  Frist des § 43 B-KUVG"), gibt es kein passendes Muster: --ausser arbeitet
+  zeilenweise. Das Zitat gehoert dann auf eine eigene Zeile.
+- **Ein Muster, das GENAU die Verweise ins Leere wegnimmt**, legt die Pruefung
+  still und bleibt gruen — es nimmt keinen treffenden mit. Das sieht nur, wer
+  die Zahlen der Meldung liest; deshalb gehoeren sie ins Abgleich-Issue.
 - **Code-Bloecke und Beispiele werden mitgelesen.** Ein § in einem Beispiel ist
   ein Verweis wie jeder andere; das ist Absicht, weil ein Beispiel mit falscher
   Nummer genauso in die Irre fuehrt. Umgekehrt gilt das auch fuer die
@@ -70,22 +76,57 @@ WAS ES NICHT PRUEFT — hier steht die Grenze, nicht im Urteil des Lesers
   es dort keinen §99 gibt.
 - **Ein eigener Verweis dicht hinter dem Wort "Vorlage" im selben Satzteil**
   ("die Vorlage gilt fuer §3") wird als Vorlagen-Verweis gelesen und NICHT
-  geprueft — die stille Richtung. Sie braucht das Wort am Wortanfang, hoechstens
-  20 Zeichen davor und keinen Trenner; in zwei gemessenen Kind-Repos kam das nur
-  bei echten Vorlagen-Verweisen vor. Wer so schreibt, setzt ein Komma oder
-  formuliert um.
-- **Andere Formen eines Vorlagen-Verweises** werden als eigene gelesen und
-  schlagen falsch an — die laute Richtung: nachgestellt ("§22 der Vorlage"),
+  geprueft — die stille Richtung (mit --vorlage-selbst entfaellt sie: dort wird
+  auch er gegen die eigene Zaehlung geprueft). Sie braucht das Wort am
+  Wortanfang, hoechstens 20 Zeichen davor und keinen Trenner; in zwei gemessenen
+  Kind-Repos kam das nur bei echten Vorlagen-Verweisen vor. Wer so schreibt,
+  setzt ein Komma oder formuliert um.
+- **Andere Formen eines Vorlagen-Verweises** werden als eigene gelesen: Gibt es
+  die Nummer in der eigenen Zaehlung nicht (darueber oder in einer Luecke),
+  schlaegt das falsch an (laut); gibt es sie, trifft sie still eine andere
+  eigene Lehre. Gemeint sind:
+  nachgestellt ("§22 der Vorlage"),
   aufgezaehlt ("Vorlage §20 und §21": §21 gilt als eigener), mit einem Umbruch
   zwischen Wort und Verweis, oder nur mit Versionsstempel ("v1.10.0 §19" ohne das
   Wort). Abhilfe: das Wort vor jeden Verweis ("Vorlage §20 und Vorlage §21").
 - **Ob die Lehre selbst richtig ist.** Das ist das Panel.
+
+`--vorlage-selbst` — NUR in der Vorlage selbst: Dort zeigt „Vorlage §N" in die
+eigene Zaehlung, und mit dem Schalter werden diese Verweise gegen die eigene
+`lehren.md` GEPRUEFT statt nur gezaehlt. Seit v1.18.1 zitieren die
+Verfahrensdokumente der Vorlage ihre Lehren als „Vorlage-Lehre §N": So zeigen
+sie in jedem Kind-Repo, das die Dokumente kopiert, in die richtige Zaehlung, und
+ohne den Schalter verloere die Vorlage die Pruefung ihrer eigenen Verweise. Ein
+Kind-Repo setzt ihn nie — es wuerde Vorlagen-Verweise gegen die falsche Zaehlung
+pruefen. Reihenfolge: `--lehren <datei>`, danach `--vorlage-selbst` und
+`--ausser <muster>` in beliebiger Reihenfolge, je hoechstens einmal, dann die
+Dateien.
 """
+
+import sys
+
+# Erst die Schalter, dann jeder andere Import. Ohne -I liegt das Verzeichnis
+# dieser Datei vorn im Modulpfad: Eine Datei mit dem Namen eines Moduls der
+# Standardbibliothek daneben (tempfile.py, re.py) wird statt seiner geladen und
+# kann den Lauf mit Exit 0 beenden, bevor etwas geprueft ist — gemessen in
+# einem Kind-Repo an lehren-verweise-pruefen.py: Gate gruen, nichts geprueft
+# (v1.18.0). -S laesst site aus (sitecustomize, .pth). sys ist eingebaut und
+# laesst sich so nicht ersetzen. Das Werkzeug braucht nur die Standardbibliothek.
+# GRENZE: Ohne Schalter laeuft site VOR dieser Zeile — eine sitecustomize.py
+# oder usercustomize.py aus PYTHONPATH, dem Benutzerverzeichnis oder dem
+# site-packages des Interpreters kommt also vor die Wache (Blind- und
+# Gegenpruefer v1.18.0, gemessen: os._exit(0) dort, Exit 0); mit nur -I bleibt
+# die aus dem site-packages des Interpreters. Dagegen hilft nur der Schalter
+# selbst, nicht diese Zeile. Und ueber die Shebang-Zeile gestartet laeuft die
+# Datei ohne Schalter: Exit 2.
+if not (sys.flags.isolated and sys.flags.no_site):
+    sys.stderr.write("Aufbau: lehren-verweise-pruefen.py laeuft nur mit -I -S: "
+                     "<interpreter> -I -S lehren-verweise-pruefen.py ...\n")
+    sys.exit(2)
 
 import io
 import os
 import re
-import sys
 import tempfile
 
 # Eine Abschnitts-Zeile darf auch am Dateiende ohne folgendes Zeichen stehen.
@@ -169,7 +210,7 @@ def rohnummern(zeile: str) -> list:
 
 
 def verweise(text: str, ausser=None, uebersprungen=None, entfernt=None,
-             vorlage=None) -> list:
+             vorlage=None, vorlage_selbst=False) -> list:
     """[(Zeilennummer, Nummer)] — bei §§N-M beide Enden; `ausser` ueberspringt Zeilen.
 
     `uebersprungen` und `entfernt` sind Listen, die die Aufrufer nur ZAEHLEN: die
@@ -178,25 +219,38 @@ def verweise(text: str, ausser=None, uebersprungen=None, entfernt=None,
     aussagekraeftige: Uebersprungene Zeilen ohne Verweis kosten nichts, und eine
     Ausnahme, die Verweise wegnimmt, muss sich zeigen (Blindpruefer v1.17.1).
     `vorlage` nimmt die Verweise in die Zaehlung der Vorlage auf; sie werden
-    nicht gegen die eigene Zaehlung geprueft, aber gezaehlt und gemeldet.
+    nicht gegen die eigene Zaehlung geprueft, aber gezaehlt und gemeldet —
+    ausser mit `vorlage_selbst`: Dann IST dies die Vorlage, und sie werden
+    zusaetzlich wie eigene geprueft.
     """
     gefunden = []
     for nr, zeile in enumerate(text.splitlines(), 1):
         if ausser is not None and ausser.search(zeile):
             if uebersprungen is not None:
                 uebersprungen.append(nr)
-            if vorlage is not None:
+            vom_vorlage = aufteilen(zeile)[1]
+            if vorlage is not None and not vorlage_selbst:
                 # Ein Vorlagen-Verweis bleibt einer, auch auf einer ausgenommenen
                 # Zeile; sonst haengt die gemeldete Zahl am Muster (Pruefer v1.17.2).
-                vorlage.extend(aufteilen(zeile)[1])
+                vorlage.extend(vom_vorlage)
             if entfernt is not None:
                 # Nicht umwandeln: eine uebersprungene Zeile wird nicht geprueft,
                 # also darf eine absurde Zahl darin auch nicht abbrechen.
                 entfernt.extend(rohnummern(zeile))
+                if vorlage_selbst:
+                    # In der Vorlage SIND es eigene Verweise: Nimmt die Ausnahme
+                    # einen treffenden mit, ist das Muster zu weit. Ohne das legte
+                    # "--ausser ...|Vorlage-Lehre" alle Verweise der
+                    # Verfahrensdokumente still, und die Meldung behauptete, sie
+                    # seien geprueft (Fremd-, Blind- und Gegenpruefer v1.18.1).
+                    # Sie zaehlen dann nicht als geprueft (nicht in `vorlage`).
+                    entfernt.extend(vom_vorlage)
             continue
         lokal, fremd = aufteilen(zeile)
         if vorlage is not None:
             vorlage.extend(fremd)
+        if vorlage_selbst:
+            lokal = lokal + fremd
         for rohzahl in lokal:
             try:
                 gefunden.append((nr, int(rohzahl)))
@@ -210,7 +264,7 @@ def verweise(text: str, ausser=None, uebersprungen=None, entfernt=None,
     return gefunden
 
 
-def pruefen(lehren: str, dateien: list, ausser=None) -> tuple:
+def pruefen(lehren: str, dateien: list, ausser=None, vorlage_selbst=False) -> tuple:
     """(geprueft, Funde, ausgenommene Zeilen, entfernte, davon treffende, Vorlagen-Verweise).
 
     Die letzte Zahl ist die entscheidende: Ein von der Ausnahme entfernter
@@ -226,7 +280,7 @@ def pruefen(lehren: str, dateien: list, ausser=None) -> tuple:
     for pfad in dateien:
         text = lies(pfad)
         raus, verloren, fremd = [], [], []
-        for zeilennr, nummer in verweise(text, ausser, raus, verloren, fremd):
+        for zeilennr, nummer in verweise(text, ausser, raus, verloren, fremd, vorlage_selbst):
             gesamt += 1
             if nummer not in vorhanden:
                 grund = ("ueber der hoechsten Nummer %d" % hoechste
@@ -244,6 +298,68 @@ def pruefen(lehren: str, dateien: list, ausser=None) -> tuple:
             except ValueError:
                 pass
     return gesamt, funde, ausgenommen, weg, weg_treffend, der_vorlage
+
+
+def wache_vorn(quelltext: str) -> bool:
+    """Beginnt die Datei mit Docstring, "import sys" und GENAU der Wache?
+
+    Token fuer Token gegen eine feste Form verglichen. Frei sind nur der Text des
+    Docstrings und der Meldung (eine Folge gewoehnlicher Textliterale, kein
+    f-String, keine Bytes), Kommentare, Leerzeilen und Leerraum zwischen den
+    Token; die Datei ist UTF-8 (ein BOM ist erlaubt). Die Fassungen davor verglichen einzelne
+    Bedingungen am Syntaxbaum, und jede Panel-Runde fand die naechste, die sich
+    streichen liess, waehrend ein Schatten gewann (Blind- und Gegenpruefer
+    v1.18.5, drei Runden). Auch dieser Vergleich laesst sich abschwaechen (etwa
+    Operatoren nur nach Typ); die Gegenproben unten halten das fest. Strenger
+    als noetig: Eine gleichwertige Umformung gilt als falsch (rot, nicht gruen).
+    """
+    import codecs
+    import io
+    import tokenize
+    weg = (tokenize.COMMENT, tokenize.NL, tokenize.ENDMARKER)
+
+    def form(text):
+        aus = []
+        try:
+            # Als BYTES zerlegt, wie der Interpreter liest: Eine erklaerte
+            # Kodierung ausser UTF-8 machte einen Kommentar zu Code (utf-7,
+            # unicode_escape, raw_unicode_escape), waehrend diese Pruefung ihn als
+            # Kommentar verwarf (Blind- und Gegenpruefer v1.18.7, gemessen).
+            for t in tokenize.tokenize(io.BytesIO(text.encode("utf-8")).readline):
+                if t.type == tokenize.ENCODING:
+                    # Schreibweisen von UTF-8 (utf8, U8, cp65001) sind UTF-8;
+                    # "utf-8-sig" meldet der Tokenizer bei einem BOM nur bis 3.11.
+                    if codecs.lookup(t.string).name not in ("utf-8", "utf-8-sig"):
+                        return []
+                    continue
+                if t.type in weg:
+                    continue
+                if t.type == tokenize.STRING:
+                    # Nur gewoehnlicher Text zaehlt als Text: Ein f-String ist bis
+                    # Python 3.11 ein STRING-Token, und sein Ausdruck liefe beim
+                    # Start; Bytes liessen die Meldung mit TypeError statt Exit 2
+                    # enden (Fremdpruefer v1.18.7).
+                    vorsatz = t.string[:len(t.string) - len(t.string.lstrip("rRbBuUfF"))]
+                    if set(vorsatz.lower()) & set("fb"):
+                        aus.append(("KEIN-TEXT", vorsatz))
+                        continue
+                    if aus and aus[-1] == ("TEXT", ""):
+                        continue
+                    aus.append(("TEXT", ""))
+                else:
+                    aus.append((tokenize.tok_name[t.type], t.string))
+        except Exception:
+            # Jede Ausnahme ist nein, nie gruen: TokenError, SyntaxError,
+            # LookupError und UnicodeError (unbekannte Kodierung, unter 3.14)
+            # und SystemError (NUL hinter der Wache, unter 3.12; Gegen- und
+            # Blindpruefer v1.18.8).
+            return []
+        return aus
+
+    soll = form('"""Kopf."""\nimport sys\n'
+                "if not (sys.flags.isolated and sys.flags.no_site):\n"
+                "    sys.stderr.write('Meldung')\n    sys.exit(2)\n")
+    return bool(soll) and form(quelltext)[:len(soll)] == soll
 
 
 def selbstprobe() -> int:
@@ -330,6 +446,35 @@ def selbstprobe() -> int:
             aufteilen("Seit der Vorlagen-Version v1.16.0 gilt unser §4"), (["4"], []))
     erwarte("Vorlage: Aufzaehlung — nur der erste gehoert der Vorlage (benannte Grenze)",
             aufteilen("Vorlage §20 und §21"), (["21"], ["20"]))
+    # Jeder Trenner einzeln, je innerhalb des Fensters: Sonst entschied in den
+    # Faellen oben das Fenster, und ein Trenner liess sich streichen
+    # (Folge-Issue zu v1.17.2, gemessen).
+    for _zeichen in (",", "—", "–", ":", "!", "?"):
+        erwarte("Vorlage: Trenner %r im Fenster loest die Bindung" % _zeichen,
+                aufteilen("Vorlage%s bei uns §3" % _zeichen), (["3"], []))
+    # Und mitten im Fenster, mit Text VOR dem Trenner: Sonst blieb ein Umbau
+    # gruen, der den Trenner nur am Anfang des Zwischenraums sucht (match statt
+    # search) — und ein eigener Verweis ins Leere lief still als Vorlagen-Verweis
+    # durch (Blind- und Gegenpruefer v1.18.8, gemessen).
+    for _zeichen in (",", ";", "—", "–", ".", ":", "!", "?"):
+        erwarte("Vorlage: Trenner %r mitten im Fenster loest die Bindung" % _zeichen,
+                aufteilen("Vorlage sagt%s bei uns §3" % _zeichen), (["3"], []))
+    erwarte("Vorlage: Gedankenstrich ohne Leerraum trennt",
+            aufteilen("Vorlage—bei uns §3"), (["3"], []))
+    erwarte("Vorlage: Punkt vor einem Tab trennt",
+            aufteilen("Vorlage sagt.\tbei uns §3"), (["3"], []))
+    erwarte("Vorlage: ASCII-Bindestrich mit Leerraum trennt nicht (benannt)",
+            aufteilen("Vorlage - §3"), ([], ["3"]))
+    erwarte("Vorlage: zwei Marken — die LETZTE vor dem Verweis zaehlt",
+            aufteilen("Vorlage steht weit vor dem Verweis und Vorlage §3"), ([], ["3"]))
+    for _wort in ("TestVorlage", "PDFVorlage", "ÄVorlage", "ÖVorlage", "ÜVorlage",
+                  "äVorlage", "öVorlage", "üVorlage", "MaßVorlage"):
+        erwarte("Vorlage: ein Buchstabe direkt davor macht keine Marke (%s)" % _wort,
+                aufteilen(_wort + " §3"), (["3"], []))
+    erwarte("Verweise: Spanne mit Buchstaben am Ende zaehlt nur den Anfang",
+            [n for _, n in verweise("§§1-9a")], [1])
+    erwarte("Verweise: Spanne mit mehrstelligem Ende und Buchstaben zaehlt nur den Anfang",
+            [n for _, n in verweise("§§1-99a")], [1])
     erwarte("Verweise: fremde Zaehlung mit Buchstabe (§32b) zaehlt nicht",
             verweise("Pflicht nach §32b ASVG"), [])
     erwarte("Verweise: §43 mit Gesetzesnamen zaehlt (nur --ausser hilft)",
@@ -415,6 +560,13 @@ def selbstprobe() -> int:
         schreib(zweit, "Auch hier § 45 B-KUVG.\nUnd §2.\n")
         erwarte("Ausnahme: summiert ueber zwei Dateien",
                 pruefen(lehren, [text, zweit], re.compile("B-KUVG"))[2:5], (3, 3, 0))
+        # Und die TREFFENDEN je Datei: Ein ausgerueckter Zaehlblock lief nur fuer
+        # die letzte Datei, und die Selbstprobe blieb gruen (Blindpruefer,
+        # Nacharbeit 1 zu v1.18.4). Im Gate ist die letzte Datei ein Skript.
+        schreib(text, "Siehe §1 (B-KUVG).\n")
+        schreib(zweit, "Auch §2 (B-KUVG).\n")
+        erwarte("Ausnahme: treffende aus beiden Dateien gezaehlt",
+                pruefen(lehren, [text, zweit], re.compile("B-KUVG"))[3:5], (2, 2))
 
         # main() selbst: der Exit-Code-Vertrag des Kopfes. Ohne diese drei
         # Erwartungen liesse sich der Zweck des Werkzeugs still entfernen —
@@ -565,11 +717,327 @@ def selbstprobe() -> int:
                 "steht als 'Vorlage §N'" in ausgabe, True)
         erwarte("main: roter Pfad nennt die Zahl der Vorlagen-Verweise",
                 "Dazu 1 Verweis(e) in der Form 'Vorlage §N'" in ausgabe, True)
-        erwarte("main: Aufruffehler nennt alle drei Aufrufformen",
+        # --vorlage-selbst (v1.18.1): In der Vorlage zeigt "Vorlage §N" in die
+        # eigene Zaehlung und wird mit dem Schalter GEPRUEFT. Ohne ihn bleibt
+        # derselbe Text gruen — genau der Zustand, in dem die Vorlage die
+        # Pruefung ihrer eigenen Verweise verloere.
+        schreib(lehren, "## 1. Eins\n## 2. Zwei\n")
+        schreib(zweit, "Vorlage-Lehre §2 und Vorlage-Lehre §99.\n")
+        erwarte("vorlage-selbst: ohne Schalter gruen (Vorlagen-Verweise ungeprueft)",
+                stumm(["prog", "--lehren", lehren, zweit])[0], 0)
+        rc, ausgabe = stumm(["prog", "--lehren", lehren, "--vorlage-selbst", zweit])
+        erwarte("vorlage-selbst: §99 ins Leere -> Exit 1", rc, 1)
+        erwarte("vorlage-selbst: der Fund nennt §99", "Verweis §99" in ausgabe, True)
+        erwarte("vorlage-selbst: pruefen() prueft beide und zaehlt sie als Vorlagen-Verweise",
+                (pruefen(lehren, [zweit], None, True)[0], len(pruefen(lehren, [zweit], None, True)[1]),
+                 pruefen(lehren, [zweit], None, True)[5]), (2, 1, 2))
+        schreib(zweit, "Vorlage-Lehre §2 und ein eigener §1.\n")
+        rc, ausgabe = stumm(["prog", "--lehren", lehren, "--vorlage-selbst", zweit])
+        erwarte("vorlage-selbst: treffende -> gruen, die Meldung nennt den Schalter",
+                (rc, "mit --vorlage-selbst gegen DIESE Zaehlung geprueft" in ausgabe), (0, True))
+        erwarte("vorlage-selbst: Gesamtzahl enthaelt die Vorlagen-Verweise",
+                "Verweise gruen: 2 Verweise" in ausgabe, True)
+        # Reihenfolge der beiden Schalter frei, jeder hoechstens einmal.
+        schreib(zweit, "Vorlage-Lehre §99 (B-KUVG).\nVorlage-Lehre §98.\n")
+        erwarte("vorlage-selbst: nach --ausser wirkt er ebenso (Exit 1 an §98)",
+                stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", "--vorlage-selbst", zweit])[0], 1)
+        erwarte("vorlage-selbst: vor --ausser wirkt er ebenso (Exit 1 an §98)",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        erwarte("vorlage-selbst: doppelt -> Exit 2",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--vorlage-selbst", zweit])[0], 2)
+        erwarte("vorlage-selbst: --ausser doppelt -> Exit 2",
+                stumm(["prog", "--lehren", lehren, "--ausser", "a", "--ausser", "b", zweit])[0], 2)
+        erwarte("vorlage-selbst: Schalter ohne Datei -> Exit 2",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst"])[0], 2)
+        erwarte("main: Aufruffehler nennt alle Aufrufformen, auch --vorlage-selbst",
+                "--vorlage-selbst" in hilfe, True)
+        # Ausnahme UND Schalter: Ein Vorlagen-Verweis auf einer ausgenommenen Zeile
+        # ist in der Vorlage ein eigener — trifft er, ist das Muster zu weit
+        # (Fremd-, Blind- und Gegenpruefer v1.18.1: vorher Exit 0, und die Meldung
+        # nannte ihn "geprueft").
+        schreib(zweit, "Vorlage-Lehre §1 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender Vorlagen-Verweis entfernt -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        # Dieselbe Regel fuer einen EIGENEN Verweis unter dem Schalter: Ein Umbau,
+        # der in der Vorlage nur noch die Vorlagen-Verweise als entfernt zaehlt,
+        # blieb sonst gruen (Blindpruefer, Nacharbeit 1).
+        schreib(zweit, "Ein eigener §1 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender EIGENER Verweis entfernt -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        # Zwei Verweise auf EINER ausgenommenen Zeile, der treffende an zweiter
+        # Stelle: Ein Umbau, der je Zeile nur den ersten als entfernt zaehlt, blieb
+        # sonst gruen — fuer Vorlagen-Verweise unter dem Schalter und fuer eigene
+        # schon seit v1.17.1 (Blindpruefer, Nacharbeit 2 zu v1.18.1).
+        schreib(zweit, "Vorlage-Lehre §99 und Vorlage-Lehre §1 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender zweiter Vorlagen-Verweis einer Zeile -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        schreib(zweit, "Ein §99 und ein §1 (B-KUVG).\nEin eigener §2.\n")
+        erwarte("--ausser: treffender zweiter eigener Verweis einer Zeile -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", zweit])[0], 1)
+        # Und gespiegelt: der treffende an ERSTER Stelle. Sonst blieb ein Umbau
+        # gruen, der je Zeile nur den LETZTEN zaehlt (Blind- und Gegenpruefer
+        # v1.18.3, je gemessen).
+        schreib(zweit, "Vorlage-Lehre §1 und Vorlage-Lehre §99 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender erster Vorlagen-Verweis einer Zeile -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        schreib(zweit, "Ein §1 und ein §99 (B-KUVG).\nEin eigener §2.\n")
+        erwarte("--ausser: treffender erster eigener Verweis einer Zeile -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", zweit])[0], 1)
+        # Gemischte Zeilen unter dem Schalter: ein Gesetzeszitat UND ein treffender
+        # Vorlagen-Verweis, und umgekehrt ein Vorlagen-Verweis UND ein treffender
+        # eigener. Ein Umbau, der je Zeile nur eine der beiden Arten als entfernt
+        # zaehlt, blieb sonst gruen (Gegenpruefer, Nacharbeit 1 zu v1.18.3). Je
+        # einmal steht der treffende hinten und vorn: Ein Umbau, der je Zeile nur
+        # die Art des LETZTEN Verweises zaehlt, blieb mit nur der ersten Reihenfolge
+        # gruen (Blindpruefer, Nacharbeit 2).
+        schreib(zweit, "Frist nach § 43 B-KUVG, siehe Vorlage-Lehre §1.\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: Gesetzeszitat und treffender Vorlagen-Verweis -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        schreib(zweit, "Vorlage-Lehre §99, dazu ein eigener §1 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: Vorlagen-Verweis und treffender eigener -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        schreib(zweit, "Vorlage-Lehre §1, dazu § 43 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender Vorlagen-Verweis vor Gesetzeszitat -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        schreib(zweit, "Ein eigener §1, siehe Vorlage-Lehre §99 (B-KUVG).\nVorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender eigener vor Vorlagen-Verweis -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])[0], 1)
+        # Drei Verweise auf einer ausgenommenen Zeile, der treffende vorn, in der
+        # Mitte und hinten, dazu einer, der nicht die kleinste Nummer ist, und eine
+        # Spanne. Umbauten, die je Zeile hoechstens zwei, nur den ersten und den
+        # letzten, nur die kleinste Nummer oder nur das erste Ende einer Spanne als
+        # entfernt zaehlen, blieben sonst gruen (Blind- und Gegenpruefer v1.18.4).
+        for art, vor in (("eigene", "ein "), ("Vorlagen", "Vorlage-Lehre ")):
+            for fall in ("{v}§2, {v}§97 und {v}§98", "{v}§97, {v}§2 und {v}§0",
+                         "{v}§97, {v}§98 und {v}§2", "{v}§§0-2"):
+                zeile = fall.format(v=vor)
+                schreib(zweit, "Siehe " + zeile + " (B-KUVG).\nVorlage-Lehre §2.\n")
+                erwarte("vorlage-selbst + --ausser: %s, '%s' -> Exit 1" % (art, zeile),
+                        stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser",
+                               "B-KUVG", zweit])[0], 1)
+                # Dieselben Zeilen ohne Schalter, wie ein Projekt das Werkzeug
+                # faehrt: Ein Umbau nur dieses Wegs blieb sonst gruen (Blindpruefer,
+                # Nacharbeit 1 zu v1.18.4).
+                if art == "eigene":
+                    erwarte("--ausser ohne Schalter: '%s' -> Exit 1" % zeile,
+                            stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG",
+                                   zweit])[0], 1)
+        # Der treffende ist nicht unter den zwei kleinsten Nummern: Lehren mit Luecke.
+        # Ein Umbau, der nur die zwei kleinsten zaehlt, blieb sonst gruen (ebenda).
+        luecke = os.path.join(d, "luecke.md")
+        schreib(luecke, "## 1. Eins\n## 5. Fuenf\n")
+        for art, vor, schalter in (("eigene", "ein ", ["--vorlage-selbst"]),
+                                   ("Vorlagen", "Vorlage-Lehre ", ["--vorlage-selbst"]),
+                                   ("eigene", "ein ", [])):
+            zeile = "{v}§3, {v}§4 und {v}§5".format(v=vor)
+            schreib(zweit, "Siehe " + zeile + " (B-KUVG).\nVorlage-Lehre §1.\n")
+            erwarte("--ausser %s: %s, '%s' -> Exit 1" % (" ".join(schalter) or "ohne Schalter",
+                                                          art, zeile),
+                    stumm(["prog", "--lehren", luecke] + schalter + ["--ausser", "B-KUVG",
+                                                                     zweit])[0], 1)
+        # Mehrere Dateien bis main(): treffender Verweis nur in der ERSTEN.
+        schreib(text, "Siehe Vorlage-Lehre §1 (B-KUVG).\n")
+        schreib(zweit, "Vorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst + --ausser: treffender nur in der ersten Datei -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG",
+                       text, zweit])[0], 1)
+        schreib(text, "Siehe §1 (B-KUVG).\n")
+        schreib(zweit, "Nur §2.\n")
+        erwarte("--ausser ohne Schalter: treffender nur in der ersten Datei -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", text, zweit])[0], 1)
+        schreib(zweit, "Vorlage-Lehre §99 (B-KUVG).\nVorlage-Lehre §2.\n")
+        rc, ausgabe = stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG", zweit])
+        erwarte("vorlage-selbst + --ausser: nicht treffender entfernt -> gruen, als entfernt gezaehlt",
+                (rc, "dabei 1 Verweis(e) entfernt" in ausgabe), (0, True))
+        # Die ZAHL in der Meldung, nicht nur der Text: geprueft wird nur, was nicht
+        # uebersprungen ist (Gegenpruefer: die Zahl liess sich durch 0 ersetzen).
+        erwarte("vorlage-selbst: die Meldung zaehlt nur die gepruefte (1, nicht 2)",
+                "Davon 1 in der Form 'Vorlage §N'" in ausgabe, True)
+        schreib(zweit, "Vorlage-Lehre §1 und Vorlage-Lehre §2.\n")
+        erwarte("vorlage-selbst: die Meldung nennt die Zahl (2)",
+                "Davon 2 in der Form 'Vorlage §N'"
+                in stumm(["prog", "--lehren", lehren, "--vorlage-selbst", zweit])[1], True)
+        # Funde aus der ERSTEN von zwei Dateien: Ein Umbau, der die Funde je Datei
+        # zuruecksetzte, blieb gruen (Blindpruefer, Nacharbeit 2 zu v1.18.4).
+        schreib(text, "Siehe §99.\n")
+        schreib(zweit, "Siehe §1.\n")
+        erwarte("pruefen: Fund nur in der ersten Datei wird gemeldet",
+                len(pruefen(lehren, [text, zweit])[1]), 1)
+        erwarte("main: Fund nur in der ersten Datei -> Exit 1",
+                stumm(["prog", "--lehren", lehren, text, zweit])[0], 1)
+        # Und unter dem Schalter: Vorlagen-Verweis ins Leere nur in der ZWEITEN.
+        schreib(text, "Vorlage-Lehre §1.\n")
+        schreib(zweit, "Vorlage-Lehre §99.\n")
+        erwarte("vorlage-selbst: Verweis ins Leere nur in der zweiten Datei -> Exit 1",
+                stumm(["prog", "--lehren", lehren, "--vorlage-selbst", text, zweit])[0], 1)
+        # Eine Spanne, die nur am ERSTEN Ende trifft (ebenda, K1).
+        for art, vor, schalter in (("eigene", "ein ", []),
+                                   ("Vorlagen", "Vorlage-Lehre ", ["--vorlage-selbst"])):
+            schreib(zweit, "Siehe " + vor + "§§1-99 (B-KUVG).\nVorlage-Lehre §2.\n")
+            erwarte("--ausser: %s Spanne, nur das erste Ende trifft -> Exit 1" % art,
+                    stumm(["prog", "--lehren", lehren] + schalter
+                          + ["--ausser", "B-KUVG", zweit])[0], 1)
+        # Eine entfernte Nummer IN einer Luecke der Lehren trifft nichts: gruen.
+        schreib(zweit, "Frist nach § 3 (B-KUVG).\nEin eigener §1.\n")
+        erwarte("--ausser: entfernte Nummer in einer Luecke -> gruen",
+                stumm(["prog", "--lehren", luecke, "--ausser", "B-KUVG", zweit])[0], 0)
+        # Eine Zahl, die int() nicht umwandelt: in einer ausgenommenen Zeile gruen,
+        # in einer geprueften ein Aufruffehler (Folge-Issue zu v1.17.1, je ein
+        # Faenger, der sich sonst streichen liess).
+        schreib(zweit, "Frist " + "§" + "9" * 6000 + " (B-KUVG).\nEin eigener §1.\n")
+        erwarte("--ausser: ausgenommene Zeile mit 6000 Ziffern -> gruen",
+                stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", zweit])[0], 0)
+        # Ob int() 6000 Ziffern ablehnt, haengt am Interpreter (Ziffernlimit seit
+        # 3.11 und in Sicherheits-Releases davor). Ohne Limit ist es ein Verweis
+        # ins Leere (Exit 1); mit Limit greift der Faenger (Exit 2). Die erste
+        # Fassung setzte das Limit voraus (Fremdpruefer v1.18.8).
+        try:
+            int("9" * 6000)
+            _soll_lang = 1
+        except ValueError:
+            _soll_lang = 2
+        schreib(zweit, "Frist " + "§" + "9" * 6000 + ".\n")
+        erwarte("main: gepruefte Zeile mit 6000 Ziffern -> Exit %d" % _soll_lang,
+                stumm(["prog", "--lehren", lehren, zweit])[0], _soll_lang)
+        # Das Muster unterscheidet Gross- und Kleinschreibung: Ein Umbau mit re.I
+        # nahm "bao" mit, und ein treffender Verweis fiel still weg (Blindpruefer).
+        schreib(zweit, "Siehe §1 der bao-Liste.\n")
+        erwarte("--ausser: Muster unterscheidet Gross- und Kleinschreibung -> gruen",
+                stumm(["prog", "--lehren", lehren, "--ausser", "BAO", zweit])[0], 0)
+        # Nicht lesbare Dateien sind Aufruffehler (Exit 2), nicht Exit 1.
+        erwarte("main: fehlende Datei -> Exit 2",
+                stumm(["prog", "--lehren", lehren, os.path.join(d, "gibt-es-nicht.md")])[0], 2)
+        with io.open(os.path.join(d, "latin.md"), "wb") as _f:
+            _f.write("Grüße §1\n".encode("latin-1"))
+        erwarte("main: Datei nicht in UTF-8 -> Exit 2",
+                stumm(["prog", "--lehren", lehren, os.path.join(d, "latin.md")])[0], 2)
+        # Der rote Pfad "zu weit" nennt die Vorlagen-Verweise und den Ausweg.
+        schreib(zweit, "Nach §1 gilt die Frist des § 43 B-KUVG.\nVorlage §5 bleibt.\n")
+        rc, ausgabe = stumm(["prog", "--lehren", lehren, "--ausser", "B-KUVG", zweit])
+        erwarte("main: 'zu weit' nennt die Vorlagen-Verweise und den Ausweg",
+                (rc, "Vorlagen-Verweise ('Vorlage §N'): 1" in ausgabe, "eigene Zeile" in ausgabe),
+                (1, True, True))
+        # Unter dem Schalter sagt dieselbe Meldung, dass sie geprueft sind.
+        schreib(zweit, "Nach Vorlage-Lehre §1 gilt § 43 B-KUVG.\nVorlage-Lehre §2.\n")
+        erwarte("main: 'zu weit' unter --vorlage-selbst nennt sie geprueft",
+                "mit --vorlage-selbst gegen diese Zaehlung geprueft"
+                in stumm(["prog", "--lehren", lehren, "--vorlage-selbst", "--ausser", "B-KUVG",
+                          zweit])[1], True)
+        # Der Funde-Pfad ohne Vorlagen-Verweise nennt keine "Dazu 0".
+        schreib(zweit, "Nur §99.\n")
+        rc, ausgabe = stumm(["prog", "--lehren", lehren, zweit])
+        erwarte("main: Funde ohne Vorlagen-Verweise, kein 'Dazu'",
+                (rc, "Dazu" in ausgabe), (1, False))
+        erwarte("main: Aufruffehler nennt die Aufrufformen (dazu --vorlage-selbst oben)",
                 "--selbstprobe" in hilfe and "--lehren" in hilfe
                 and "--ausser" in hilfe, True)
 
-    erwarte("mindestens 100 Erwartungen", geprueft[0] >= 100, True)
+    # Die Schalter-Wache am Kopf: ohne -I -S verweigert das Werkzeug den Lauf,
+    # statt ungeschuetzt zu pruefen. Gemessen am echten Aufruf, nicht nachgebaut,
+    # und fuer JEDE Haelfte: nur -I, nur -S, keiner — eine Wache, die nur einen
+    # Schalter prueft, blieb sonst gruen (Blind- und Gegenpruefer v1.18.0, drei
+    # Mutanten). Das Kind bekommt "--wache-probe", nicht "--selbstprobe": Ohne
+    # Wache startete die erste Fassung sich selbst ohne Ende (Blindpruefer, ueber
+    # 70 Prozesse). Ohne Wache endet es so mit einem Aufruffehler, dessen Meldung
+    # nicht der Text der Wache ist — rot. Dazu eine Zeitgrenze. Und die STELLE der
+    # Wache: Das Kind ist eine Kopie neben einer tempfile.py, die den Lauf mit
+    # Exit 0 beendet. Steht die Wache hinter den Importen, gewinnt der Schatten
+    # (Blindpruefer, Nacharbeit 1: die Wache hinter die Importe geschoben blieb
+    # sonst gruen).
+    import shutil
+    import subprocess
+    schattenort = tempfile.mkdtemp(prefix="lv-wache-")
+    try:
+        kopie = os.path.join(schattenort, os.path.basename(__file__))
+        shutil.copy(os.path.abspath(__file__), kopie)
+        with io.open(os.path.join(schattenort, "tempfile.py"), "w", encoding="utf-8") as f:
+            f.write("raise SystemExit(0)\n")
+        for name, schalter in (("keiner", []), ("nur -I", ["-I"]), ("nur -S", ["-S"])):
+            try:
+                kind = subprocess.run([sys.executable] + schalter + [kopie, "--wache-probe"],
+                                      capture_output=True, timeout=60)
+                ergebnis = (kind.returncode, b"laeuft nur mit -I -S" in kind.stderr)
+            except subprocess.TimeoutExpired:
+                ergebnis = ("Zeitgrenze", False)
+            erwarte("Wache: Schalter %s, tempfile.py daneben -> Exit 2 mit der Meldung der Wache"
+                    % name, ergebnis, (2, True))
+    finally:
+        shutil.rmtree(schattenort, ignore_errors=True)
+    # Und STELLE und FORM, Token fuer Token, fuer jedes Modul: Die tempfile.py
+    # oben deckt nur das eine, das sie nachbildet (wache_vorn()).
+    with io.open(os.path.abspath(__file__), encoding="utf-8") as f:
+        erwarte("Wache: erste Anweisung nach 'import sys', kein Import davor",
+                wache_vorn(f.read()), True)
+    # Die Pruefung selbst, an erfundenem Quelltext: die echte Form mit ja, jeder
+    # gemessene Angriff und jede Umformung mit nein (Blind- und Gegenpruefer
+    # v1.18.5; Fassung mit Token-Vergleich v1.18.7).
+    k, s, j = '"""Kopf."""\n', "import sys\n", "import json\n"
+    w = ("if not (sys.flags.isolated and sys.flags.no_site):\n"
+         "    sys.stderr.write('x')\n    sys.exit(2)\n")
+    for name, quelle in (
+            ("Wache vor dem ersten Import", k + s + w + j),
+            ("Meldung ueber zwei Zeilen, Kommentar dazwischen",
+             k + "# Kopf\n" + s + w.replace("write('x')", "write('a '  # Teil\n                     'b')") + j),
+            ("Datei mit BOM", "\ufeff" + k + s + w + j),
+            ("Kodierungszeile utf8", "# -*- coding: utf8 -*-\n" + k + s + w + j)):
+        erwarte("wache_vorn: %s -> ja" % name, wache_vorn(quelle), True)
+    for name, quelle in (
+            ("ohne Docstring", s + w),
+            ("zwei Docstrings", k + k + s + w),
+            ("Zuweisung statt Docstring", "__import__('json').x = 'Kopf.'\n" + s + w),
+            ("Import vor 'import sys'", k + j + s + w),
+            ("Wache hinter 'import json'", k + s + j + w),
+            ("'import sys, json'", k + "import sys, json\n" + w),
+            ("'import sys as s'", k + "import sys as s\n" + w),
+            ("'import json' statt 'import sys'", k + j + w),
+            ("'from subprocess import sys'", k + "from subprocess import sys\n" + w),
+            ("nur 'import sys'", k + s),
+            ("andere Bedingung", k + s + w.replace("(sys.flags.isolated and sys.flags.no_site)",
+                                                    "sys.flags.isolated")),
+            ("Bedingung mit 'and __import__'", k + s + w.replace("no_site):", "no_site) and __import__('json'):")),
+            ("Import im Rumpf vorn", k + s + w.replace("    sys.stderr", "    import json\n    sys.stderr")),
+            ("Import statt Meldung", k + s + w.replace("sys.stderr.write('x')", "import json")),
+            ("Import statt sys.exit", k + s + w.replace("sys.exit(2)", "import json")),
+            ("Anweisung nach sys.exit", k + s + w + "    import json\n"),
+            ("sys.exit(0)", k + s + w.replace("sys.exit(2)", "sys.exit(0)")),
+            ("print statt Meldung", k + s + w.replace("sys.stderr.write('x')", "print('x')")),
+            ("print(2) statt sys.exit(2)", k + s + w.replace("sys.exit(2)", "print(2)")),
+            ("Meldung mit zweitem Argument", k + s + w.replace("write('x')", "write('x', 'y')")),
+            ("Meldung mit Schluesselwort", k + s + w.replace("write('x')", "write('x', end='')")),
+            ("Meldung als Ausdruck mit __import__", k + s + w.replace("write('x')", "write(__import__('json').dumps(1))")),
+            ("Meldung als Name", k + s + w.replace("write('x')", "write(x)")),
+            ("Meldung leer", k + s + w.replace("write('x')", "write()")),
+            ("Text plus Ausdruck", k + s + w.replace("write('x')", "write('x' + __import__('json').x)")),
+            ("f-String als Meldung", k + s + w.replace("write('x')", "write(f'{__import__(1)}')")),
+            ("Text und f-String als Meldung", k + s + w.replace("write('x')", "write('x' f'{1}')")),
+            ("(__import__ and sys.exit)(2)", k + s + w.replace("sys.exit(2)", "(__import__('json') and sys.exit)(2)")),
+            ("(__import__ and sys).exit(2)", k + s + w.replace("sys.exit(2)", "(__import__('json') and sys).exit(2)")),
+            ("sys.exit(2, **...)", k + s + w.replace("sys.exit(2)", "sys.exit(2, **({} if __import__('json') else {}))")),
+            ("Wache auf einer Zeile", k + s + "if not (sys.flags.isolated and sys.flags.no_site): "
+                                        "sys.stderr.write('x'); sys.exit(2)\n" + j),
+            ("Quelltext nicht lesbar", k + s + "if (\n"),
+            ("zwei Token statt Docstring", "x\n" + s + w),
+            ("Kodierung utf-7 mit verstecktem Import",
+             "# -*- coding: utf-7 -*-\n" + k + "import sys  # +AAo-import json\n" + w),
+            ("Kodierung raw_unicode_escape",
+             "# -*- coding: raw_unicode_escape -*-\n" + k + "import sys  # \\u000aimport json\n" + w),
+            ("Kodierung unicode_escape",
+             "# -*- coding: unicode_escape -*-\n" + k + "import sys  # \\nimport json\n" + w),
+            ("Kodierung latin-1", "# -*- coding: latin-1 -*-\n" + k + s + w),
+            ("Tab-Einzug", k + s + w.replace("    sys.", "\tsys.")),
+            ("zwei Leerzeichen Einzug", k + s + w.replace("    sys.", "  sys.")),
+            ("rb-Bytes als Meldung", k + s + w.replace("write('x')", "write(rb'x')")),
+            ("Kodierung undefined", "# -*- coding: undefined -*-\n" + k + s + w),
+            ("NUL im Kommentar vor der Wache", k + s + "# \x00\n" + w),
+            ("NUL hinter der Wache", k + s + w + "x = 1  # \x00\n"),
+            ("eckige statt runde Klammern", k + s + w.replace("(sys.flags.isolated and sys.flags.no_site)",
+                                                              "[sys.flags.isolated and sys.flags.no_site]")),
+            ("Bytes als Meldung", k + s + w.replace("write('x')", "write(b'x')")),
+            ("Bytes als Docstring", "b" + k + s + w),
+            ("Text und Bytes als Meldung", k + s + w.replace("write('x')", "write('x' b'y')"))):
+        erwarte("wache_vorn: %s -> nein" % name, wache_vorn(quelle), False)
+
+    erwarte("mindestens 241 Erwartungen", geprueft[0] >= 241, True)
     if fehler:
         sys.stderr.write("Selbstprobe ROT: %d Abweichung(en)\n  " % len(fehler)
                          + "\n  ".join(fehler) + "\n")
@@ -597,16 +1065,29 @@ def main(argv: list) -> int:
     if len(argv) < 4 or argv[1] != "--lehren":
         sys.stderr.write(
             "Aufruffehler: --lehren <lehren.md> und mindestens eine zu pruefende Datei.\n"
-            "    python lehren-verweise-pruefen.py --lehren docs/agents/lehren.md "
+            "    python -I -S lehren-verweise-pruefen.py --lehren docs/agents/lehren.md "
             "docs/agents/*.md CLAUDE.md\n"
-            "    python lehren-verweise-pruefen.py --lehren <lehren.md> "
+            "    python -I -S lehren-verweise-pruefen.py --lehren <lehren.md> "
             "--ausser \"B-KUVG|ASVG\" <datei> …\n"
-            "    python lehren-verweise-pruefen.py --selbstprobe\n")
+            "    python -I -S lehren-verweise-pruefen.py --selbstprobe\n"
+            "    python -I -S lehren-verweise-pruefen.py --lehren <lehren.md> --vorlage-selbst "
+            "<datei> …   (nur in der Vorlage)\n")
         return 2
 
     lehren, rest = argv[2], argv[3:]
     ausser = None
-    if rest[:1] == ["--ausser"]:
+    vorlage_selbst = False
+    while rest[:1] in (["--ausser"], ["--vorlage-selbst"]):
+        if rest[0] == "--vorlage-selbst":
+            if vorlage_selbst:
+                sys.stderr.write("Aufruffehler: --vorlage-selbst doppelt.\n")
+                return 2
+            vorlage_selbst = True
+            rest = rest[1:]
+            continue
+        if ausser is not None:
+            sys.stderr.write("Aufruffehler: --ausser doppelt — ein Muster, mit | verbunden.\n")
+            return 2
         if len(rest) < 3:
             sys.stderr.write("Aufruffehler: --ausser braucht ein Muster und mindestens "
                              "eine Datei.\n")
@@ -623,11 +1104,16 @@ def main(argv: list) -> int:
         sys.stderr.write("Aufruffehler: keine zu pruefende Datei genannt.\n")
         return 2
     gesamt, funde, ausgenommen, entfernt, entfernt_treffend, der_vorlage = pruefen(
-        lehren, dateien, ausser)
+        lehren, dateien, ausser, vorlage_selbst)
     # Vorlagen-Verweise werden nicht geprueft, aber sichtbar gezaehlt: Wer sie
-    # nicht sieht, haelt eine wachsende Zahl davon fuer "alles gut".
-    vorlage_satz = (" Dazu %d Verweis(e) in der Form 'Vorlage §N' — nicht gegen die "
-                    "eigene Zaehlung geprueft." % der_vorlage) if der_vorlage else ""
+    # nicht sieht, haelt eine wachsende Zahl davon fuer "alles gut". Mit
+    # --vorlage-selbst sind sie in der Gesamtzahl enthalten und geprueft.
+    if vorlage_selbst:
+        vorlage_satz = (" Davon %d in der Form 'Vorlage §N' — mit --vorlage-selbst gegen "
+                        "DIESE Zaehlung geprueft (das ist die Vorlage)." % der_vorlage)
+    else:
+        vorlage_satz = (" Dazu %d Verweis(e) in der Form 'Vorlage §N' — nicht gegen die "
+                        "eigene Zaehlung geprueft." % der_vorlage) if der_vorlage else ""
     # Die Ausnahme ist fuer FREMDE Zaehlungen da, und die treffen keinen Abschnitt.
     # Nimmt sie einen Verweis mit, der TRIFFT, hat sie einen echten Lehren-Verweis
     # verschluckt — dann ist das Muster zu weit, gleich wie viele uebrig bleiben.
@@ -641,8 +1127,17 @@ def main(argv: list) -> int:
             "(von %d entfernten in %d Zeile(n)) — das Muster ist zu weit und legt "
             "die Pruefung teilweise still.\n"
             "Die Ausnahme ist fuer fremde Zaehlungen gedacht; die treffen keinen "
-            "Abschnitt. Muster engen, bis diese Zahl 0 ist.\n"
+            "Abschnitt. Muster engen, bis diese Zahl 0 ist. Steht ein Lehren-Verweis "
+            "mit einem Zitat in EINER Zeile, gehoert das Zitat auf eine eigene Zeile: "
+            "--ausser arbeitet zeilenweise.\n"
             % (ausser.pattern, entfernt_treffend, entfernt, ausgenommen))
+        # Auch hier die Vorlagen-Verweise: Sonst fehlte ihre Zahl genau im Pfad,
+        # in dem ein Muster zu weit griff (Folge-Issue zu v1.17.2). Ein eigener
+        # Satz, weil "Dazu"/"Davon" hier keine Gesamtzahl hat (Blindpruefer v1.18.8).
+        if der_vorlage:
+            sys.stderr.write("Vorlagen-Verweise ('Vorlage §N'): %d%s.\n" % (
+                der_vorlage, " — mit --vorlage-selbst gegen diese Zaehlung geprueft"
+                if vorlage_selbst else ", nicht gegen die eigene Zaehlung geprueft"))
         return 1
     if funde:
         sys.stderr.write("Verweise ins Leere (%d von %d):\n  " % (len(funde), gesamt)

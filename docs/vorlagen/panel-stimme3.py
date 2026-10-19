@@ -35,7 +35,7 @@ EINRICHTEN
 BENUTZEN
 --------
     git diff <basis>..<kopf> > stimme3.diff || exit 1
-    python docs/vorlagen/panel-stimme3.py \\
+    python -I -S docs/vorlagen/panel-stimme3.py \\
         --model <anbieter/modell> --max-tokens 32768 --stdin-anhang \\
         "<Pruefauftrag>" < stimme3.diff > review-stimme3.md
 
@@ -93,7 +93,8 @@ Form (Objekt an der Wurzel, andere Form in der Tiefe), keine Wahl in der
 Antwort (choices fehlt oder ist leer), Fehlerobjekt in einer
 200-Antwort, leere Antwort, finish_reason nicht "stop" — etwa "length" =
 abgeschnitten), 2 Aufruf- oder Einrichtungsfehler (Parameter,
-Umgebungsvariablen, --stdin-anhang ohne oder mit leerem Anhang).
+Umgebungsvariablen, --stdin-anhang ohne oder mit leerem Anhang, Lauf ohne
+-I -S).
 
 HTTP-Umleitungen (3xx) werden NICHT verfolgt: urllib macht aus dem POST ein GET
 ohne Leib, und eine gueltige Antwort des Umleitungsziels endete mit Exit 0,
@@ -103,11 +104,31 @@ Adresse sein — ein Einrichtungsfehler, der als Exit 1 erscheint, weil das
 Skript ihn erst an der Antwort erkennt.
 """
 
+import sys
+
+# Erst die Schalter, dann jeder andere Import. Ohne -I liegt das Verzeichnis
+# dieser Datei vorn im Modulpfad: Eine Datei mit dem Namen eines Moduls der
+# Standardbibliothek daneben (json.py, urllib/) wird statt seiner geladen und
+# kann den Lauf mit Exit 0 beenden, bevor etwas geprueft ist — gemessen in
+# einem Kind-Repo an lehren-verweise-pruefen.py: Gate gruen, nichts geprueft
+# (v1.18.0). -S laesst site aus (sitecustomize, .pth). sys ist eingebaut und
+# laesst sich so nicht ersetzen. Das Werkzeug braucht nur die Standardbibliothek.
+# GRENZE: Ohne Schalter laeuft site VOR dieser Zeile — eine sitecustomize.py
+# oder usercustomize.py aus PYTHONPATH, dem Benutzerverzeichnis oder dem
+# site-packages des Interpreters kommt also vor die Wache (Blind- und
+# Gegenpruefer v1.18.0, gemessen: os._exit(0) dort, Exit 0); mit nur -I bleibt
+# die aus dem site-packages des Interpreters. Dagegen hilft nur der Schalter
+# selbst, nicht diese Zeile. Und ueber die Shebang-Zeile gestartet laeuft die
+# Datei ohne Schalter: Exit 2.
+if not (sys.flags.isolated and sys.flags.no_site):
+    sys.stderr.write("Aufbau: panel-stimme3.py laeuft nur mit -I -S: "
+                     "<interpreter> -I -S panel-stimme3.py ...\n")
+    sys.exit(2)
+
 import argparse
 import datetime
 import json
 import os
-import sys
 import urllib.error
 import urllib.request
 

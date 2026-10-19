@@ -10,8 +10,8 @@ Nicht kürzen, nicht zu Fließtext zusammenfassen, keine Überschrift weglassen 
 auch nicht die einer gelaufenen Zusatzstimme (optionaler Block unten in der
 Vorlage).
 
-Der Kommentar endet mit der Zeile **„Eigene Läufe am Ende: …"** (`lehren.md`
-§22): Hintergrundläufe des Orchestrators sind erlaubt, unbemerkte nicht.
+Der Kommentar endet mit der Zeile **„Eigene Läufe am Ende: …"**
+(`lehren.md` §22): Hintergrundläufe des Orchestrators sind erlaubt, unbemerkte nicht.
 Derselbe Satz gehört in den Prüfauftrag jeder Stimme, als Anweisung und nicht
 nur als Formfeld. Den Wortlaut führt `panel.md` („Pflichtzeile in jedem
 Prüfauftrag") — hier steht er absichtlich NICHT, weil zwei wortgleiche Fassungen
@@ -28,9 +28,9 @@ Basis: `⟨commit-a⟩..⟨commit-b⟩` · Umfang: ⟨was geprüft wurde⟩
 
 Runde: ⟨Erstrunde / Nacharbeit N — Grenze siehe `CLAUDE.md`, Zeile „Nacharbeit"⟩
 
-### Stimme 1 — Blindprüfer (⟨Modell, Datum⟩)
-⟨Frischer Reviewer-Subagent: nur Diff + Repo, kein Bau-Brief, kein Bericht des
-Bauers. Je Fund: Schwere, Datei:Zeile, Nachweis. „Keine Funde" ist ein
+### Stimme 1 — Blindprüfer (⟨Modell, Subagent-Typ — kein Fork, Datum⟩)
+⟨Frischer Reviewer-Subagent: nur Diff + Repo als `git archive`-Auszug, kein
+Bau-Brief, kein Bericht des Bauers. Je Fund: Schwere, Datei:Zeile, Nachweis. „Keine Funde" ist ein
 gültiges Ergebnis und wird hingeschrieben; „nicht entschieden — Probe X"
 ebenfalls.⟩
 
@@ -38,8 +38,8 @@ ebenfalls.⟩
 ⟨Über denselben Diff, eigener Review-Zweig. In einer Nacharbeitsrunde:
 „nicht eingesetzt — Nacharbeit, Blindprüfer genügt" oder der Grund, warum doch.⟩
 
-### Stimme 3 — ⟨R2: diff-only-Fremdstimme oder Gegenprüfer / R3: Gegenprüfer⟩ (⟨Modell, Datum⟩)
-⟨Gegenprüfer: Widerlegungsauftrag, eigener Baum. In einer Nacharbeitsrunde nur,
+### Stimme 3 — ⟨R2: diff-only-Fremdstimme oder Gegenprüfer / R3: Gegenprüfer⟩ (⟨Modell, beim Gegenprüfer Subagent-Typ — kein Fork, Datum⟩)
+⟨Gegenprüfer: Widerlegungsauftrag, eigener `git archive`-Baum. In einer Nacharbeitsrunde nur,
 wenn eine neue Tür angefasst wurde — sonst hier die Begründung. Diff-only-Stimme:
 kurz; bekanntes Muster: irrt Richtung zu-streng, liest gelegentlich die
 Vorher-Seite eines Diffs.⟩
@@ -51,8 +51,10 @@ Risikoklasse"). Lief keine — auch wenn sie mit Guthabenende abbrach —,
 entfällt dieser Block ohne Vermerk; lief eine, bleibt er stehen. Zählt mit
 ihren Funden, nie mit ihrer Freigabe.⟩
 
-### Tür-Probe (R3/R4)
-⟨Nur bei R3/R4; bei R2 entfällt dieser Block. Was geprobt wurde (welche Tür,
+### Tür-Probe (R3/R4; Kopftext-R2 an einer kritischen Datei)
+⟨Nur bei R3/R4; bei R2 entfällt dieser Block — außer bei einer reinen
+Kopftext-Änderung an einer kritischen Datei (`panel.md`, „Kritische Dateien"):
+Dort ist sie R2, die Tür-Probe bleibt und steht hier. Was geprobt wurde (welche Tür,
 auf welchem Stand, mit welchem Aufruf) — Ergebnis. Oder: „teilweise
 ausgefallen — ⟨Grund, bis wohin geprobt⟩"; dann gilt die Folge aus `CLAUDE.md`,
 Review-Panel: vor der Auslieferung nachholen oder ausdrückliche

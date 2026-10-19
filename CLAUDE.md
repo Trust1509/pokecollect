@@ -1,8 +1,8 @@
 # CLAUDE.md — PokéCollect
 
-**Prozess-Stand: v1.17.2** — Stand der Vorlage `Trust1509/agent-projekt-template`,
+**Prozess-Stand: v1.18.13** — Stand der Vorlage `Trust1509/agent-projekt-template`,
 gegen die dieses Projekt zuletzt abgeglichen wurde (Abgleich-Issue im Repo,
-Titel `Abgleich v1.17.2`). Bei einer neueren Vorlagen-Version nach
+Titel `Abgleich v1.18.13`). Bei einer neueren Vorlagen-Version nach
 `docs/agents/abgleich.md` der Vorlage abgleichen und diese Zeile hochsetzen.
 **Prozess-Erkenntnisse gehen in die Vorlage, nicht in einen Alleingang hier:**
 Fall + Vorschlag als Issue (Label `prozess-vorschlag` / `prozess-lehre`), bloße
@@ -75,7 +75,10 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    brauchen die Code-Gates nicht — **wohl aber Gate P, sobald sie `CLAUDE.md`
    oder `docs/agents/` berühren**: Der Verweis-Wächter prüft genau diese
    Dateien, und ein Doku-Commit kann ihn brechen (`sh scripts/gates.sh
-   prozess`, ~15 s; Gegenprüfer, Abgleich v1.17.2). Die CI fährt Gate P nicht
+   prozess`, ~20 s, unter der Rechner-Sperre; Gegenprüfer, Abgleich v1.17.2).
+   Gate P fährt dabei auch die Brief-Selbstprobe, die ein Doku-Commit an den
+   Prüffragen, den „Randbedingungen, die immer mitmüssen" oder den „Typischen
+   Fallen" in `bau-brief.md` bricht (Vorlage v1.18.1). Die CI fährt Gate P nicht
    — was es rot macht, ohne dass jemand daran denkt, ist bisher nichts
    (erste Wächterfrage, `docs/agents/lehren.md` §10; offen in #106). Die Prüfungen
    laufen **einmal auf dem finalen Baumzustand**, egal von wem: dieselbe Suite
@@ -91,8 +94,9 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    Auflage. Bau-Briefe geben `bau=<vom Orchestrator gesetzt>` vor.
 5. **Die Tabelle besitzt die PRÜFTIEFE** (wer prüft, wie tief) — sie ist der
    einzige Eigentümer der Auslöser. **Das RELEASE-GATE (wer vor Release
-   freigibt) ist eine eigene, projekteigene Größe** und darf breiter sein als
-   R4 (v1.12.1). Unsere Entscheidung dazu hat zwei Stufen: Im
+   freigibt) ist eine eigene Größe:** Seine Untergrenze hat der Owner für alle
+   Projekte gesetzt, darüber darf das Projekt weitere Auslöser haben (Vorlage
+   v1.18.2). Unsere Entscheidung dazu hat zwei Stufen: Im
    v1.11.3-Abgleich wurde das frühere breitere Gate („jede Migration →
    Owner-OK") **bewusst und Owner-gebilligt** auf die R4-Auslöser verengt
    (#78, veto-fähig vorgelegt, kein Veto); die **Owner-Dauerregel vom
@@ -121,9 +125,14 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    laufen parallel im Hintergrund. Verboten ist nicht der Hintergrundlauf,
    sondern der **unbemerkte**: Ein Lauf, den ein Zeitlimit oder ein Abbruch
    ins Hintergrundfach verschoben hat, wird **gestoppt und im Ergebnis
-   genannt**, bevor die nächste Messung startet — und zwar über seine
-   Prozessnummer, nie über den Programmnamen (auf diesem Rechner laufen
-   parallele Sitzungen anderer Projekte). Jeder Bau- und Panel-Bericht endet
+   genannt**, bevor die nächste Messung startet — samt seinen Kindprozessen,
+   über seine Prozessnummer mit `sh docs/vorlagen/baum-stoppen.sh <pid>` (die
+   Prozessnummer allein trifft unter Git Bash die Kinder nicht; Vorlage
+   v1.18.12), nie über den Programmnamen (auf diesem Rechner laufen parallele
+   Sitzungen anderer Projekte). Hält der Lauf die Rechner-Sperre, wird sie erst
+   nach dem Exit 0 des Werkzeugs und dem Blick auf `docker ps` und `ps -W`
+   freigegeben (`docs/agents/bau-brief.md`, Randbedingung „Parallelität").
+   Jeder Bau- und Panel-Bericht endet
    mit der Zeile **„Eigene Läufe am Ende: …"** (`docs/agents/lehren.md` §22,
    Form in `docs/agents/panel-kommentar.md`).
 
@@ -158,26 +167,32 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - **Verfahren verweisen, SCHWELLEN hier** — und jede Schwelle hat genau einen
   Eigentümer (Schwellen-Inventar unten). Ansonsten dupliziert diese Datei
   keine Regeln, sie verweist (Arbeitsregel 10).
-- **Vor jedem Slice** die fünf Fragen aus `docs/agents/lehren.md` — nicht die
-  24 Abschnitte. Ein Dokument zu haben ist nicht, es gelesen zu haben.
+- **Vor jedem Slice** die fünf Fragen aus `docs/agents/lehren.md` — nicht alle
+  Abschnitte. Ein Dokument zu haben ist nicht, es gelesen zu haben.
 
 ## Build, Gates, Teststand
 
 - **Frontend-Gates und Sperrdateien laufen im Container, nicht auf dem Host.**
   Node und npm SIND lokal installiert — die frühere Aussage „kein Node/npm
-  lokal" war falsch (gemessen 28.09.2026: `node --version` Exit 0, v24.18.0;
-  `npm --version` Exit 0, 11.16.0). Der Grund für die Regel ist ein anderer:
-  Container und CI laufen auf npm **10.8.2** (`node:20-alpine`,
-  `node-version: 20`), und ein Lock aus npm 11 kann in der CI scheitern.
+  lokal" war falsch (gemessen 28.09.2026, wiederholt 19.10.2026:
+  `node --version` Exit 0, v24.18.0; `npm --version` Exit 0, 11.16.0). Der
+  Grund für die Regel ist ein anderer: Container und CI laufen auf npm
+  **10.8.2** (`node:20-alpine`, im Abbild gemessen 19.10.2026: node v20.20.2,
+  npm 10.8.2; die CI setzt `node-version: 20`), und ein Lock aus npm 11 kann in
+  der CI scheitern.
   `scripts/gates.sh` fährt pytest, tsc, lint und next build in Docker;
   `package-lock.json` nur im Node-Container erzeugen (Kommando in
   `docs/agents/bau-brief.md`, Projektabschnitt).
-- **Nacktes `python` hängt auf diesem Rechner für immer** (Windows-Store-Stub,
-  auch mit Skriptdatei). Die Prozess-Werkzeuge der Vorlage laufen deshalb im
-  Gate im Container `python:3.12-slim`, aufgerufen als `/usr/local/bin/python3.12`
-  — **nicht** über den Symlink `python3`: Über ihn ist die Wächter-Selbstprobe
-  rot (Fall „Hardlink des Interpreters"), über das echte Binary grün (gemessen
-  28.09.2026).
+- **Python im Gate ist ein absoluter Interpreter im Container**, nie ein Alias:
+  `/usr/local/bin/python3.12` in `python:3.12-slim`. Nacktes `python` hing auf
+  diesem Rechner bis Oktober 2026 für immer (Windows-Store-Stub); seit der
+  Alias auf den Python Install Manager zeigt (Alias vom 10.10.2026), läuft es
+  (gemessen 19.10.2026: `python -c`, `python <skript>` und `python --version`
+  je Exit 0 unter 20 s, Python 3.14.5). Ein Alias, der still wechseln kann,
+  bleibt trotzdem keine Gate-Umgebung (`docs/agents/lehren.md` §5). Über den
+  Symlink `python3` ist die Wächter-Selbstprobe seit Vorlage v1.18.10 ebenfalls
+  grün (bis dahin rot, Fall „Hardlink des Interpreters"; beides gemessen,
+  28.09. und 19.10.2026).
 - **Backend-Tests:** `pytest` unter `backend/tests/`, gegen echtes Postgres
   (`conftest.py` schließt SQLite aus). Prüf-Abhängigkeiten stehen in
   `backend/requirements-dev.txt` — **Gate und CI installieren aus derselben
@@ -193,8 +208,15 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   laufen drei Teile von `gates.sh`: die Was-ist-neu-Parität (Gate 0), die
   Paritäts-Prüfungen Gate ↔ CI im Web-Gate (`grep` auf `ci.yml`) und die
   Prozess-Werkzeuge der Vorlage (Gate P: Brief-Selbstprobe,
-  Wächter-Selbstprobe, Lehren-Verweise) — die CI ruft `gates.sh` nicht auf.
-  Wer sie auslässt, macht nichts rot (`docs/agents/lehren.md` §10).
+  Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) — die
+  CI ruft `gates.sh` nicht auf. Wer sie auslässt, macht nichts rot
+  (`docs/agents/lehren.md` §10).
+- **Rechner-Sperre für jeden schweren Lauf** — was als schwer gilt (auch
+  `gates.sh prozess`: es startet einen Container) und der Wert: Schwellen-Inventar
+  unten, Zeile „Schwere Läufe auf dem Rechner". Die zwei Blöcke zum Nehmen und
+  Freigeben und der Abbruch über `docs/vorlagen/baum-stoppen.sh` stehen in
+  `docs/agents/bau-brief.md`, Randbedingung „Parallelität". Die Skripte nehmen
+  die Sperre NICHT selbst — wer sie startet, nimmt sie im selben Aufruf.
 - **CI-DAUERREGEL: EIN Lauf je Slice, nicht je Push (Owner, 02.09.2026 — ersetzt
   die Quota-Notbremse vom 14./20.08.).** Das Actions-Kontingent (3000 Min/Monat)
   teilen sich alle Repos; Tagesbudget und übliche Laufdauer stehen im
@@ -249,19 +271,24 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - TrueNAS `<server-ip>` — **GETEILTER Server, nie `docker system prune -a`**.
   Repo dort: `/mnt/HDDs/Applications/pokecollect/app`, `deploy.sh` = git pull +
   Build beider Images. Ports API 3010 / Web 3011, UID:GID 3010:3010.
-- **Für Agenten ist kein SSH-Zugang zum Server eingerichtet** — das ist ein
-  Umstand, keine eingerichtete Sperre. Gemessen 28.09.2026 an allen Orten,
-  aus denen Claude Code hier Einstellungen lädt: `grep -c -i ssh` auf
-  `~/.claude/settings.json`, `~/.claude/settings.local.json` und
-  `.claude/settings.local.json` im Elternordner des Repos → je 0 (Exit 1);
-  die `.claude/settings.json` des Elternordners, `.claude/settings*.json` im
-  Repo und verwaltete Einstellungen (`managed-settings.json` unter
-  `C:\ProgramData\ClaudeCode\` und `C:\Program Files\ClaudeCode\`) gibt es
-  nicht (`test -f` → 1). **Ob auf diesem Rechner ein Schlüssel liegt, der auf
-  dem Server gilt, ist NICHT gemessen** — ein Verbindungsversuch zum Server
-  gehört nicht zu den Aufgaben eines Agenten. API/Web sind per HTTP
-  testbar:
-  `curl <server-ip>:3010/health`.
+- **SSH zum Server: ein Schlüssel für Agenten liegt bereit, ob er dort gilt,
+  ist offen.** Gemessen 19.10.2026, ohne Verbindung:
+  - Keine SSH-Regel in den Einstellungen, aus denen Claude Code hier lädt:
+    `grep -c -i ssh` auf `~/.claude/settings.json`,
+    `~/.claude/settings.local.json` und `.claude/settings.local.json` im
+    Elternordner des Repos → je 0; die `.claude/settings.json` des
+    Elternordners, `.claude/settings*.json` im Repo und verwaltete
+    Einstellungen (`managed-settings.json` unter `C:\ProgramData\ClaudeCode\`
+    und `C:\Program Files\ClaudeCode\`) gibt es nicht (`test -f` → 1).
+  - In `~/.ssh` liegt seit dem 18.10.2026 ein privater Schlüssel für Agenten
+    (Kommentar `claude-homelab`), vom Owner für andere Geräte im Heimnetz
+    angelegt; keine `~/.ssh/config`, kein laufender Schlüssel-Agent
+    (`ssh-add -l` → 2). Am 28.09.2026 lag dort nur `known_hosts`.
+  - **Ob dieser Schlüssel auf dem Server gilt, ist NICHT gemessen** — das
+    zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben
+    eines Agenten. Owner-Frage im Issue „Abgleich v1.18.13"; die Folge steht
+    unter „Sicherheit", Absatz zum Produktiv-Wächter.
+  API/Web sind per HTTP testbar: `curl <server-ip>:3010/health`.
 - Du lieferst getestete, getaggte Stände + klare Deploy-Anweisung; der Owner
   deployt selbst.
 - **Betrieb** (Sicherung mit Rückspiel-Probe, Totmann-Schalter,
@@ -287,10 +314,14 @@ muss, ist deshalb Standard, nicht Option. Konkret:
      nehmen und dem Owner melden.
   Historien-Prüfung 04.09.2026 über alle 233 Commits (API-Key-Muster, private
   Schlüssel, `192.168.*`/`10.*`, Passwort-Zuweisungen, `.env`-Dateien,
-  E-Mail-Adressen): **ohne Befund** — die einzigen Passwort-Treffer sind
-  Wegwerf-Werte für Gate-Postgres und Teststand.
+  E-Mail-Adressen): gemeldet **ohne Befund** — die einzigen Passwort-Treffer
+  sind Wegwerf-Werte für Gate-Postgres und Teststand. **Berichtigt am
+  19.10.2026:** Eine Zeile hat sie übersehen. `deploy/README.md` nannte seit dem
+  04.06.2026 (`67175b4`) das Heimnetz als Adressbereich (gefunden 28.09.2026);
+  die Zeile sagt jetzt „im Heimnetz". Private Adressen, die Historie bleibt
+  stehen.
 
-  **Nachgemessen am 06.09.2026** (Abgleich v1.14.1, Owner-Auftrag):
+  **Nachgemessen am 19.10.2026** (Abgleich v1.18.13; zuvor 06.09.2026):
   `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`,
   Sichtbarkeit `public`, **0 offene Alerts**. `secret_scanning_validity_checks`
   steht auf `disabled` — das ist eine Owner-Entscheidung, kein Mangel.
@@ -307,10 +338,14 @@ muss, ist deshalb Standard, nicht Option. Konkret:
      inzwischen „Plattform UND eigener Scanner" — der Plattform-Scan kennt
      nur die Muster seiner Partner-Anbieter (selbst vergebene Schlüssel fand
      in einer Probe mit sechs Fixtures nur ein eigener Scanner), und
-     öffentliche Repos verbrauchen keine abgerechneten Minuten. Unsere Regel
-     ist ein Owner-Entscheid vom 06.09.2026 mit genau der Begründung, die
-     die Vorlage zurückgenommen hat. Sie bleibt stehen, bis der Owner neu
-     entscheidet (Frage im Issue „Abgleich v1.17.2").
+     öffentliche Repos verbrauchen keine abgerechneten Minuten. Den zweiten
+     Grund belegt die Vorlage mit `billable = 0` aus `actions/runs/<id>/timing`;
+     dieselbe Schnittstelle meldet 0 aber auch für private Repos (gemessen
+     28.09.2026 an zwei privaten Läufen desselben Kontos), als Kostenbeleg
+     taugt sie also nicht. Unsere Regel ist ein Owner-Entscheid vom 06.09.2026
+     mit genau der Begründung, die die Vorlage zurückgenommen hat. Sie bleibt
+     stehen, bis der Owner neu entscheidet (Frage in den Issues „Abgleich
+     v1.17.2" und „Abgleich v1.18.13").
   2. **Die PII-Grenze ist für Code gegenstandslos, für DATEN scharf.** Unser
      Code enthält keine Personendaten. Was zählt, sind Fixtures und
      Beispieldaten — **die Fixtures-Regel ist hier die eigentliche
@@ -323,7 +358,8 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   4. **Test-Zugänge stehen nie im Repo.** Auch keine Wegwerf-Passwörter für
      den Teststand in Dateien, die jeder lesen kann — dazu #96.
   Bei einem Sichtbarkeitswechsel wird die Historie einmal vollständig
-  geprüft (bei uns am 04.09. geschehen, ohne Befund).
+  geprüft (bei uns am 04.09. geschehen; die eine übersehene Zeile ist oben
+  berichtigt).
 
 - **Auth-Zwang (Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein JWT
   (`require_auth` via `include_router`-dependencies); auth-frei sind nur
@@ -333,15 +369,18 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   (`*_set` / `*_masked`). Ohne `APP_PASSWORD_HASH` startet die App nicht.
 - **Der Agent trägt keine Schlüssel ein** — Details, Ablageorte und der
   Wiederruf-Weg in `docs/SECRETS.md`.
-- **Kein Produktiv-Wächter nötig — solange die Bedingung hält:** Es gibt keinen
-  MCP-Server und keine schreibenden Prod-Werkzeuge; ein SSH-Zugang für Agenten
-  ist nicht eingerichtet (Umstand, s. „Deploy“). Die
-  Prod-API ist per HTTP aber erreichbar, Schreiben scheitert heute **nur** daran,
-  dass der Agent das Passwort nicht kennt. Das ist eine Umstands-Sperre, keine
-  strukturelle. **Gerät ein Prod-Token, das Prod-Passwort oder ein SSH-Weg zum
-  Server je in den Kontext eines Agenten, wird der Wächter sofort nötig**
-  (Vorlage + Echtprobe siehe
-  `docs/SECRETS.md`).
+- **Produktiv-Wächter: die Bedingung ist offen** (Owner-Frage, Abgleich
+  v1.18.13). Es gibt keinen MCP-Server für dieses Projekt und keine
+  schreibenden Prod-Werkzeuge (gemessen 19.10.2026: kein MCP-Server mit Bezug
+  zu diesem Projekt in der Client-Konfiguration). Die Prod-API ist per HTTP
+  erreichbar; Schreiben scheitert dort daran, dass der Agent das Passwort
+  nicht kennt — eine Umstands-Sperre, keine strukturelle. Für SSH liegt seit
+  dem 18.10.2026 ein Agenten-Schlüssel auf diesem Rechner, ob er auf dem
+  Server gilt, ist offen („Deploy"). **Ist ein Prod-Token, das Prod-Passwort
+  oder ein SSH-Weg zum Server für einen Agenten erreichbar, wird der Wächter
+  sofort nötig** — ein Schlüssel auf der Platte zählt dazu, er muss nicht
+  gekannt werden. Bis zur Antwort benutzt kein Agent diesen Schlüssel gegen den
+  Server (Disziplin, keine Sperre). Vorlage + Echtprobe: `docs/SECRETS.md`.
 
 ## Risikoklasse je Slice — hier wird entschieden, was geprüft wird
 
@@ -360,14 +399,18 @@ die Pflichtfälle (v1.11.0) — sie ist der einzige Eigentümer der Auslöser.
 | **R2** | alles ohne R0-, R3- oder R4-Auslöser (der Normalfall) | Blindprüfer + Fremdprüfer |
 | **R3** | **Datenmigration — der VORGANG zählt, nicht das Werkzeug** (v1.12.0, framework-frei): bestehende Daten werden unumkehrbar umgewandelt — auch eine Light-Migration, die Werte aufteilt/umschreibt, auch eine selbstheilende Wanderung beim Start (bei uns real: #103). Eine rein ADDITIVE Spalte ohne Datenumwandlung ist KEINE Datenmigration (→ R2); Berechtigungs-/Datenschutzlogik (Auth, Secrets); Geld/Werte (Preise, Bewertung); Außenwirkung über eine Schnittstelle; **Fremdcode** — Produktionscode, den ein FREMDES System beigesteuert hat (Patch eines Anbietermodells, zugelieferter Zweig, übernommener Schnipsel) — **und fremde Werkzeug-Mechanik, die in den eigenen Prozess übernommen wird** (Hooks, Agenten-Definitionen, Skills eines anderen Frameworks: je Zusicherung wie „nur lesend“ oder „schlägt geschlossen fehl“ eine negative Probe); **kritische Dateien** — Wächter, Gate-Probe, Selbstprobe, Hook-Einträge, Gate-, Release- und Prüfskripte (Liste in `docs/agents/panel.md`, „Kritische Dateien“), unabhängig von der Diffgröße — **zwei Ausnahmen, beide nur für das Panel, die Probe durch die echte Tür bleibt in beiden Fällen:** (a) byte-identische Übernahme aus der Vorlage beim Abgleich (`abgleich.md` der Vorlage, Absatz „Panel für den Abgleich-Commit“); (b) **reine Kopftext-Änderung** — nur Kommentare oder Docstrings, Syntaxbaum nachweislich gleich (`docs/vorlagen/ast-gleich.py`); dann R2. Bedingungen und Beleg: `docs/agents/panel.md`, „Kritische Dateien“. **NICHT gemeint: der eigene Bau-Subagent** — sonst wäre der Auslöser hier immer erfüllt und R2 leer | volles Panel mit Gegenprüfer + risikospezifische Probe durch die echte Tür |
 | *Nacharbeit* | jede Nacharbeitsrunde nach einem Panel, gleich welcher Klasse; **höchstens zwei** (gezählt: Erstrunde, Nacharbeit 1, Nacharbeit 2; Owner 17.09.2026) | Blindprüfer; Gegenprüfer nur bei neuer Tür; bei R3 und R4 zusätzlich die risikospezifische Probe durch den Arbiter. **Nach Nacharbeit 2 wird nicht weiter gebaut:** offene oder neue BLOCKER → anhalten, Owner fragen; nur noch Nicht-Blocker → landen, die Funde werden ein eigenes Issue mit Beleg |
-| **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe. **Ein projekteigenes Release-Gate mit breiteren Auslösern bleibt davon unberührt** — diese Spalte sagt, ab wann die Vorlage eine Freigabe verlangt, nicht, ab wann das Projekt sie verlangen darf (v1.12.1) |
+| **R4** | irreversible Daten-/Prod-Wirkung; fachlich nicht rückholbare Entscheidung | R3 + ausdrückliche Owner-Freigabe. **Das Release-Gate bleibt davon unberührt** — diese Spalte sagt, ab wann die PRÜFTIEFE eine Freigabe verlangt; das Release-Gate (Schwellen-Inventar) verlangt sie zusätzlich bei Auslösern unterhalb von R4 (Vorlage v1.18.2) |
 
 „Klein" und „gut rückrollbar" sind **Urteile, keine Auslöser** — und Urteile
 sind der Punkt, an dem sich der Ausführende unter Druck freispricht.
-**Prüftiefe ≠ Release-Gate (v1.12.1):** Die Tabelle besitzt die Prüftiefe;
-das Release-Gate ist projekteigen und darf breiter sein — wer ein breiteres
-Gate zugunsten der R4-Zeile aufgibt, tut das als ausdrückliche, veto-fähige
-Owner-Entscheidung, nie als Nebenwirkung der Übernahme. **Hier geschehen:**
+**Prüftiefe ≠ Release-Gate (v1.12.1, Fassung v1.18.2):** Die Tabelle besitzt
+die Prüftiefe; das Release-Gate ist eine eigene Größe mit eigener Zeile im
+Schwellen-Inventar. Seine **Untergrenze** hat der Owner für alle Projekte
+gesetzt (Migrationen, Geld — beides R3-Auslöser, also unterhalb von R4), und
+ein Projekt darf weitere Auslöser haben. Wer eigene Auslöser über der
+Untergrenze aufgibt, tut das als ausdrückliche, veto-fähige
+Owner-Entscheidung, nie als Nebenwirkung der Übernahme; **unter die
+Untergrenze führt kein Entscheid auf Projektebene**. **Hier geschehen:**
 verengt im v1.11.3-Abgleich (#78) und bei der v1.12.0-Schärfung (#81), beide
 Male veto-fähig vorgelegt, kein Veto; von der Owner-Dauerregel vom
 02.09.2026 für Migrationen und Geld wieder erweitert. Der gültige Wert steht
@@ -378,8 +421,11 @@ im Schwellen-Inventar, Zeile „Release-Gate".
 **Jede Schwelle hat hier eine Zeile, und ihr WERT steht genau einmal:** in
 dieser Tabelle oder bei dem Eigentümer, den die Zeile nennt (dann steht hier
 der Zeiger, nicht die Zahl). **Portfolio** = vom Owner für alle Projekte
-entschieden, hier übernommen; **Projekt** = hier gewählt. Eine Schwelle, die
-hier fehlt, hat keinen Eigentümer — das ist ein Fund (Vorlage v1.17.0).
+entschieden, hier übernommen; **Projekt** = hier gewählt;
+**Portfolio-Untergrenze** = der Owner hat eine Mindestschwelle für alle
+Projekte gesetzt, das Projekt darf strenger sein, nie lockerer (Vorlage
+v1.18.2). Eine Schwelle, die hier fehlt, hat keinen Eigentümer — das ist ein
+Fund (Vorlage v1.17.0).
 
 | Schwelle | Wert | entschieden von |
 |---|---|---|
@@ -388,13 +434,15 @@ hier fehlt, hat keinen Eigentümer — das ist ein Fund (Vorlage v1.17.0).
 | Kostenschwelle je Panel-Lauf (Ersatzstimme) | **keine** — Kosten pauschal freigegeben (ersetzt die frühere Grenze „2 $/Monat“). Was bei Guthabenende geschieht, ist Verfahren: `docs/agents/panel.md`, Klumpenrisiko Punkt 4 | **Portfolio** (2026-09-19) |
 | Panel-Untergrenze beim Verkürzen | Abschnitt „Review-Panel“ unten, Absatz „Verkürzen“ | **Portfolio** |
 | Prüftiefe je Risikoklasse | Risiko-Tabelle oben, Auslöser abschließend | **Portfolio** |
-| Release-Gate (ab wann eine Freigabe nötig ist) | **R4-Auslöser und jedes Release mit Migration oder Geld-Logik** → vorher den Owner fragen. Geschichte: im v1.11.3-Abgleich auf R4 verengt (#78, veto-fähig vorgelegt, kein Veto), von der Owner-Dauerregel vom 02.09.2026 wieder erweitert: „wo das projekteigene Release-Gate ein Owner-Gate verlangt (Migrationen, Geld-Slices auf jeden Fall), VORHER fragen“ | **Portfolio** (Owner-Dauerregel 2026-09-02, Punkt „Release-Stau“) |
+| Release-Gate (ab wann eine Freigabe nötig ist) | **mindestens jedes Release mit Migration oder Geld-Logik** (Untergrenze, Owner-Dauerregel vom 02.09.2026: „wo das projekteigene Release-Gate ein Owner-Gate verlangt (Migrationen, Geld-Slices auf jeden Fall), VORHER fragen“); **dazu bei uns: R4-Auslöser** → vorher den Owner fragen. Geschichte: im v1.11.3-Abgleich auf R4 verengt (#78, veto-fähig vorgelegt, kein Veto), von der Dauerregel wieder erweitert | **Portfolio-Untergrenze** (2026-09-02), darüber **Projekt** |
 | Zeitlimit einzelner Befehle im Prüfauftrag | **15 Minuten** — dieselbe Grenze wie `timeout-minutes` beider CI-Jobs (`.github/workflows/ci.yml`) | **Projekt** |
-| CI-Nebenläufigkeit (`concurrency`, `cancel-in-progress`) | **an** — `group: ci-${{ github.ref }}`, `cancel-in-progress` für alles außer Tag-Refs (`ci.yml`). Nur `ci.yml` trägt sie; `security-scan.yml` und `smoke.yml` nicht (gemessen 28.09.2026). Sie hält die Zahl der Läufe unten, **ohne** dass jemand die Regel „ein Lauf je Slice“ einhält — ein abgebrochener Lauf ist kein eingesparter | **Portfolio** (Owner-Dauerregel 2026-09-02: Notbremse-Maßnahmen bleiben dauerhaft) |
+| CI-Nebenläufigkeit (`concurrency`, `cancel-in-progress`) | **an** — `group: ci-${{ github.ref }}`, `cancel-in-progress` für alles außer Tag-Refs (`ci.yml`). Ausgenommen sind nach der Vorlage auch Läufe, die ausliefern — solche gibt es bei uns nicht (Deploy macht der Owner). Nur `ci.yml` trägt sie; `security-scan.yml` und `smoke.yml` nicht (gemessen 28.09.2026). Sie hält die Zahl der Läufe unten, **ohne** dass jemand die Regel „ein Lauf je Slice“ einhält — ein abgebrochener Lauf ist kein eingesparter | **Portfolio** (Owner-Dauerregel 2026-09-02: Notbremse-Maßnahmen bleiben dauerhaft) |
 | CI-Tagesbudget über alle Repos | **100 Minuten** je Tag (Kontingent 3000 Min/Monat, geteilt) | **Portfolio** (2026-09-02) |
 | Übliche Dauer eines CI-Laufs (Meldeschwelle) | **2–4 Minuten** — ein Lauf deutlich darüber wird im Rückmeldungs-Issue der Vorlage gemeldet | **Portfolio** (Owner-Dauerregel 2026-09-02, Punkt „Budget“) |
 | Schwellen der Wochen-Scans (`security-scan.yml`) | `npm audit` ab **high** (Owner-Entscheid #91 — moderate/low mit reinem Major-Fix bleiben ohne Signal, Kommentar in `.github/dependabot.yml`); `pip-audit --strict` meldet jede bekannte Lücke; Schemathesis zählt nur 5xx | **Projekt** (npm-Schwelle: Owner, #91) |
 | Turnus des Abhängigkeits-Bots | `interval: monthly`, `open-pull-requests-limit: 1` je Ökosystem (`github-actions`, `pip`, `npm`; `.github/dependabot.yml`) | **Portfolio** (Owner-Dauerregel 2026-09-02) |
+| Schwere Läufe auf dem Rechner — alles, was eine volle Testsuite, einen Browser oder einen Container startet (bei uns jedes Ziel von `scripts/gates.sh`, `scripts/smoke.sh`, `scripts/teststand.sh up`, jeder Container-Build, ein Mutationslauf über die ganze Suite); im Zweifel schwer | **höchstens einer gleichzeitig auf dem ganzen Rechner**, über alle Sitzungen, Projekte und Rollen; leichte Läufe (eine Testdatei, Lint) sind frei. Eingehalten über EINE Sperre mit festem Pfad für alle Projekte, `$HOME/.sperre-schwerer-lauf`; Kommandos: `docs/agents/bau-brief.md`, Randbedingung „Parallelität" | **Portfolio** (2026-10-18) |
+| Parallelität innerhalb eines Laufs (Worker je Testlauf, Browser) | **pytest: 1 Prozess** (kein `pytest-xdist` in `backend/requirements-dev.txt`); **Playwright: 1 Worker**, also ein Browser zugleich (`workers: 1`, `e2e/playwright.config.ts`) — gemessen 19.10.2026 | **Projekt** |
 
 Panel-INTERNE Schwellen (Wiederholungen einer ausgefallenen Stimme,
 Antwortbudget) besitzt `docs/agents/panel.md` — die ausdrückliche Ausnahme
@@ -410,13 +458,15 @@ gilt als **nicht geprüft**.
 Bis zu drei Stimmen mit festen Namen (v1.15.0) — wie viele ein Slice bekommt,
 sagt die Risiko-Tabelle oben:
 
-1. **Blindprüfer** — frischer Reviewer-Subagent, bekommt **nur Diff und Repo**,
-   nicht den Bau-Brief. Früher „blinde Erststimme“.
+1. **Blindprüfer** — frischer Reviewer-Subagent (nie ein Fork der Sitzung),
+   bekommt **nur Diff und Repo** als `git archive`-Auszug außerhalb jedes
+   Repos, nicht den Bau-Brief. Früher „blinde Erststimme“.
 2. **Fremdprüfer** — Modell eines anderen Anbieters über denselben Diff
    (Codex; ist dessen Kontingent erschöpft, sofort die agentische
    OpenRouter-Stimme — nie warten, Owner 19.09.2026). Früher „unabhängige
    Zweitstimme“.
-3. **Gegenprüfer** — zweite frische Claude-Stimme mit Widerlegungsauftrag;
+3. **Gegenprüfer** — zweite frische Claude-Stimme mit Widerlegungsauftrag (auch
+   sie nie als Fork, Unterlagen als Dateien im eigenen `git archive`-Baum);
    Pflicht bei R3, optional bei R2. Früher „Drittstimme bei R3“ bzw.
    „Zweitblind-Stimme“.
 
@@ -425,13 +475,14 @@ Blindprüfer`), damit ältere Kommentare vergleichbar bleiben.
 
 **Verkürzen** (eine Stimme bewusst weglassen) nur mit Grund unter der
 Überschrift der weggelassenen Stimme — und nie unter die **Untergrenze**: bei
-R2 der Blindprüfer; bei R3 und R4 zusätzlich nie ohne Gegenprüfer und
-Tür-Probe. **Ein AUSFALL einer Pflichtstimme ist keine Verkürzung:** Sie wird
-vor der Auslieferung nachgeholt, oder der Owner gibt die Auslieferung ohne sie
-ausdrücklich frei. **Dasselbe gilt für eine teilweise ausgefallene Tür-Probe**
-bei R3 und R4 (Überschrift „Tür-Probe (R3/R4)“ in
-`docs/agents/panel-kommentar.md`). Die Schritte bei einem Ausfall stehen nur
-in `docs/agents/panel.md`.
+R2 der Blindprüfer (bei der Kopftext-R2 an einer kritischen Datei dazu die
+Tür-Probe, `docs/agents/panel.md`); bei R3 und R4 zusätzlich nie ohne
+Gegenprüfer und Tür-Probe. **Ein AUSFALL einer Pflichtstimme ist keine
+Verkürzung:** Sie wird vor der Auslieferung nachgeholt, oder der Owner gibt die
+Auslieferung ohne sie ausdrücklich frei. **Dasselbe gilt für eine teilweise
+ausgefallene Tür-Probe** bei R3, R4 und der Kopftext-R2 an einer kritischen
+Datei (Überschrift „Tür-Probe“ in `docs/agents/panel-kommentar.md`). Die
+Schritte bei einem Ausfall stehen nur in `docs/agents/panel.md`.
 
 **Kostenschwelle:** Wert im Schwellen-Inventar oben. Meldet die Ersatzleitung
 des Fremdprüfers Guthabenende, gilt `docs/agents/panel.md`, Klumpenrisiko

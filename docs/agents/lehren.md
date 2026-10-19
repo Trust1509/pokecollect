@@ -9,10 +9,13 @@ Die Einzelfälle stehen in den GitHub-Issues und im CHANGELOG; hier steht, was
 übertragbar ist. Prozessregeln stehen in `CLAUDE.md`, das Panel in `panel.md`.
 
 Verweise auf eine Lehre schreiben wir `§N`. Nur diese Form prüft der
-Verweis-Wächter (Gate P), und nur in `CLAUDE.md` und `docs/agents/*.md`. In
-Code-Kommentaren steht noch die ältere Form „Klasse N" (`.githooks/commit-msg`,
-`e2e/tests/whatsnew.spec.ts`, `web/scripts/check-whatsnew.mjs`) — die prüft
-niemand; beim Umnummerieren mitsuchen (`grep -rn "Klasse [0-9]"`).
+Verweis-Wächter (Gate P), und nur in `CLAUDE.md` und `docs/agents/*.md`.
+Code-Kommentare und Skripte prüft niemand. Dort stehen zwei Formen:
+`lehren.md §N` und die ältere „Klasse N" (gemessen 19.10.2026: 15 Zeilen in 10
+Dateien, darunter `scripts/gates.sh` und `.githooks/commit-msg`). Beim
+Umnummerieren beide mitsuchen:
+
+    git grep -nE 'Klasse [0-9]|lehren\.md`? ?§ ?[0-9]' -- ':!CLAUDE.md' ':!docs/'
 
 Der gemeinsame Prozess-Stand kommt aus `Trust1509/agent-projekt-template`.
 Fällt hier eine Lehre an, die **nicht am eigenen Stack klebt**, gehört sie als
@@ -21,7 +24,7 @@ die anderen Projekte nie davon.
 
 ## Vor jedem Slice: fünf Fragen
 
-24 Abschnitte liest man einmal. Die Kurzfassung, die tatsächlich vor den
+Die Abschnitte unten liest man einmal. Die Kurzfassung, die tatsächlich vor den
 Slice gehört — wer sie beantwortet, hat die teuersten Klassen unten abgedeckt:
 
 1. **Womit beweist dieser Slice, dass er wirkt** — und war dieser Beweis je rot?
@@ -203,6 +206,47 @@ bestätigte den Verdacht — es gab aber eine zweite Stelle, die denselben
 Befehl startet, und die ursprüngliche Zahl war richtig. Eine Messung, die nur
 die vermutete Stelle instrumentiert, ist eine Bestätigungsmaschine. Die
 Grenze ist der Systemaufruf, die HTTP-Anfrage, der Datenbank-Treffer.
+
+**Auch die Gate-Kette ist eine Mutation** (Vorlage §1, v1.18.2). „Die neue
+Prüfung aus der Gate-Datei streichen" gehört in jede Mutationsliste; in einem
+anderen Projekt rutschte genau das durch, weil die Selbstprobe das Prüfskript
+prüfte, nicht seinen Aufruf. Bei uns gilt das für jede Zeile von Gate P in
+`scripts/gates.sh`: Fehlt eine, wird keine der Selbstproben rot (#106).
+
+**Wer einen Mutanten für äquivalent erklärt, schuldet die Sonde, die ihm recht
+gäbe** (Vorlage §1, v1.18.2). Überlebt eine Mutation alle Tests, ist entweder
+der Code überflüssig, oder es fehlt ein Test — und unter Druck wird die bequeme
+Erklärung gewählt. Dort entfernte ein Bauer einen „überflüssigen" Block vor dem
+Commit; der Blindprüfer fand mit einer Sonde den Fall, in dem der Block
+Verhalten trug, und die Commit-Nachricht beschrieb den Block weiter. **Ein
+Commit-Text wird gegen den Diff gelesen, nicht gegen die Absicht.** Ohne Sonde
+bleibt der Code stehen.
+
+**Ein Eigenschafts-Wächter prüft die STÄRKE, nicht den Wahrheitswert**
+(Vorlage §1, v1.18.2). Ein Sperr-Wächter, der „irgendeine Sperre" verlangte,
+blieb dort grün, als eine schwächere Sperrform den Fehler auf PostgreSQL
+zurückbrachte. Der Wächter liest den Rohwert und vergleicht ihn mit der
+verlangten Stufe.
+
+**Fixtures tragen feste Daten oder Daten relativ zum Test-„heute", nie das
+echte Datum** (Vorlage §1, v1.18.2): Zwei Tests mit dem echten Datum kippten
+dort am Quartalswechsel auf jedem Stand rot. Bei uns stand das echte Datum am
+19.10.2026 in 15 Zeilen von 8 Testdateien (gesucht nach `date.today()`,
+`datetime.now(`, `datetime.utcnow(` und `time.time()` unter `backend/tests/`,
+nach `new Date()` und `Date.now()` unter `e2e/tests/`; ob ein Treffer ein
+Ergebnis vom Datum abhängig macht, ist nicht je Treffer geprüft). Umgestellt
+wird bei der nächsten Arbeit an der jeweiligen Suite.
+
+**Eine Selbstprobe, deren Eingabe das Format eines fremden Werkzeugs nachbaut,
+prüft die Annahme mit, statt sie zu prüfen** (Vorlage §1, v1.18.2). Dort
+scheiterte ein Wächter für Commit-Nachrichten zweimal an nachgebauten
+Eingaben: Ein Fall erwartete, dass git eine Kommentarzeile entfernt — bei
+`git commit -F` tut es das nicht —, ein zweiter baute den `-v`-Anhang ohne die
+zwei Zeilen, die git dort schreibt; der Wächter lehnte danach jeden echten
+Commit mit `-v` ab, die Probe blieb grün. **Regel:** Mindestens ein Fall
+bekommt seine Eingabe vom fremden Werkzeug selbst (echtes `git commit`). Bei
+uns betrifft das `.githooks/commit-msg`; der Hook hat bisher gar keine
+Selbstprobe (gemessen 19.10.2026). Entsteht eine, gilt diese Regel für sie.
 
 ---
 
@@ -395,6 +439,38 @@ ins Protokoll und lief weiter — der Container stand elf Tage in „Created"):
   Defekts: Ein Wächter, der von außen durch die Tür fährt, erreicht nur den
   FRÜHESTEN Ablehnungsweg — lebt der Defekt am spätesten, braucht es
   zusätzlich eine Prüfung, die alle Wege sieht.
+- **Grün auf der Bau-Maschine ist kein Urteil über die Zielplattform**
+  (Vorlage §10, v1.18.2). Ein Test, der ein Verhalten von Betriebssystem oder
+  C-Bibliothek festhält (Zeitfunktionen vor 1970, Pfadlängen, Signale,
+  Locale), hält die Plattform des Bauers fest; bei „wirft X" entscheidet die
+  Plattform, OB geworfen wird. Dort warf ein Datum vor 1970 nur unter Windows,
+  und erst ein Lauf im Wegwerf-Container mit dem App-Abbild zeigte es.
+  **Regel:** Ein Test, der eine Ausnahme aus Betriebssystem oder C-Bibliothek
+  erwartet, läuft vor der Landung einmal auf der Zielplattform. Ohne einen
+  solchen Lauf bleiben solche Eingaben aus dem Test, und eine Eingabe, die nur
+  auf einer Plattform wirft, gehört nie in den Rot-Beweis. Bei uns ist die
+  Zielplattform Linux im Container: `scripts/gates.sh` fährt pytest im Abbild,
+  ein Lauf auf dem Windows-Host allein belegt nichts (Typische Falle
+  „Plattform" in `bau-brief.md`).
+- **`.gitattributes` wirkt beim Schreiben, nicht rückwirkend** (Vorlage §10,
+  v1.18.2). Eine Datei mit `eol=lf` kann nach einem abgebrochenen Umschreiben
+  mit CRLF im Arbeitsbaum liegen, weil git Dateien mit unverändertem Blob
+  nicht neu schreibt; ein Werkzeug, das den Arbeitsbaum liest, sieht dann
+  andere Bytes als die CI. Was zu tun ist, zeigt `git ls-files --eol`: Bei
+  `i/crlf` oder `i/mixed` liegen schon die Blobs falsch — dann bei sauberem
+  Baum `git add --renormalize .`, ein eigener Commit, danach die Dateien neu
+  schreiben lassen. Steht nur der Arbeitsbaum auf `w/crlf`, reicht das
+  Neuschreiben (bei sauberem Baum `git rm --cached -r -q . && git reset
+  --hard`). Hausbeleg: Bei uns gilt `* text=auto eol=lf`, und trotzdem
+  standen am 19.10.2026 zehn unveränderte Dateien im Arbeitsbaum auf `w/crlf`
+  (Index `i/lf`), darunter drei aus `docs/agents/`, die Gate P liest. Neu
+  geschrieben aus dem Index (`git checkout -- <datei>` nach dem Löschen, je
+  Datei, weil der Baum nicht sauber war); danach 0.
+- **Ein byteweise arbeitendes Werkzeug sieht Mehrbyte-Zeichen als Bytes**
+  (Vorlage §10, v1.18.2). Eine Zeichenklasse wie `[^"“]` in `sed` ohne
+  UTF-8-Locale schließt die drei Bytes von `“` einzeln aus — und damit auch
+  `…`, das zwei davon teilt. Dieselbe Klasse wie bei der Suche unter
+  `LC_ALL=C` (`abgleich.md` der Vorlage, 2b), hier im Code.
 
 ---
 
@@ -411,6 +487,17 @@ ins Protokoll und lief weiter — der Container stand elf Tage in „Created"):
   ASCII-`"` geschlossen werden. Innere Quotes weglassen oder Backtick-Template.
 - **Next-Hooks sind nullable:** `useSearchParams()`/`useParams()` brauchen
   Optional-Chaining, `useSearchParams()` zusätzlich `<Suspense>`.
+- **Eine Ausschlussliste lässt jedes neue Verzeichnis durch** (Vorlage §6,
+  v1.18.2). Ein Deploy, der den Baum spiegelt und ausnimmt, was nicht live
+  soll, liefert alles aus, woran beim Schreiben der Liste niemand dachte; dort
+  wäre ein neues Hook-Verzeichnis drei Wochen lang öffentlich abrufbar
+  gewesen, weil jede Prüfung die Liste las und keine die Menge. **Regel:** Wer
+  per Ausschlussliste ausliefert oder prüft, rechnet die Menge nach —
+  `git ls-files` minus die Ausnahmen gegen eine kurze Positivliste. Bei uns
+  gemessen am 19.10.2026: Beide Abbilder entstehen aus Positivlisten
+  (`backend/Dockerfile` kopiert `requirements.txt` und `app/`, die letzte
+  Stufe von `web/Dockerfile` nur `public/`, `.next/standalone` und
+  `.next/static`); eine Ausschlussliste gibt es nicht.
 
 ---
 
@@ -486,6 +573,26 @@ war belegt, aber nur für das Vorhandensein des Schlüssels, nicht für die
 Richtigkeit des Werts. Eine Mutation, die den Wert kaputt macht und den
 Schlüssel stehen lässt, gehört deshalb zu jedem Vollständigkeits-Wächter —
 bei uns etwa zu jeder Prüfung auf „DE und EN nicht leer" (Issue #99).
+
+**Ein Signal, das ein Zeitfenster ersetzt, macht das Urteil schneller und
+schwächer zugleich** (Vorlage §14, v1.18.2). Ein Urteil „Container gesund" war
+dort ein Schnappschuss nach drei Sekunden; ein Slice ersetzte ihn durch ein
+Lebenszeichen des Prozesses, das Millisekunden nach dem Start kommt — ein
+Prozess, der nach vier Sekunden stirbt, galt damit eher als gesund als vorher.
+**Regel:** Wer ein Zeitfenster durch ein Signal ersetzt, stellt den Zeitpunkt
+des Signals gegen das abgeschaffte Fenster, und die Tür-Probe enthält den Fall
+**„Signal da, dann Ausfall"**, nicht nur „kein Signal".
+
+**Eine Tür-Probe ist selbst ein Werkzeug ohne Selbstprobe** (Vorlage §14,
+v1.18.2). Von sieben Läufen einer Signal-Probe am echten Container meldeten
+dort drei rot oder nichts, ohne dass das Produkt beteiligt war: Docker wertete
+`docker kill` als manuellen Stopp, die Prüfschleife fand ihre eigene Shell, und
+das Signal traf die Erstfassung eines Skripts statt der per `exec`
+gewechselten. **Regel:** Eine Tür-Probe gibt VOR dem Urteil ihre Beweismittel
+aus — getroffener Prozess mit Nummer und Befehlszeile, Zustand des
+Containers, die letzten Zeilen des Produkt-Logs —, und ihr erster Lauf gilt
+als Probe der Probe: Zeigt ein Fall nicht das erwartete Bild, wird zuerst das
+Skript geprüft, dann das Produkt.
 
 ---
 

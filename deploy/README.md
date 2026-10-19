@@ -171,7 +171,7 @@ Das Script macht automatisch: `git pull` → `chown` → API rebuild → Web reb
 
 ## Externen Zugriff mit Authelia einrichten
 
-> **Architektur:** Intern (192.168.2.x) ist alles offen. Extern (über Caddy + Authelia) wird ein Login erzwungen, bevor die App erreichbar ist.
+> **Architektur:** Intern (im Heimnetz) ist alles offen. Extern (über Caddy + Authelia) wird ein Login erzwungen, bevor die App erreichbar ist.
 
 ### Schritt 1 – Authelia-Datasets anlegen (einmalig)
 

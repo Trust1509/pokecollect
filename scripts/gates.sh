@@ -62,33 +62,44 @@ whatsnew_paritaet_gate() {
 }
 
 # Abgleich v1.17.2: die Prozess-Werkzeuge der Vorlage — Brief-Prüfskript samt
-# Selbstprobe, Wächter-Gate-Probe-Selbstprobe und der Lehren-Verweis-Wächter.
-# Sie laufen im Linux-Container, nicht auf dem Host, aus drei gemessenen Gründen
+# Selbstprobe, Wächter-Gate-Probe-Selbstprobe und der Lehren-Verweis-Wächter;
+# seit Abgleich v1.18.13 dazu die Selbstprobe von ast-gleich.py (sein Urteil
+# entscheidet über die Größe eines Panels; ohne Gate-Zeile liefe die Probe nur,
+# wenn jemand daran denkt).
+# Sie laufen im Linux-Container, nicht auf dem Host, aus zwei gemessenen Gründen
 # (28.09.2026):
-#   1. Nacktes `python` hängt auf diesem Rechner für immer (Windows-Store-Stub).
+#   1. Nacktes `python` hing damals auf diesem Rechner für immer
+#      (Windows-Store-Stub). Seit dem Python Install Manager läuft es (gemessen
+#      19.10.2026) — ein Alias, der still wechselt, ist trotzdem keine
+#      Gate-Umgebung; das Gate nimmt einen absoluten Interpreter.
 #   2. Die Brief-Selbstprobe braucht unter Git Bash 166 s, unter dash im
 #      Container 9 s (201 Läufe des Prüfskripts; fork ist unter Linux billig).
-#   3. Die Wächter-Selbstprobe verlangt einen absoluten Interpreter, der KEIN
-#      Symlink ist: /usr/local/bin/python3 ist im Abbild einer (-> python3.12),
-#      über ihn wird der Fall "Hardlink des Interpreters" rot; python3.12 direkt
-#      ist grün. -I -S ist Pflicht (Vorlage abgleich.md 2h).
+# Ein dritter Grund ist entfallen: Bis Vorlage v1.18.10 war die
+# Wächter-Selbstprobe über den Symlink /usr/local/bin/python3 rot (Fall
+# "Hardlink des Interpreters"); gemessen 19.10.2026 ist sie auch darüber grün.
+# Wir rufen weiter python3.12 direkt auf. -I -S ist Pflicht (Vorlage
+# abgleich.md 2h); seit Vorlage v1.18.0 verweigern die Werkzeuge den Lauf ohne.
 # Alle drei Python-Aufrufe laufen mit -I -S, nicht nur der Wächter: Ohne -I
 # steht das Skriptverzeichnis docs/vorlagen/ vorn auf sys.path, und eine
 # gleichnamige Datei dort (tempfile.py, re.py) überschattet die
 # Standardbibliothek — das Verweis-Werkzeug endete dann mit Exit 0, ohne zu
 # prüfen, und das Gate meldete grün (Gegenprüfer, Abgleich v1.17.2; nachgestellt).
 # Keine gepinnte Erwartungszahl: Die Summe der Wächter-Selbstprobe hängt an der
-# Python-Version, nicht an der Plattform (3.14: 518, 3.12: 521 —
-# umgebungsbedingte Fälle 27 bzw. 30; Linux mit 3.14 nachgemessen: 518), stabil
-# sind nur die 490 festen. Die Werkzeuge melden ihr Ergebnis selbst über den
-# Exit-Code; `sh -eu` bricht beim ersten roten ab und reicht ihn durch.
+# Python-Version, nicht an der Plattform (gemessen 28.09.2026: 3.14 → 518,
+# 3.12 → 521, bei 490 festen; 19.10.2026 hier 628 = 597 feste + 30
+# umgebungsbedingte). Die feste Zahl prüft die Selbstprobe selbst als
+# Untergrenze (Vorlage v1.18.0). Die Werkzeuge melden ihr Ergebnis selbst über
+# den Exit-Code; `sh -eu` bricht beim ersten roten ab und reicht ihn durch.
+# Beleg eines Laufs ist die Schlusszeile "✓ Gates grün (...)", nicht Exit 0
+# allein (Vorlage v1.18.4: unter SHELLOPTS=noexec endet sh ohne eine Zeile).
 # Die Vorlagen-CI fährt diese Prüfungen nicht (0 Treffer in docs/vorlagen/ci.yml)
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
 prozess_gate() {
-  echo "── Gate P: Prozess-Werkzeuge (Brief-Prüfskript, Wächter-Selbstprobe, Lehren-Verweise) ──"
+  echo "── Gate P: Prozess-Werkzeuge (Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
   MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w python:3.12-slim sh -eu -c '
     sh scripts/bau-brief-pruefen-selbsttest.sh
     /usr/local/bin/python3.12 -I -S docs/vorlagen/waechter-gate-probe-selbsttest.py
+    /usr/local/bin/python3.12 -I -S docs/vorlagen/ast-gleich.py --selbstprobe
     /usr/local/bin/python3.12 -I -S docs/vorlagen/lehren-verweise-pruefen.py --selbstprobe
     /usr/local/bin/python3.12 -I -S docs/vorlagen/lehren-verweise-pruefen.py --lehren docs/agents/lehren.md docs/agents/*.md CLAUDE.md
   '

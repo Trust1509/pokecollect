@@ -5,9 +5,10 @@ Risiko-Tabelle in `../../CLAUDE.md`. Das Panel hat in der Praxis
 jeden zweiten Erstbau gestoppt — nicht wegen Kleinigkeiten, sondern wegen Funden,
 die in Produktion wehgetan hätten.
 
-> **Diese Datei ist `panel.md` der Vorlage v1.17.2** (Abgleich v1.17.2) mit
-> drei Arten Anpassung: Lehren-Verweise stehen in UNSERER Zählung oder als
-> „Vorlage §N" (`abgleich.md` der Vorlage, 2d); Verweise auf Dateien, die es
+> **Diese Datei ist `panel.md` der Vorlage v1.18.13** (Abgleich v1.18.13) mit
+> drei Arten Anpassung: Lehren-Verweise stehen in UNSERER Zählung, wo wir die
+> Lehre selbst führen, sonst als „Vorlage-Lehre §N" oder „Vorlage §N"
+> (`abgleich.md` der Vorlage, 2d); Verweise auf Dateien, die es
 > nur in der Vorlage gibt, tragen „der Vorlage"; und „Die Stimmen einrichten"
 > ist mit unseren Leitungen ausgefüllt. Was nur für dieses Repo gilt —
 > Besetzung, Datengrenze, Hausbelege — steht im **Projektabschnitt am Ende**;
@@ -116,15 +117,40 @@ und dann fehlt genau die Stimme, die erfahrungsgemäß die schwersten Funde
 liefert. Ein zweites Fenster derselben Sitzung ist **kein** Ersatz: Es sieht die
 Historie.
 
+**Ein Fork ist kein leerer Kontext.** Manche CLIs starten Subagenten auch als
+Abzweig der laufenden Sitzung — in Claude Code `subagent_type: "fork"`, seit
+v2.1.302 in mehreren Oberflächen eingeschaltet. Ein Fork erbt alles, was der
+Orchestrator gesehen hat: Brief, Bauer-Bericht, frühere Funde, die eigene
+Einschätzung. Ein Blindprüfer als Fork ist nicht blind, und nichts meldet es.
+**Blindprüfer und Gegenprüfer starten deshalb nie als Fork**, sondern als
+frischer Subagent eines benannten Typs; der Panel-Kommentar nennt den Typ neben
+dem Modell. Für den Gegenprüfer ist das keine Blindheit, sondern dieselbe
+Vorsicht gegen die Rahmung: Er bekommt seine Unterlagen als Dateien, nicht die
+Sicht des Orchestrators.
+
 **Pflichtzeile in jedem Prüfauftrag:** „Beende jeden eigenen Hintergrundlauf
-VOR dem Bericht — über seine Prozessnummer, nie über den Programmnamen — und
-nenne ihn in der Schlusszeile ‚Eigene Läufe am Ende: …'."
+VOR dem Bericht samt seinen Kindprozessen — über seine Prozessnummer
+(`sh docs/vorlagen/baum-stoppen.sh <pid>`), nie über den Programmnamen — und
+nenne ihn in der Schlusszeile ‚Eigene Läufe am Ende: …'." Die Prozessnummer
+allein reicht nicht: Ein Gate oder ein Testlauf mit Workern startet Kinder, die
+sonst als Waisen weiterlaufen (gemessen, v1.18.9 und v1.18.12).
+
 Die Schlusszeile allein reicht nicht — sie ist ein Formfeld, das eine Stimme
 auch mit einem laufenden Prozess wahrheitsgemäß ausfüllen kann. **Kein Gate
 macht das rot**: Der Arbiter sieht die offenen Läufe nur, wenn er selbst
 nachsieht — er tut es, bevor er den Bericht verwertet (`lehren.md` §22).
 Dasselbe gilt für den Nachweisweg der R2-Ausnahme unten: `ast-gleich.py` läuft
 nur, wenn jemand daran denkt.
+
+**Und die Rechner-Sperre, mit den zwei Blöcken aus `bau-brief.md`**
+(Randbedingung „Parallelität": Nehmen, Lauf und Freigeben in EINEM Aufruf; der
+Lauf zwischen den Blöcken ist der der Stimme): Jeder
+schwere Lauf einer Stimme — Gate, volle Suite, Mutationen über die ganze Suite,
+Tür-Probe mit Container oder Browser — nur unter ihr. Parallel gestartete
+Stimmen warten dann aufeinander; das kostet Zeit und ist gewollt
+(Portfolio-Wert, 2026-10-18). Ein Prüfauftrag ohne sie erreicht die Stimme
+nicht: Der erste Blindprüfer nach der Regel fuhr sein Gate ohne Sperre, weil sein
+Auftrag sie nicht nannte.
 
 **Und eine Stimme räumt nur ihre eigenen Prozesse ab.** Gemessen im Panel zu
 v1.16.0: Eine Stimme beendete einen hängenden Lauf mit einem rechnerweiten
@@ -152,6 +178,33 @@ Zugänge der Stimme (versucht, die verbotenen Dateien zu lesen — muss scheiter
 **und die Gegenprobe**, dass das Nötige da ist. Nur die erste Hälfte ist von
 einem leeren Mount nicht zu unterscheiden.
 
+**Zu den Zugängen gehören drei, die man leicht übersieht:**
+- **Das Objektlager hinter einem Worktree.** Ein `git worktree` teilt es mit dem
+  Hauptrepo: `git show <commit>:<pfad>` holt einen gelöschten oder nie
+  gelandeten Brief aus jedem erreichbaren Commit zurück, `git log --all` zeigt
+  die Zweige mit Bauer-Berichten. Gemessen in einem Projekt dieses Portfolios;
+  ein Kind-Repo hat dieselbe Lücke an dieser Datei gemeldet. Deshalb bekommt
+  der Blindprüfer einen `git archive`-Auszug ohne `.git` (Abschnitt „Stimmen
+  mit Repo-Zugriff" unten) — **und zwar außerhalb jedes Repos.** Liegt der
+  Auszug unter einem Repo, findet git dessen `.git` im Elternverzeichnis, und
+  `git show HEAD~1:<brief>` liefert den gelöschten Brief wieder (gemessen vom
+  Blindprüfer zu v1.18.0). Die negative Probe dazu: `git -C <auszug>
+  rev-parse --show-toplevel` muss scheitern. **Was der Auszug nicht schließt:**
+  Jede Stimme mit Dateizugriff erreicht das Hauptrepo trotzdem direkt
+  (`git -C <hauptrepo> show …`). Der Auszug schließt den versehentlichen Weg,
+  nicht den absichtlichen; gegen den hilft nur die Durchsicht der Transkripte
+  nach dem Lauf, wie bei der Ablage des Orchestrators.
+- **Die Ablage des Orchestrators auf demselben Rechner.** Liegt der Brief als
+  Datei in seinem Arbeits- oder Notizverzeichnis, erreicht ihn jede Stimme mit
+  Dateizugriff — blind ist sie dann nur per Auftrag. Gemessen in einem
+  Kind-Repo: Der Brief lag nur im Notizverzeichnis, die Blindprüfer liefen im
+  selben Dateisystem, die negative Probe wurde erst nachträglich über die
+  Transkripte gefahren. Den Brief erst nach dem Blindprüfer als Datei
+  schreiben, oder seinen Pfad in die negative Probe aufnehmen und die
+  Transkripte der Stimme danach auf Zugriffe darauf durchsuchen.
+- **Der Kontext des Starts.** Ein Fork erbt die Sitzung des Orchestrators
+  (Absatz „Ein Fork ist kein leerer Kontext" oben).
+
 **Der Prüfauftrag geht als Datei, nicht als Argument.** An der Argumentgrenze
 des Betriebssystems liefert der Aufruf Exit 0 und eine leere Stimme —
 gemessen bei 48 KB, zwei Review-Läufe ungültig, ohne Fehlermeldung.
@@ -172,7 +225,7 @@ war, steht im Ergebnis.
 Weg, wenn ohnehin eins vorhanden ist.
 
 **Warum containerisiert:** Solche CLIs bringen eine eigene Laufzeit mit. Die
-gehört nicht auf den Arbeitsrechner (siehe Vorlage §10, „Zwei Umgebungen,
+gehört nicht auf den Arbeitsrechner (siehe Vorlage-Lehre §10, „Zwei Umgebungen,
 eine geprüft"),
 sondern in ein Abbild; die Anmeldung überlebt in einem Volume:
 
@@ -247,7 +300,7 @@ PANEL_API_KEY=<schlüssel>
 
 ```sh
 git diff <basis>..<kopf> > stimme3.diff || exit 1
-python docs/vorlagen/panel-stimme3.py \
+python -I -S docs/vorlagen/panel-stimme3.py \
     --model ⟨anbieter/modell⟩ --max-tokens 32768 --stdin-anhang \
     "⟨Prüfauftrag⟩" < stimme3.diff > review-stimme3.md
 ```
@@ -316,7 +369,7 @@ den gepushten Zweig. Stimme 3 hängt an der Besetzung: bei R2 (wenn besetzt)
 entweder die diff-only-Stimme — sie bekommt den Diff über die
 Standardeingabe — oder der Gegenprüfer; bei R3 der Gegenprüfer, der im
 `git archive`-Baum mit dem Vergleichsbereich als Datei misst (unten, „Stimmen
-mit Repo-Zugriff arbeiten in eigenen Worktrees"). Eine Stimme,
+mit Repo-Zugriff arbeiten in eigenen Bäumen"). Eine Stimme,
 die den Zweig nicht sieht, prüft einen alten Stand — das hat einen kompletten
 Lauf gekostet.
 
@@ -326,7 +379,7 @@ Lauf gekostet.
 besitzt `../../CLAUDE.md` — dort steht, welche Rollen aufgeführt werden und wie;
 hier steht nur, dass es gemacht wird. *(Nachtrag 2026-08-20: An dieser Stelle
 stand bis v1.9.1 eine eigene, einteilige Fassung des Formats — eine Drift nach
-Vorlage §17, gemeldet von einem Projekt, drei Stunden nachdem die Regel dagegen
+Vorlage-Lehre §17, gemeldet von einem Projekt, drei Stunden nachdem die Regel dagegen
 geschrieben wurde.)* Zwei Gründe: Die Herkunfts-Regel
 ist sonst nach vier Wochen nicht mehr durchsetzbar — „wer hat das gebaut" steht
 nirgends. Und jede Aussage über Modellverhalten bleibt Anekdote, solange das
@@ -522,7 +575,8 @@ sichtbar und kosteten keine Stimmenrunde). Das Panel läuft trotzdem.
 ist ein Zeitpunkt, kein Zustand: Die Aussage „Baum rot" war beim Lesen schon
 falsch, weil zwischen Messung und Entscheidung Nacharbeit einfloss. Die volle
 Suite läuft dafür einmal **allein** in einem eigenen Worktree — parallel zu
-Stimmen mit Mutationen ist sie nicht isoliert.
+Stimmen mit Mutationen ist sie nicht isoliert — und unter der Rechner-Sperre wie
+jeder schwere Lauf.
 
 ## Prüfaufträge, die sich bewährt haben
 
@@ -543,7 +597,7 @@ Dazu:
   ausführungs- oder zustandsabhängigen Defekten, dafür einmal eine falsche
   Gewissheit („die Ablaufverfolgung widerlegt dies") — und in einem anderen
   Lauf erklärten 3 von 3 Stimmen einen roten Test mit derselben falschen
-  Ursache. Die Einteilung dahinter steht in Vorlage §29 (S1/S2/S3).
+  Ursache. Die Einteilung dahinter steht in Vorlage-Lehre §29 (S1/S2/S3).
 - **Den Widerlegungsauftrag an der REICHWEITE der Behauptung ansetzen**, nicht
   an ihrem Wortlaut. „Vollständigkeit ist typerzwungen" war belegt — für das
   Vorhandensein eines Schlüssels, nicht für seinen Wert. Der Gegenprüfer fand
@@ -608,23 +662,17 @@ Dazu:
 - „Gibt es einen Rückkanal — Fehlermeldungen, Reihenfolge, Zähler, Timing?"
 - „Läuft der geänderte Code beim ÜBERGANG zwischen zwei Versionen überhaupt
   schon — oder noch die alte Fassung mit der neuen Konfiguration?"
+- „Läuft die geänderte Testdatei auf der ZIELPLATTFORM? Welche Eingabe verhält
+  sich dort anders als auf der Bau-Maschine?" (Vorlage-Lehre §10)
 
 ## Der Panel-Kommentar hat eine feste Form
 
-Das Ergebnis wird als Kommentar am Issue festgehalten — **immer in dieser
-Gliederung**, eine Überschrift je Stimme, auch wenn eine Stimme nichts gefunden
-hat:
-
-```markdown
-## Panel ⟨Slice⟩
-### Stimme 1 — Blindprüfer
-### Stimme 2 — Fremdprüfer
-### Stimme 3 — ⟨R2: diff-only-Fremdstimme oder Gegenprüfer / R3: Gegenprüfer⟩
-### Zusätzlich, nicht gezählt — ⟨diff-only-Stimme; nur, wenn sie gelaufen ist⟩
-### Arbitrierung
-⟨je Fund: reproduziert / verworfen / umgangen, und von welcher Stimme er kam⟩
-⟨Orchestrator-Quote: wie viele Funde trafen einen Text des Orchestrators⟩
-```
+Das Ergebnis wird als Kommentar am Issue festgehalten — **immer in der
+Gliederung aus `docs/agents/panel-kommentar.md`**, eine Überschrift je Stimme,
+auch wenn eine Stimme nichts gefunden hat. Das Gerüst steht nur dort: Eine
+frühere Kurzfassung hier ließ die Tür-Probe (R3/R4), die Zeile **Urteil:** und
+**Eigene Läufe am Ende:** weg, und wer sie als Kopiervorlage nahm, ließ sie auch
+weg.
 
 **Warum so streng:** Ein Panel-Ergebnis in Fließtext zeigt nicht, **wer**
 gesprochen hat. Es liest sich vollständig, egal ob drei Stimmen geprüft haben
@@ -775,7 +823,7 @@ Slice ohne sie nicht geprüft ist. Ein
 ausgefallener Lauf einer **Mess- oder Bewertungsserie** (dieselbe Frage n-mal,
 um Streuung zu messen) wird **markiert und nie ersetzt** — wer schlechte
 Serienläufe wiederholt, bis das Ergebnis passt, misst seinen Wunsch
-(Vorlage §32).
+(Vorlage-Lehre §32).
 
 **Klumpenrisiko (Gegenprüfer bei R3, Fremdprüfer ab R2):** Seit der
 Gegenprüfer-Regel hängen zwei von drei Stimmen am selben Kontingent. Vier
@@ -867,7 +915,7 @@ welche Klasse ein Slice hat. Hier steht nur, was je Klasse zu tun ist:
   Geheimnis, auch nicht auf einem Wegwerf-Stand. Fehlt der Pfad, probt man die
   Tür bis zur Klinke: Anwendung baut, mountet, Anmeldebildschirm rendert — und
   genau das, was der Slice sichtbar ändert, wurde nie im laufenden Bild
-  gesehen. Dann steht unter der Überschrift **„Tür-Probe (R3/R4)"** in
+  gesehen. Dann steht unter der Überschrift **„Tür-Probe"** in
   `panel-kommentar.md` **„teilweise ausgefallen"** mit dem Grund, wie bei
   einem Werkzeugausfall. Die Folge ist eine Schwelle und steht deshalb in
   `../../CLAUDE.md`, Review-Panel: dieselbe wie bei einer ausgefallenen
@@ -896,7 +944,9 @@ Abschnitt führt nur die Liste und den Grund; Besetzung, Untergrenze, Tür-Probe
 - alles, was im lokalen Gate, in der CI oder im Panel ein Urteil fällt:
   `ci.yml`, `security-scan.yml`, `scripts/*`, Gate- und Release-Skripte des
   Projekts, die Stimme-3-Vorlage (`docs/vorlagen/panel-stimme3.py`) und jede
-  Panel-Stimmen-Anbindung; **`docs/vorlagen/ast-gleich.py`**, weil sein Urteil
+  Panel-Stimmen-Anbindung; `docs/vorlagen/baum-stoppen.sh` (beendet Prozesse,
+  und sein Exit 0 gibt die Rechner-Sperre frei);
+  **`docs/vorlagen/ast-gleich.py`**, weil sein Urteil
   über die Größe des nächsten Panels entscheidet — sonst dürfte es sich mit
   dem eigenen Urteil herunterstufen;
 - Prüfskripte, die Panel oder Bau-Brief absichern (`scripts/bau-brief-pruefen*.sh`,
@@ -912,9 +962,12 @@ läuft der Schnitt mit Blindprüfer und Fremdprüfer statt mit dem vollen
 R3-Panel. Bedingungen, alle drei:
 
 1. **Der Syntaxbaum ohne Docstrings ist gleich** — gemessen, nicht behauptet:
-   `python docs/vorlagen/ast-gleich.py <alt.py> <neu.py>`; das Ergebnis steht
+   `python -I -S docs/vorlagen/ast-gleich.py <alt.py> <neu.py>`; das Ergebnis steht
    im Panel-Kommentar. Ändert sich der Baum auch nur um eine Konstante, ist es
-   keine Kopftext-Änderung mehr.
+   keine Kopftext-Änderung mehr. Liest der Interpreter eine der Dateien anders
+   als das Werkzeug, oder erklärt sie eine andere Kodierung als UTF-8, bricht
+   das Werkzeug ab (Exit 2), und die Ausnahme gilt nicht: Unter utf-7 kann ein
+   Kommentar für den Interpreter Code sein (v1.18.11, gemessen).
 2. **Die Tür-Probe bleibt** — unverändert, wie bei jedem R3. Ein Kopftext, der
    die Datei nicht anfasst, ändert auch nichts an ihrer Tür; die Probe kostet
    also wenig und belegt, dass die Kopie läuft.
@@ -967,9 +1020,10 @@ offenlegte. **Das war Sorgfalt des Modells, nicht Eigenschaft des Verfahrens.**
 
 **Regel:** Die Vorabprüfung setzt einen BEFEHL ab, dessen Ausgabe zurückkommen
 muss — und zwar einen, der in der Umgebung der Stimme sinnvoll ist: im
-Worktree `git rev-parse HEAD` gegen den erwarteten Stand; im `git archive`-Baum
-des Gegenprüfers (kein `.git`, unten) ein Befehl auf die mitgelegte
-Diff-Datei, etwa `wc -l <diff-datei>` gegen die bekannte Zeilenzahl. Kommt die
+Worktree des Fremdprüfers `git rev-parse HEAD` gegen den erwarteten Stand; im
+`git archive`-Baum von Blind- und Gegenprüfer (kein `.git`, unten) ein Befehl
+auf die mitgelegte Diff-Datei, etwa `wc -l <diff-datei>` gegen die bekannte
+Zeilenzahl. Kommt die
 Ausgabe nicht, ist die Stimme ausgefallen und der Ausfall-Vermerk gilt.
 
 **Und in der Ergebnisform:** Konnte eine Stimme ihre Werkzeuge nicht nutzen,
@@ -977,14 +1031,19 @@ steht das **unter ihrer Überschrift**. Eine Freigabe aus reiner Lektüre ist
 etwas anderes als eine aus Reproduktion, und der Unterschied gehört in den
 Kommentar, nicht nur ins Gedächtnis des Arbiters.
 
-## Stimmen mit Repo-Zugriff arbeiten in eigenen Worktrees
+## Stimmen mit Repo-Zugriff arbeiten in eigenen Bäumen
 
-Der Blindprüfer bekommt einen eigenen `git worktree` auf dem gemessenen
-Commit, der Gegenprüfer einen `git archive`-Baum desselben Commits (Absatz
-„Der Gegenprüfer misst in einem `git archive`-Baum" unten); Mutationen und
-Container tragen ein stimmen-eigenes Präfix, das
-Aufräumen wird nachgewiesen. Der Hauptagent darf den Hauptbaum währenddessen
-weiterbewegen.
+Blindprüfer und Gegenprüfer bekommen je einen eigenen `git archive`-Baum des
+gemessenen Commits, ohne `.git`, mit dem Vergleichsbereich als Datei daneben
+(Absatz „Der Gegenprüfer misst in einem `git archive`-Baum" unten). Beim
+Blindprüfer ist das eine Frage der Blindheit, nicht nur der Ordnung: Ein
+Worktree teilt das Objektlager, und daraus holt `git show` jeden Brief zurück,
+der je in einem Commit stand (Absatz „Zu den Zugängen gehören drei" oben).
+Bis v1.17.2 stand hier für ihn ein Worktree. Eine Stimme, deren Werkzeug einen
+Git-Baum braucht (der Fremdprüfer in seinem Container), bekommt einen eigenen
+`git worktree`; die Regeln unten gelten für sie. Mutationen und Container
+tragen ein stimmen-eigenes Präfix, das Aufräumen wird nachgewiesen. Der
+Hauptagent darf den Hauptbaum währenddessen weiterbewegen.
 
 **Eine Stimme, ein Worktree — je Runde, und der Orchestrator editiert dort
 nie.** Vor dem Start ist der Worktree leer (`git status --short --ignored`)
@@ -1019,13 +1078,14 @@ bevor die letzte Stimme fertig ist** — die Stimmen prüfen den Commit, nicht d
 Baum. Das ist die Quellen-Regel unten zu Ende gedacht. Gemessen in zwei
 Projekten: Der Gegenprüfer meldete um 21:12, die Nacharbeit begann in
 derselben Minute, die übrigen Stimmen fanden trotzdem sauber, weil sie einen
-Commit prüften. Kosten: `git worktree add --detach <pfad> <commit>` und ein
-`remove` am Ende.
+Commit prüften. Kosten: ein `git archive` je Auszug (`git worktree add
+--detach <pfad> <commit>` für eine Stimme, die einen Git-Baum braucht) und das
+Aufräumen am Ende.
 
 *(Für Mess- und Bewertungs-SERIEN gilt das Gegenteil: Dort wird keine Ausgabe
 gelesen, bevor alle Läufe persistiert sind — sonst beeinflusst das erste
 Ergebnis, wie die übrigen gelesen werden. Das Panel ist keine Serie;
-Vorlage §32.)*
+Vorlage-Lehre §32.)*
 
 **Wer vor der letzten Stimme mit der Nacharbeit beginnt, führt eine Tabelle
 *Befund → Stimme → gegen welchen Stand → Ergebnis* mit.** Die später
@@ -1063,7 +1123,7 @@ als AUSFALL gemeldet, nie als Stimme mit dünnem Ergebnis.
 
 ## Projektspezifisch: Besetzung, Werkzeuge und Hausbelege dieses Repos
 
-Alles oberhalb dieser Linie ist die Vorlage v1.17.2 mit den Anpassungen aus dem
+Alles oberhalb dieser Linie ist die Vorlage v1.18.13 mit den Anpassungen aus dem
 Kopfhinweis. Hier steht, was nur für dieses Repo gilt.
 
 **Besetzung.**
@@ -1078,13 +1138,13 @@ Kopfhinweis. Hier steht, was nur für dieses Repo gilt.
   Modell und Auftrag käme Exit 2 von argparse, und der Exit-Code allein sähe
   gleich aus — die Meldung entscheidet. Stand: „teilweise ausgefallen,
   vertagt, Bedingung: erste eingerichtete Leitung".
-- **Der Blindprüfer bekommt bei uns einen `git archive`-Auszug ohne `.git`**,
-  nicht den Worktree, den die Vorlage oben nennt: Ein Worktree teilt das
-  Objektlager, und `git show <commit>:<datei>` holt einen gelöschten Brief
-  zurück (gemessen in einem anderen Projekt des Portfolios, 21.09.2026). Dazu
-  der Vergleichsbereich als Datei und im Bericht die negative Zugangsprobe
-  (`ls <auszug>/.git` muss scheitern) samt Gegenprobe. Die Vorabprüfung ist
-  dann ein Befehl auf die Diff-Datei (`wc -l`), nicht `git rev-parse HEAD`.
+- **Wo die Auszüge von Blind- und Gegenprüfer liegen:** im Notizverzeichnis
+  der Sitzung, das unter keinem Repo liegt. Die Regel selbst (Auszug ohne
+  `.git`, außerhalb jedes Repos, Vorabprüfung über die Diff-Datei) steht seit
+  Vorlage v1.18.0 oben; bis dahin stand sie nur hier. In die negative Probe
+  gehören bei uns zusätzlich die Ablage des Orchestrators: das
+  Notizverzeichnis selbst und die Abgleich-Aufträge neben den Repos
+  (`../abgleich-auftraege/`).
 - **Reine Frontend- oder Text-Diffs** dürfen auf den Blindprüfer verkürzt
   werden — als begründete Verkürzung unter der Überschrift des Fremdprüfers
   und nur innerhalb der Untergrenze (`../../CLAUDE.md`, „Review-Panel").
@@ -1108,15 +1168,21 @@ Kommentare, die Verhalten ändern (CHANGELOG der Vorlage, v1.16.0). Dann
 bleibt es R3.
 
 **Der Fremdprüfer sieht bei uns auch ungepushte Commits:** Er arbeitet in
-einem Klon des lokalen Repos (`git clone --no-local`, oben). Die Sätze der
-Vorlage „braucht einen gepushten Review-Zweig" und „Review-Branch pushen"
-gelten bei uns deshalb nur für den Connector-Weg.
+einem Klon des lokalen Repos (`git clone --no-local`, oben). **Jeder Satz der
+Vorlage, der einen gepushten Review-Zweig verlangt**, gilt bei uns deshalb nur
+für den Connector-Weg. Verlangt wird er an fünf Stellen (jeder Treffer von
+`LC_ALL=C grep -n -i "gepusht\|pushen\|Review-Branch\|Review-Zweig"` auf
+diese Datei einzeln gelesen, Abgleich v1.18.13): im Absatz zu Stimme 2 vorn,
+im ersten Fallstrick zu Stimme 2, in Schritt 1 des Kommando-Blocks („Review-Branch
+pushen"), im Absatz „Panel VOR dem Landen" und in der Erreichbarkeitsprüfung 1b.
 
 **Werkzeuge.** Leitungen mit Zugangsdaten (Codex-Abbild, OpenRouter) liegen
-portfolioweit unter `model-panel/`. Werkzeuge, die ein Gate liest oder die
-den Umfang des nächsten Panels entscheiden (`docs/vorlagen/*.py`), liegen im
-Repo, byteweise aus der Vorlage — Entscheidung und Begründung im Issue
-„Abgleich v1.17.2". Bei Codex ist Exit 0 kein Ergebnis: Erfolgskriterium ist
+portfolioweit unter `model-panel/`. Werkzeuge, die ein Gate liest, die den
+Umfang des nächsten Panels entscheiden oder die die Rechner-Sperre freigeben
+(`docs/vorlagen/*.py`, `docs/vorlagen/baum-stoppen.sh`), liegen im Repo,
+byteweise aus der Vorlage — Entscheidung und Begründung in den Issues
+„Abgleich v1.17.2" und „Abgleich v1.18.13". Die Kopien von `ast-gleich.py`
+und `panel-stimme3.py` unter `model-panel/` benutzen wir nicht. Bei Codex ist Exit 0 kein Ergebnis: Erfolgskriterium ist
 die Synthese im letzten Block der Ausgabe (v1.12.1); bei `panel-stimme3.py`
 trägt dagegen der Exit-Code die Prüfung (oben).
 
