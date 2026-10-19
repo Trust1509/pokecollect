@@ -57,8 +57,9 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    mit gelandet. Real passiert (04.09.2026): Ein Doku-Push nahm die vier
    ungepanelten Commits eines parallel arbeitenden Bau-Subagenten mit.
    **Deshalb:** Arbeitet ein Bau-Subagent parallel zum Hauptagenten, bekommt
-   er einen eigenen `git worktree` mit eigenem Branch (wie die Panel-Stimmen
-   seit v1.13.0) — dann kann kein fremder Push ihn mitnehmen, und der
+   er einen eigenen `git worktree` mit eigenem Branch (wie der Fremdprüfer;
+   Blind- und Gegenprüfer bekommen seit Vorlage v1.18.0 einen
+   `git archive`-Auszug) — dann kann kein fremder Push ihn mitnehmen, und der
    Hauptbaum bleibt frei.
 3. **In einer Commit-Nachricht steht der Überspring-Marker NUR als Marker.**
    Nie erklärt, zitiert oder verneint — die Plattform liest die ganze
@@ -283,7 +284,8 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   - In `~/.ssh` liegt seit dem 18.10.2026 ein privater Schlüssel für Agenten
     (Kommentar `claude-homelab`), vom Owner für andere Geräte im Heimnetz
     angelegt; keine `~/.ssh/config`, kein laufender Schlüssel-Agent
-    (`ssh-add -l` → 2). Am 28.09.2026 lag dort nur `known_hosts`.
+    (`ssh-add -l` → 2). Am 28.09.2026 lagen dort nur `known_hosts` und
+    `known_hosts.old`.
   - **Ob dieser Schlüssel auf dem Server gilt, ist NICHT gemessen** — das
     zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben
     eines Agenten. Owner-Frage im Issue „Abgleich v1.18.13"; die Folge steht
@@ -379,8 +381,15 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   Server gilt, ist offen („Deploy"). **Ist ein Prod-Token, das Prod-Passwort
   oder ein SSH-Weg zum Server für einen Agenten erreichbar, wird der Wächter
   sofort nötig** — ein Schlüssel auf der Platte zählt dazu, er muss nicht
-  gekannt werden. Bis zur Antwort benutzt kein Agent diesen Schlüssel gegen den
-  Server (Disziplin, keine Sperre). Vorlage + Echtprobe: `docs/SECRETS.md`.
+  gekannt werden; gilt der Schlüssel auf dem Server, ist die Bedingung
+  erfüllt. **Welcher Wächter, hängt am Weg:** Der Prod-Wächter der Vorlage
+  (`docs/vorlagen/prod-readonly-hook.py`) entscheidet nur über MCP-Werkzeuge
+  eines Namensraums; einen `ssh`-Aufruf über Bash oder PowerShell sieht er
+  nicht. Für den SSH-Weg gehört eine Sperrregel für `ssh`, `scp` und `plink`
+  in die Agenten-Einstellungen (beide Shells; trägt der Owner ein), mit
+  eigener Probe — oder der Schlüssel gilt dort nicht. Bis zur Antwort benutzt
+  kein Agent diesen Schlüssel gegen den Server (Disziplin, keine Sperre).
+  Einzelheiten: `docs/SECRETS.md`.
 
 ## Risikoklasse je Slice — hier wird entschieden, was geprüft wird
 
@@ -436,7 +445,7 @@ Fund (Vorlage v1.17.0).
 | Prüftiefe je Risikoklasse | Risiko-Tabelle oben, Auslöser abschließend | **Portfolio** |
 | Release-Gate (ab wann eine Freigabe nötig ist) | **mindestens jedes Release mit Migration oder Geld-Logik** (Untergrenze, Owner-Dauerregel vom 02.09.2026: „wo das projekteigene Release-Gate ein Owner-Gate verlangt (Migrationen, Geld-Slices auf jeden Fall), VORHER fragen“); **dazu bei uns: R4-Auslöser** → vorher den Owner fragen. Geschichte: im v1.11.3-Abgleich auf R4 verengt (#78, veto-fähig vorgelegt, kein Veto), von der Dauerregel wieder erweitert | **Portfolio-Untergrenze** (2026-09-02), darüber **Projekt** |
 | Zeitlimit einzelner Befehle im Prüfauftrag | **15 Minuten** — dieselbe Grenze wie `timeout-minutes` beider CI-Jobs (`.github/workflows/ci.yml`) | **Projekt** |
-| CI-Nebenläufigkeit (`concurrency`, `cancel-in-progress`) | **an** — `group: ci-${{ github.ref }}`, `cancel-in-progress` für alles außer Tag-Refs (`ci.yml`). Ausgenommen sind nach der Vorlage auch Läufe, die ausliefern — solche gibt es bei uns nicht (Deploy macht der Owner). Nur `ci.yml` trägt sie; `security-scan.yml` und `smoke.yml` nicht (gemessen 28.09.2026). Sie hält die Zahl der Läufe unten, **ohne** dass jemand die Regel „ein Lauf je Slice“ einhält — ein abgebrochener Lauf ist kein eingesparter | **Portfolio** (Owner-Dauerregel 2026-09-02: Notbremse-Maßnahmen bleiben dauerhaft) |
+| CI-Nebenläufigkeit (`concurrency`, `cancel-in-progress`) | **an** — `group: ci-${{ github.ref }}`, `cancel-in-progress` für alles außer Tag-Refs (`ci.yml`). Ausgenommen sind nach der Vorlage auch Läufe, die ausliefern — solche gibt es bei uns nicht (Deploy macht der Owner). Alle drei Workflows tragen sie (`security-scan.yml` und `smoke.yml` seit Abgleich v1.18.13, Gruppe je Workflow und Ref; vorher nur `ci.yml`). Sie hält die Zahl der Läufe unten, **ohne** dass jemand die Regel „ein Lauf je Slice“ einhält — ein abgebrochener Lauf ist kein eingesparter | **Portfolio** (Owner-Dauerregel 2026-09-02: Notbremse-Maßnahmen bleiben dauerhaft) |
 | CI-Tagesbudget über alle Repos | **100 Minuten** je Tag (Kontingent 3000 Min/Monat, geteilt) | **Portfolio** (2026-09-02) |
 | Übliche Dauer eines CI-Laufs (Meldeschwelle) | **2–4 Minuten** — ein Lauf deutlich darüber wird im Rückmeldungs-Issue der Vorlage gemeldet | **Portfolio** (Owner-Dauerregel 2026-09-02, Punkt „Budget“) |
 | Schwellen der Wochen-Scans (`security-scan.yml`) | `npm audit` ab **high** (Owner-Entscheid #91 — moderate/low mit reinem Major-Fix bleiben ohne Signal, Kommentar in `.github/dependabot.yml`); `pip-audit --strict` meldet jede bekannte Lücke; Schemathesis zählt nur 5xx | **Projekt** (npm-Schwelle: Owner, #91) |

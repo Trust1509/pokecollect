@@ -78,6 +78,16 @@ ist, hängt an einer einzigen Bedingung:
 > benutzt kein Agent diesen Schlüssel gegen den Server — das ist Disziplin,
 > keine Sperre.
 
+**Welcher Wächter, hängt am Weg.** Der Wächter unten (Vorlage
+`prod-readonly-hook.py`) entscheidet nur über MCP-Werkzeuge mit einem festen
+Präfix; alles andere lässt er als „anderer Namensraum" durch. Einen
+`ssh -i …` über Bash oder PowerShell trifft er deshalb nicht. Für den SSH-Weg
+ist die passende Sperre eine Deny-Regel für `ssh`, `scp` und `plink` in den
+Agenten-Einstellungen, für beide Shells, mit einer eigenen Probe (ein
+gesperrter Aufruf muss scheitern) — eintragen kann sie nur der Owner. Oder der
+Schlüssel gilt auf dem Server nicht; dann braucht es für SSH keinen Wächter.
+Die Vorlage hat für diesen Weg kein Werkzeug (an sie gemeldet).
+
 Wenn es soweit ist: Die **Quelle** des Wächters gehört ins Repo (versioniert,
 testbar), **ausgeführt** wird eine Kopie **außerhalb** — ein Schutz, den der
 geschützte Agent per Repo-Änderung entschärfen kann, ist keiner. Vorlage und

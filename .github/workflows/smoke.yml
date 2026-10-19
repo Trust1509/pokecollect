@@ -8,6 +8,13 @@
 # (`sh scripts/smoke.sh`) — dort ist er Teil der Verifikation, nicht der CI.
 name: Rauchtest
 
+# Nebenläufigkeit (Portfolio-Wert, Owner-Dauerregel 02.09.2026; Abgleich v1.18.13):
+# ein neuer Lauf bricht den alten ab. Dieser Workflow liefert nichts aus und
+# läuft nicht auf Tags, eine Ausnahme braucht er deshalb nicht.
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

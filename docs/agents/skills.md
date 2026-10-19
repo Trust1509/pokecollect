@@ -28,9 +28,10 @@ Im Quell-Repo sind vier Namen umbenannt (am Inhalt geprüft, Vorlage v1.18.1):
 `design-an-interface`, `qa`, `request-refactor-plan`,
 `resolving-merge-conflicts` und `decision-mapping`. **Auf diesem Rechner liegen
 noch die alten Kopien:** `to-prd`, `to-issues`, `review` und
-`ubiquitous-language` gibt es hier, `to-spec` und `to-tickets` nicht. Ein
-frischer Rechner und jede Cloud-Sitzung haben es umgekehrt. Die Tabelle unten
-nennt deshalb beide.
+`ubiquitous-language` gibt es hier, `to-spec` und `to-tickets` nicht. Eine
+frische Installation (neuer Rechner, oder eine Cloud-Sitzung, deren
+Setup-Skript die Skills installiert) hat es umgekehrt; eine Cloud-Sitzung
+ohne dieses Setup hat gar keine. Die Tabelle unten nennt deshalb beide Namen.
 
 **Achtung bei `code-review`:** Auf diesem Rechner ist `code-review` der
 eingebaute Skill von Claude Code (Korrektheits-Review mit Effort-Stufen),

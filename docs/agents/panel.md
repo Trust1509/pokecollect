@@ -326,7 +326,7 @@ leerem Anhang** — dann wird nichts gesendet). Bei 1 und 2 gilt „Wenn eine
 Stimme ausfällt" unten — eine leere oder halbe Datei ist nie ein dünnes
 Ergebnis.
 
-### Was hier eingetragen ist (Stand Abgleich v1.17.2)
+### Was hier eingetragen ist (Stand Abgleich v1.18.13)
 
 - **Stimme 2:** GPT über Codex, Aufruf oben; zuletzt `gpt-5.6-sol` mit
   `reasoning effort: high` (28.09.2026). Ersatzleitung ebenfalls oben.
@@ -340,9 +340,11 @@ Ergebnis.
   einer herabgestuft), drei davon über eine fehlende Stelle — gemessen am
   vollständigen Klon, nicht diff-only. Im Container fehlen Docker und Python;
   Gates und Python-Werkzeuge fährt diese Stimme nicht, und das steht dann
-  unter ihrer Überschrift. Nacktes `python` hängt auf diesem Rechner
-  (`../../CLAUDE.md`, „Build, Gates, Teststand"): jede Python-Leitung mit
-  absolutem Interpreter und Zeitlimit.
+  unter ihrer Überschrift. Jede Python-Leitung mit absolutem Interpreter und
+  Zeitlimit (`../../CLAUDE.md`, „Build, Gates, Teststand": nacktes `python`
+  ist ein Alias, der still wechseln kann). Im Abgleich v1.18.13 lief die
+  Ersatzleitung (OpenRouter, `openai/gpt-6.1-sol`, agentisch, 21 Runden):
+  zwei WICHTIG, beide bestätigt.
 
 ### PII-Grenze
 
@@ -663,7 +665,7 @@ Dazu:
 - „Läuft der geänderte Code beim ÜBERGANG zwischen zwei Versionen überhaupt
   schon — oder noch die alte Fassung mit der neuen Konfiguration?"
 - „Läuft die geänderte Testdatei auf der ZIELPLATTFORM? Welche Eingabe verhält
-  sich dort anders als auf der Bau-Maschine?" (Vorlage-Lehre §10)
+  sich dort anders als auf der Bau-Maschine?" (`lehren.md` §5)
 
 ## Der Panel-Kommentar hat eine feste Form
 

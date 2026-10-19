@@ -114,7 +114,7 @@ siehe `CLAUDE.md`, Review-Panel.
 
 ## Projektnotiz
 
-Formular oben: Vorlage v1.17.2, der eine Lehren-Verweis in unserer Zählung.
+Formular oben: Vorlage v1.18.13, der eine Lehren-Verweis in unserer Zählung.
 Warum die feste Form hier steht: In diesem Repo lief das Panel bereits
 **zweistimmig**, ohne dass es jemandem auffiel — der Kommentar war Fließtext
 plus Fund-Tabelle und las sich vollständig (#38). Eine Regel ohne Form hält

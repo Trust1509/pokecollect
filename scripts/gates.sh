@@ -79,7 +79,7 @@ whatsnew_paritaet_gate() {
 # "Hardlink des Interpreters"); gemessen 19.10.2026 ist sie auch darüber grün.
 # Wir rufen weiter python3.12 direkt auf. -I -S ist Pflicht (Vorlage
 # abgleich.md 2h); seit Vorlage v1.18.0 verweigern die Werkzeuge den Lauf ohne.
-# Alle drei Python-Aufrufe laufen mit -I -S, nicht nur der Wächter: Ohne -I
+# Alle vier Python-Aufrufe laufen mit -I -S, nicht nur der Wächter: Ohne -I
 # steht das Skriptverzeichnis docs/vorlagen/ vorn auf sys.path, und eine
 # gleichnamige Datei dort (tempfile.py, re.py) überschattet die
 # Standardbibliothek — das Verweis-Werkzeug endete dann mit Exit 0, ohne zu
@@ -87,11 +87,16 @@ whatsnew_paritaet_gate() {
 # Keine gepinnte Erwartungszahl: Die Summe der Wächter-Selbstprobe hängt an der
 # Python-Version, nicht an der Plattform (gemessen 28.09.2026: 3.14 → 518,
 # 3.12 → 521, bei 490 festen; 19.10.2026 hier 628 = 597 feste + 30
-# umgebungsbedingte). Die feste Zahl prüft die Selbstprobe selbst als
+# umgebungsbedingte + die Schlusszeile). Die feste Zahl prüft die Selbstprobe selbst als
 # Untergrenze (Vorlage v1.18.0). Die Werkzeuge melden ihr Ergebnis selbst über
 # den Exit-Code; `sh -eu` bricht beim ersten roten ab und reicht ihn durch.
-# Beleg eines Laufs ist die Schlusszeile "✓ Gates grün (...)", nicht Exit 0
-# allein (Vorlage v1.18.4: unter SHELLOPTS=noexec endet sh ohne eine Zeile).
+# Beleg eines Laufs sind die Erfolgszeilen der Werkzeuge selbst (Brief-Läufe,
+# Wächter-Erwartungen, ast-gleich, Verweise) — nicht Exit 0 allein und nicht
+# die Zeile "✓ Gates grün (...)": Die druckt gates.sh nach jedem Ziel, auch
+# wenn prozess_gate nichts mehr prüft. GRENZE, gemessen im Abgleich v1.18.13:
+# Eine gestrichene Werkzeug-Zeile, ein `sh -u -c` statt `sh -eu -c` (dann zählt
+# nur der Exit der letzten Zeile) oder ein Ziel `all` ohne prozess_gate macht
+# nichts rot; dagegen hilft nur das Lesen der Erfolgszeilen (#106).
 # Die Vorlagen-CI fährt diese Prüfungen nicht (0 Treffer in docs/vorlagen/ci.yml)
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
 prozess_gate() {

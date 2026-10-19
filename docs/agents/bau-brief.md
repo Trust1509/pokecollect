@@ -954,7 +954,9 @@ Ihre fünf Lehren-Verweise stehen hier in UNSERER Zählung (`abgleich.md` der
 Vorlage, 2d, einzeln nachgeschlagen: Vorlage-Lehre §21 zweimal als unsere §10,
 Vorlage-Lehre §35 als §22, Vorlage-Lehre §36 als §23, Vorlage-Lehre §10 als
 §5), und Verweise auf Dateien, die es nur in der Vorlage gibt
-(`abgleich.md`, `betrieb.md`), tragen den Zusatz „der Vorlage“. Dieser
+(`abgleich.md`, `betrieb.md`), tragen den Zusatz „der Vorlage“ — beim Absatz
+zur Ablage im öffentlichen Repo dazu der Zeiger „bei uns in `CLAUDE.md`,
+Abschnitt ‚Sicherheit‘“. Dieser
 Abschnitt steht bewusst am Ende:
 `scripts/bau-brief-pruefen-selbsttest.sh` liest die Prüffragen, die
 Pflicht-Randbedingungen und die Typischen Fallen **der Vorlage** und baut
