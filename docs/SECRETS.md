@@ -60,35 +60,17 @@ Gewollt ist: **lesend über HTTP** (`curl <server-ip>:3010/health`). Deployen
 macht der Owner, und für dieses Projekt gibt es keinen MCP-Server (gemessen
 19.10.2026: keiner in der Client-Konfiguration).
 
-**SSH, gemessen am 19.10.2026 ohne Verbindung** (Kommandos in `CLAUDE.md`,
-„Deploy“): In den Agenten-Einstellungen steht keine SSH-Regel. Auf diesem
-Rechner liegt aber seit dem 18.10.2026 ein SSH-Schlüssel für Agenten
-(`~/.ssh`, Kommentar `claude-homelab`), den der Owner für andere Geräte im
-Heimnetz angelegt hat. **Ob er auf dem Server gilt, ist nicht gemessen** — das
-zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben eines
-Agenten. Die Frage steht beim Owner (Issue „Abgleich v1.18.13“).
+Kein Agent hat SSH-Zugang zum Server; ein Agenten-Schlüssel auf diesem
+Rechner gilt nur für andere Systeme im Heimnetz (Owner, 24.10.2026). Bewusst
+akzeptiert: Agenten laufen unter dem Windows-Benutzer des Owners und
+erreichen, was dieser gespeichert hat; alle Anwendungen sind lokal und von
+außen nicht erreichbar.
 
-Ob ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) nötig
-ist, hängt an einer einzigen Bedingung:
-
-> **Sobald ein Produktiv-Token, das Prod-Passwort oder ein SSH-Weg zum Server
-> für einen Agenten erreichbar ist, wird der Wächter sofort nötig.** Ein
-> Schlüssel auf der Platte gehört dazu: Er muss nicht gekannt werden, ein
-> Aufruf mit `-i` genügt. Bis der Owner die Frage oben beantwortet hat,
-> benutzt kein Agent diesen Schlüssel gegen den Server — das ist Disziplin,
-> keine Sperre.
-
-**Welcher Wächter, hängt am Weg.** Der Wächter unten (Vorlage
-`prod-readonly-hook.py`) entscheidet nur über MCP-Werkzeuge mit einem festen
-Präfix; alles andere lässt er als „anderer Namensraum" durch. Einen
-`ssh -i …` über Bash oder PowerShell trifft er deshalb nicht. Für den SSH-Weg
-trägt strukturell nur eines: **Der Schlüssel gilt auf dem Server nicht.** Eine
-Deny-Regel nach Kommandonamen (`ssh`, `scp`, `plink`) in den
-Agenten-Einstellungen wäre nur eine Teil-Sperre: eine Denylist, die `sftp`,
-`rsync -e ssh`, einen absoluten Pfad zum Programm oder eine SSH-Bibliothek
-durchlässt — das Gegenteil der fail-closed-Allowlist oben, und eine Probe
-„ein gesperrter Aufruf scheitert" belegt nur den einen Namen. Die Vorlage hat
-für diesen Weg kein Werkzeug (an sie gemeldet).
+Ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) ist
+deshalb heute nicht nötig. **Kommt ein MCP-Server mit schreibenden Werkzeugen
+oder ein SSH-Zugang zum Server für Agenten dazu, wird er sofort nötig.** Der
+Wächter der Vorlage (`prod-readonly-hook.py`) entscheidet nur über
+MCP-Werkzeuge; einen Shell-Aufruf sieht er nicht.
 
 Wenn es soweit ist: Die **Quelle** des Wächters gehört ins Repo (versioniert,
 testbar), **ausgeführt** wird eine Kopie **außerhalb** — ein Schutz, den der

@@ -8,7 +8,9 @@ die in Produktion wehgetan hätten.
 > **Diese Datei ist `panel.md` der Vorlage v1.18.13** (Abgleich v1.18.13) mit
 > drei Arten Anpassung: Lehren-Verweise stehen in UNSERER Zählung, wo wir die
 > Lehre selbst führen, sonst als „Vorlage-Lehre §N" oder „Vorlage §N"
-> (`abgleich.md` der Vorlage, 2d); Verweise auf Dateien, die es
+> (`abgleich.md` der Vorlage, 2d) — auch dort, wo ein Satz eine Vorlagen-Lehre
+> mit ihrem Titel zitiert, die wir nicht als eigene führen (etwa „Zwei
+> Umgebungen, eine geprüft"); Verweise auf Dateien, die es
 > nur in der Vorlage gibt, tragen „der Vorlage"; und „Die Stimmen einrichten"
 > ist mit unseren Leitungen ausgefüllt. Was nur für dieses Repo gilt —
 > Besetzung, Datengrenze, Hausbelege — steht im **Projektabschnitt am Ende**;

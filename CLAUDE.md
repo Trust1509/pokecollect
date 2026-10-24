@@ -273,23 +273,11 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - TrueNAS `<server-ip>` — **GETEILTER Server, nie `docker system prune -a`**.
   Repo dort: `/mnt/HDDs/Applications/pokecollect/app`, `deploy.sh` = git pull +
   Build beider Images. Ports API 3010 / Web 3011, UID:GID 3010:3010.
-- **SSH zum Server: ein Schlüssel für Agenten liegt bereit, ob er dort gilt,
-  ist offen.** Gemessen 19.10.2026, ohne Verbindung:
-  - Keine SSH-Regel in den Einstellungen, aus denen Claude Code hier lädt:
-    `grep -c -i ssh` auf `~/.claude/settings.json`,
-    `~/.claude/settings.local.json` und `.claude/settings.local.json` im
-    Elternordner des Repos → je 0; die `.claude/settings.json` des
-    Elternordners, `.claude/settings*.json` im Repo und verwaltete
-    Einstellungen (`managed-settings.json` unter `C:\ProgramData\ClaudeCode\`
-    und `C:\Program Files\ClaudeCode\`) gibt es nicht (`test -f` → 1).
-  - In `~/.ssh` liegt seit dem 18.10.2026 ein privater Schlüssel für Agenten
-    (Kommentar `claude-homelab`), vom Owner für andere Geräte im Heimnetz
-    angelegt; keine `~/.ssh/config`, kein laufender Schlüssel-Agent
-    (`ssh-add -l` → 2).
-  - **Ob dieser Schlüssel auf dem Server gilt, ist NICHT gemessen** — das
-    zeigte nur ein Verbindungsversuch, und der gehört nicht zu den Aufgaben
-    eines Agenten. Owner-Frage im Issue „Abgleich v1.18.13"; die Folge steht
-    unter „Sicherheit", Absatz zum Produktiv-Wächter.
+- **Kein SSH-Zugang für Agenten zum Server.** In den Agenten-Einstellungen
+  steht keine SSH-Regel (gemessen 19.10.2026). Ein auf diesem Rechner
+  angelegter Agenten-Schlüssel gilt für andere Systeme im Heimnetz, nicht für
+  den Server (Owner, 24.10.2026). Ein Verbindungsversuch zum Server gehört
+  nicht zu den Aufgaben eines Agenten.
   API/Web sind per HTTP testbar: `curl <server-ip>:3010/health`.
 - Du lieferst getestete, getaggte Stände + klare Deploy-Anweisung; der Owner
   deployt selbst.
@@ -307,10 +295,9 @@ muss, ist deshalb Standard, nicht Option. Konkret:
      Issue-Kommentaren und Panel-Berichten.
   2. **GitHub Secret Scanning und Push Protection sind aktiv** (gratis für
      öffentliche Repos, verifiziert 04.09.: `secret_scanning: enabled`,
-     `secret_scanning_push_protection: enabled`, 0 offene Alerts) — ein
-     eigener gitleaks-Job wäre doppelt und wird NICHT gebaut (*diese
-     Begründung hat die Vorlage in v1.15.0 korrigiert, Entscheid offen —
-     Punkt 1 der vier Regeln unten*). Push Protection
+     `secret_scanning_push_protection: enabled`, 0 offene Alerts). Sie
+     erkennen nur die Formate der Partner-Anbieter; dazu kommt ein eigener
+     Scanner (Punkt 1 der vier Regeln unten). Push Protection
      blockiert einen erkannten Schlüssel schon beim Push; wird ein Push
      deshalb abgelehnt: **nicht umgehen**, sondern den Wert aus der Änderung
      nehmen und dem Owner melden.
@@ -327,27 +314,22 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`,
   Sichtbarkeit `public`, **0 offene Alerts**. `secret_scanning_validity_checks`
   steht auf `disabled` — das ist eine Owner-Entscheidung, kein Mangel.
-  **Ein eigener Geheimnis-Scanner wird NICHT gebaut**: Die Plattform liefert
-  ihn für öffentliche Repos gratis; ein zweiter wäre doppelte Wartung. —
-  *Diese Begründung hat die Vorlage in v1.15.0 als gemessen falsch
-  korrigiert; siehe Punkt 1 unten.*
 
 - **Vier Regeln liegen bei öffentlichen Repos anders** (Vorlage v1.14.0,
   Owner-Entscheid):
-  1. **Geheimnis-Scan kommt von der Plattform** — siehe oben. Private Repos
-     haben das nicht und brauchen einen eigenen Wochenlauf; wir nicht.
-     **Korrektur der Vorlage (v1.15.0), Entscheid offen:** Die Vorlage führt
-     inzwischen „Plattform UND eigener Scanner" — der Plattform-Scan kennt
-     nur die Muster seiner Partner-Anbieter (selbst vergebene Schlüssel fand
-     in einer Probe mit sechs Fixtures nur ein eigener Scanner), und
-     öffentliche Repos verbrauchen keine abgerechneten Minuten. Den zweiten
-     Grund belegt die Vorlage mit `billable = 0` aus `actions/runs/<id>/timing`;
-     dieselbe Schnittstelle meldet 0 aber auch für private Repos (gemessen
-     28.09.2026 an zwei privaten Läufen desselben Kontos), als Kostenbeleg
-     taugt sie also nicht. Unsere Regel ist ein Owner-Entscheid vom 06.09.2026
-     mit genau der Begründung, die die Vorlage zurückgenommen hat. Sie bleibt
-     stehen, bis der Owner neu entscheidet (Frage in den Issues „Abgleich
-     v1.17.2" und „Abgleich v1.18.13").
+  1. **Geheimnis-Scan: Plattform UND eigener Scanner** (Owner, 24.10.2026;
+     ersetzt den Entscheid „nur Plattform" vom 06.09.2026). Form, vom Agenten
+     vorgeschlagen und vom Owner gewählt: ein Hook vor dem Push (gitleaks im
+     Container) und derselbe Scan als CI-Job und einmal über die Historie,
+     immer mit `--redact`; Bau in #115. Bis er steht, gilt nur die
+     Plattform. Hintergrund: Die Vorlage führt seit v1.15.0 „Plattform UND
+     eigener Scanner" — der Plattform-Scan kennt nur die Muster seiner
+     Partner-Anbieter (selbst vergebene Schlüssel fand in einer Probe mit
+     sechs Fixtures nur ein eigener Scanner). Ihr zweiter Grund, öffentliche
+     Repos verbrauchten keine abgerechneten Minuten, ist mit `billable = 0`
+     aus `actions/runs/<id>/timing` belegt; dieselbe Schnittstelle meldet 0
+     aber auch für private Repos (gemessen 28.09.2026 an zwei privaten Läufen
+     desselben Kontos), als Kostenbeleg taugt sie also nicht.
   2. **Die PII-Grenze ist für Code gegenstandslos, für DATEN scharf.** Unser
      Code enthält keine Personendaten. Was zählt, sind Fixtures und
      Beispieldaten — **die Fixtures-Regel ist hier die eigentliche
@@ -371,27 +353,16 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   (`*_set` / `*_masked`). Ohne `APP_PASSWORD_HASH` startet die App nicht.
 - **Der Agent trägt keine Schlüssel ein** — Details, Ablageorte und der
   Wiederruf-Weg in `docs/SECRETS.md`.
-- **Produktiv-Wächter: die Bedingung ist offen** (Owner-Frage, Abgleich
-  v1.18.13). Es gibt keinen MCP-Server für dieses Projekt und keine
-  schreibenden Prod-Werkzeuge (gemessen 19.10.2026: kein MCP-Server mit Bezug
-  zu diesem Projekt in der Client-Konfiguration). Die Prod-API ist per HTTP
-  erreichbar; Schreiben scheitert dort daran, dass der Agent das Passwort
-  nicht kennt — eine Umstands-Sperre, keine strukturelle. Für SSH liegt seit
-  dem 18.10.2026 ein Agenten-Schlüssel auf diesem Rechner, ob er auf dem
-  Server gilt, ist offen („Deploy"). **Ist ein Prod-Token, das Prod-Passwort
-  oder ein SSH-Weg zum Server für einen Agenten erreichbar, wird der Wächter
-  sofort nötig** — ein Schlüssel auf der Platte zählt dazu, er muss nicht
-  gekannt werden; gilt der Schlüssel auf dem Server, ist die Bedingung
-  erfüllt. **Welcher Wächter, hängt am Weg:** Der Prod-Wächter der Vorlage
-  (`docs/vorlagen/prod-readonly-hook.py`) entscheidet nur über MCP-Werkzeuge
-  eines Namensraums; einen `ssh`-Aufruf über Bash oder PowerShell sieht er
-  nicht. Für den SSH-Weg trägt **strukturell nur eines: der Schlüssel gilt auf
-  dem Server nicht.** Eine Sperrregel nach Kommandonamen (`ssh`, `scp`, `plink`)
-  in den Agenten-Einstellungen wäre nur eine Teil-Sperre und umgehbar
-  (`sftp`, `rsync -e ssh`, ein absoluter Pfad, eine SSH-Bibliothek) — eine
-  Denylist, keine fail-closed-Allowlist. Bis zur Antwort benutzt
-  kein Agent diesen Schlüssel gegen den Server (Disziplin, keine Sperre).
-  Einzelheiten: `docs/SECRETS.md`.
+- **Kein Produktiv-Wächter nötig — solange die Bedingung hält.** Es gibt
+  keinen MCP-Server für dieses Projekt und keine schreibenden
+  Prod-Werkzeuge, und kein Agent hat SSH-Zugang zum Server („Deploy").
+  **Grenze, bewusst akzeptiert (Owner, 24.10.2026):** Agenten laufen unter dem
+  Windows-Benutzer des Owners; was dieser Benutzer gespeichert hat, ist für sie
+  erreichbar. Alle Anwendungen laufen lokal und sind von außen nicht
+  erreichbar. **Kommt ein MCP-Server mit schreibenden Werkzeugen oder ein
+  SSH-Zugang zum Server für Agenten dazu, wird der Wächter sofort nötig**
+  (Vorlage und Echtprobe: `docs/SECRETS.md`; der Wächter der Vorlage
+  entscheidet nur über MCP-Werkzeuge, nicht über Shell-Aufrufe).
 
 ## Risikoklasse je Slice — hier wird entschieden, was geprüft wird
 
