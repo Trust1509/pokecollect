@@ -855,8 +855,8 @@ grün und auf dem Windows-Host rot — keine Panel-Stimme kann das sehen, weil
 keine auf dem Host läuft.
 
 **Bei uns einschlägig:** `deploy.sh` läuft auf dem Server des Owners, nicht
-bei uns, und kein Agent fährt ihn (kein SSH-Zugang für Agenten —
-`CLAUDE.md`, „Deploy").
+bei uns, und kein Agent fährt ihn (der Agenten-Schlüssel gilt nach
+Auskunft des Owners nicht für den Server — `CLAUDE.md`, „Deploy").
 Alles, was wir über den
 Deploy behaupten, ist deshalb eine Nachstellung — und die gehört als solche
 benannt.

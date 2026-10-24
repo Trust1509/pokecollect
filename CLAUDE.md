@@ -273,10 +273,10 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - TrueNAS `<server-ip>` — **GETEILTER Server, nie `docker system prune -a`**.
   Repo dort: `/mnt/HDDs/Applications/pokecollect/app`, `deploy.sh` = git pull +
   Build beider Images. Ports API 3010 / Web 3011, UID:GID 3010:3010.
-- **Kein SSH-Zugang für Agenten zum Server.** In den Agenten-Einstellungen
-  steht keine SSH-Regel (gemessen 19.10.2026). Ein auf diesem Rechner
-  angelegter Agenten-Schlüssel gilt für andere Systeme im Heimnetz, nicht für
-  den Server (Owner, 24.10.2026). Ein Verbindungsversuch zum Server gehört
+- **Der Agenten-Schlüssel gilt nicht für den Server** (Owner-Auskunft vom
+  24.10.2026, nicht gemessen). Ein auf diesem Rechner angelegter
+  Agenten-Schlüssel gilt für andere Systeme im Heimnetz. In den
+  Agenten-Einstellungen steht keine SSH-Regel (gemessen 19.10.2026). Ein Verbindungsversuch zum Server gehört
   nicht zu den Aufgaben eines Agenten.
   API/Web sind per HTTP testbar: `curl <server-ip>:3010/health`.
 - Du lieferst getestete, getaggte Stände + klare Deploy-Anweisung; der Owner
@@ -295,9 +295,10 @@ muss, ist deshalb Standard, nicht Option. Konkret:
      Issue-Kommentaren und Panel-Berichten.
   2. **GitHub Secret Scanning und Push Protection sind aktiv** (gratis für
      öffentliche Repos, verifiziert 04.09.: `secret_scanning: enabled`,
-     `secret_scanning_push_protection: enabled`, 0 offene Alerts). Sie
-     erkennen nur die Formate der Partner-Anbieter; dazu kommt ein eigener
-     Scanner (Punkt 1 der vier Regeln unten). Push Protection
+     `secret_scanning_push_protection: enabled`, 0 offene Alerts). Nach der
+     Probe der Vorlage erkennen sie nur die Formate der Partner-Anbieter;
+     deshalb kommt ein eigener Scanner dazu (Punkt 1 der vier Regeln unten,
+     Bau in #115). Push Protection
      blockiert einen erkannten Schlüssel schon beim Push; wird ein Push
      deshalb abgelehnt: **nicht umgehen**, sondern den Wert aus der Änderung
      nehmen und dem Owner melden.
@@ -318,16 +319,13 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - **Vier Regeln liegen bei öffentlichen Repos anders** (Vorlage v1.14.0,
   Owner-Entscheid):
   1. **Geheimnis-Scan: Plattform UND eigener Scanner** (Owner, 24.10.2026;
-     ersetzt den Entscheid „nur Plattform" vom 06.09.2026). Form, vom Agenten
-     vorgeschlagen und vom Owner gewählt: ein Hook vor dem Push (gitleaks im
-     Container) und derselbe Scan als CI-Job und einmal über die Historie,
-     immer mit `--redact`; Bau in #115. Bis er steht, gilt nur die
-     Plattform. Hintergrund: Die Vorlage führt seit v1.15.0 „Plattform UND
+     ersetzt den Entscheid „nur Plattform" vom 06.09.2026). Die gewählte
+     Form steht in #115; bis der Scanner steht, gilt nur die Plattform. Hintergrund: Die Vorlage führt seit v1.15.0 „Plattform UND
      eigener Scanner" — der Plattform-Scan kennt nur die Muster seiner
      Partner-Anbieter (selbst vergebene Schlüssel fand in einer Probe mit
      sechs Fixtures nur ein eigener Scanner). Ihr zweiter Grund, öffentliche
-     Repos verbrauchten keine abgerechneten Minuten, ist mit `billable = 0`
-     aus `actions/runs/<id>/timing` belegt; dieselbe Schnittstelle meldet 0
+     Repos verbrauchten keine abgerechneten Minuten, begründet sie mit
+     `billable = 0` aus `actions/runs/<id>/timing`; dieselbe Schnittstelle meldet 0
      aber auch für private Repos (gemessen 28.09.2026 an zwei privaten Läufen
      desselben Kontos), als Kostenbeleg taugt sie also nicht.
   2. **Die PII-Grenze ist für Code gegenstandslos, für DATEN scharf.** Unser
@@ -355,12 +353,15 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   Wiederruf-Weg in `docs/SECRETS.md`.
 - **Kein Produktiv-Wächter nötig — solange die Bedingung hält.** Es gibt
   keinen MCP-Server für dieses Projekt und keine schreibenden
-  Prod-Werkzeuge, und kein Agent hat SSH-Zugang zum Server („Deploy").
+  Prod-Werkzeuge, und der Agenten-Schlüssel gilt nicht für den Server
+  (Owner-Auskunft, „Deploy").
   **Grenze, bewusst akzeptiert (Owner, 24.10.2026):** Agenten laufen unter dem
   Windows-Benutzer des Owners; was dieser Benutzer gespeichert hat, ist für sie
   erreichbar. Alle Anwendungen laufen lokal und sind von außen nicht
-  erreichbar. **Kommt ein MCP-Server mit schreibenden Werkzeugen oder ein
-  SSH-Zugang zum Server für Agenten dazu, wird der Wächter sofort nötig**
+  erreichbar. **Wird einem Agenten ein Prod-Token oder das Prod-Passwort
+  übergeben (Konfiguration, Umgebungsvariable, Prüfauftrag), kommt ein
+  MCP-Server mit schreibenden Werkzeugen oder ein SSH-Zugang zum Server für
+  Agenten dazu, wird der Wächter sofort nötig**
   (Vorlage und Echtprobe: `docs/SECRETS.md`; der Wächter der Vorlage
   entscheidet nur über MCP-Werkzeuge, nicht über Shell-Aufrufe).
 

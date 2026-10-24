@@ -60,15 +60,17 @@ Gewollt ist: **lesend über HTTP** (`curl <server-ip>:3010/health`). Deployen
 macht der Owner, und für dieses Projekt gibt es keinen MCP-Server (gemessen
 19.10.2026: keiner in der Client-Konfiguration).
 
-Kein Agent hat SSH-Zugang zum Server; ein Agenten-Schlüssel auf diesem
-Rechner gilt nur für andere Systeme im Heimnetz (Owner, 24.10.2026). Bewusst
+Ein Agenten-Schlüssel auf diesem Rechner gilt für andere Systeme im
+Heimnetz, nicht für den Server (Owner-Auskunft vom 24.10.2026, nicht
+gemessen). Bewusst
 akzeptiert: Agenten laufen unter dem Windows-Benutzer des Owners und
 erreichen, was dieser gespeichert hat; alle Anwendungen sind lokal und von
 außen nicht erreichbar.
 
 Ein technischer Wächter (PreToolUse-Hook mit fail-closed-Allowlist) ist
-deshalb heute nicht nötig. **Kommt ein MCP-Server mit schreibenden Werkzeugen
-oder ein SSH-Zugang zum Server für Agenten dazu, wird er sofort nötig.** Der
+deshalb heute nicht nötig. **Wird einem Agenten ein Prod-Token oder das
+Prod-Passwort übergeben, kommt ein MCP-Server mit schreibenden Werkzeugen oder
+ein SSH-Zugang zum Server für Agenten dazu, wird er sofort nötig.** Der
 Wächter der Vorlage (`prod-readonly-hook.py`) entscheidet nur über
 MCP-Werkzeuge; einen Shell-Aufruf sieht er nicht.
 
