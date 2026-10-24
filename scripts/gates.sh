@@ -1,5 +1,6 @@
 #!/bin/sh
-# Lokale Gates — alles läuft in Docker, kein Node/Python lokal nötig.
+# Lokale Gates — alles läuft in Docker, kein Node/Python lokal nötig; Gate P
+# braucht dazu git und awk auf dem Host (Selbstprobe des commit-msg-Hooks).
 #   Backend: Image bauen + pytest gegen Wegwerf-Postgres (echter Migrationspfad)
 #   Web:     Image bauen = npm ci + tsc + next build (wie Prod) + Lint (Builder-Stage)
 # Aufruf:  sh scripts/gates.sh [backend|web|prozess|all]     (Default: all)
@@ -101,7 +102,7 @@ whatsnew_paritaet_gate() {
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
 # Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
 # Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
-# kein git (gemessen 24.10.2026: `command -v git` → 127). ~4 s unter Git Bash.
+# kein git (gemessen 24.10.2026: `command -v git` → 127). 15–16 s unter Git Bash (27 Fälle, gemessen 24.10.2026).
 prozess_gate() {
   echo "── Gate P: Prozess-Werkzeuge (commit-msg-Hook, Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
   sh "$ROOT/scripts/commit-msg-selbsttest.sh"

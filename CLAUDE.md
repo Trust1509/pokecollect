@@ -76,7 +76,7 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    brauchen die Code-Gates nicht — **wohl aber Gate P, sobald sie `CLAUDE.md`
    oder `docs/agents/` berühren**: Der Verweis-Wächter prüft genau diese
    Dateien, und ein Doku-Commit kann ihn brechen (`sh scripts/gates.sh
-   prozess`, ~20 s, unter der Rechner-Sperre; Gegenprüfer, Abgleich v1.17.2).
+   prozess`, ~35 s (gemessen 24.10.2026), unter der Rechner-Sperre; Gegenprüfer, Abgleich v1.17.2).
    Gate P fährt dabei auch die Brief-Selbstprobe, die ein Doku-Commit an den
    Prüffragen, den „Randbedingungen, die immer mitmüssen" oder den „Typischen
    Fallen" in `bau-brief.md` bricht (Vorlage v1.18.1). Die CI fährt Gate P nicht

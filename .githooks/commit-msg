@@ -22,24 +22,32 @@
 
 # `git commit -v` haengt den Diff hinter einer Scheren-Zeile an die Datei;
 # git schneidet ihn nach diesem Hook ab, er landet nie in der Nachricht (#112).
-# Geschnitten wird nur dort, wo git die Schere selbst schreibt: Scheren-Zeile
-# UND direkt danach "# Do not modify or remove the line above.". Bei -F bleibt
-# eine selbst geschriebene Scheren-Zeile samt Folgetext in der Nachricht —
-# dort wird weiter geprueft. Andere Sprache oder anderes Kommentarzeichen:
-# kein Schnitt, der Hook ist dann strenger, nie lockerer.
+# Geschnitten wird nur an der Form, die git dort schreibt: Scheren-Zeile und
+# direkt darunter die zwei englischen Hinweiszeilen ("# Do not modify ...",
+# "# Everything below ..."). Eine Scheren-Zeile allein schneidet nicht.
+# GRENZE (lockerer): Wer genau diese drei Zeilen selbst in die Nachricht
+# schreibt (-m, -F oder im Editor ohne -v), dem schneidet der Hook den Rest
+# ab, obwohl git ihn behaelt. Gegen ein Versehen genuegt das, gegen Absicht
+# schuetzt kein Hook.
+# STRENGER als git (lehnt ab, obwohl git den Marker entfernt haette):
+# Kommentarzeilen im Editor oder aus einer Vorlage (-t), ein anderes
+# core.commentChar und eine uebersetzte git-Ausgabe (dann kein Schnitt).
+# Bricht awk ab, lehnt der Hook ab, statt ungeprueft durchzulassen.
 # Selbstprobe mit echten git-commit-Aufrufen: scripts/commit-msg-selbsttest.sh
 rumpf() {
   awk '{ z[NR] = $0 }
     END {
       ende = NR
-      for (i = 1; i < NR; i++)
+      for (i = 1; i + 2 <= NR; i++)
         if (z[i] == "# ------------------------ >8 ------------------------" &&
-            z[i + 1] == "# Do not modify or remove the line above.") { ende = i - 1; break }
+            z[i + 1] == "# Do not modify or remove the line above." &&
+            z[i + 2] == "# Everything below it will be ignored.") { ende = i - 1; break }
       for (i = 2; i <= ende; i++) print z[i]
     }' "$1"
 }
 
-if rumpf "$1" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no[ -]ci|skip[ -]actions|actions[ -]skip)\]'; then
+text=$(rumpf "$1") || { echo "FEHLER: commit-msg-Hook konnte die Nachricht nicht lesen (awk)."; exit 1; }
+if printf '%s\n' "$text" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no[ -]ci|skip[ -]actions|actions[ -]skip)\]'; then
   echo "FEHLER: Ueberspring-Marker ab Zeile 2 der Commit-Nachricht."
   echo "        Die Plattform liest die ganze Nachricht — der Commit wuerde"
   echo "        NULL CI-Laeufe ausloesen. Marker nur in der Betreffzeile;"
