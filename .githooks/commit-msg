@@ -20,7 +20,26 @@
 # Aktivieren (einmalig je Arbeitskopie):
 #     git config core.hooksPath .githooks
 
-if tail -n +2 "$1" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no[ -]ci|skip[ -]actions|actions[ -]skip)\]'; then
+# `git commit -v` haengt den Diff hinter einer Scheren-Zeile an die Datei;
+# git schneidet ihn nach diesem Hook ab, er landet nie in der Nachricht (#112).
+# Geschnitten wird nur dort, wo git die Schere selbst schreibt: Scheren-Zeile
+# UND direkt danach "# Do not modify or remove the line above.". Bei -F bleibt
+# eine selbst geschriebene Scheren-Zeile samt Folgetext in der Nachricht —
+# dort wird weiter geprueft. Andere Sprache oder anderes Kommentarzeichen:
+# kein Schnitt, der Hook ist dann strenger, nie lockerer.
+# Selbstprobe mit echten git-commit-Aufrufen: scripts/commit-msg-selbsttest.sh
+rumpf() {
+  awk '{ z[NR] = $0 }
+    END {
+      ende = NR
+      for (i = 1; i < NR; i++)
+        if (z[i] == "# ------------------------ >8 ------------------------" &&
+            z[i + 1] == "# Do not modify or remove the line above.") { ende = i - 1; break }
+      for (i = 2; i <= ende; i++) print z[i]
+    }' "$1"
+}
+
+if rumpf "$1" | grep -qiE '\[(skip[ -]ci|ci[ -]skip|no[ -]ci|skip[ -]actions|actions[ -]skip)\]'; then
   echo "FEHLER: Ueberspring-Marker ab Zeile 2 der Commit-Nachricht."
   echo "        Die Plattform liest die ganze Nachricht — der Commit wuerde"
   echo "        NULL CI-Laeufe ausloesen. Marker nur in der Betreffzeile;"

@@ -208,7 +208,7 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   Workflow hat einen `permissions:`-Block (Least Privilege). **Nur lokal**
   laufen drei Teile von `gates.sh`: die Was-ist-neu-Parität (Gate 0), die
   Paritäts-Prüfungen Gate ↔ CI im Web-Gate (`grep` auf `ci.yml`) und die
-  Prozess-Werkzeuge der Vorlage (Gate P: Brief-Selbstprobe,
+  Prozess-Werkzeuge (Gate P: Selbstprobe des commit-msg-Hooks, Brief-Selbstprobe,
   Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) — die
   CI ruft `gates.sh` nicht auf. Wer sie auslässt, macht nichts rot
   (`docs/agents/lehren.md` §10).

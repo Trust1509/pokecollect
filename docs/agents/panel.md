@@ -1163,7 +1163,7 @@ Kopfhinweis. Hier steht, was nur für dieses Repo gilt.
 `web/scripts/generate-whatsnew.mjs` (fällt das Urteil in Gate 0 von
 `scripts/gates.sh`), `web/scripts/check-whatsnew.mjs` (Web-Job der CI und
 `gates.sh`), `deploy.sh` (führt auf dem Server Befehle aus),
-`.githooks/commit-msg`, `.github/dependabot.yml` und jeder Workflow unter
+`.githooks/commit-msg` samt `scripts/commit-msg-selbsttest.sh`, `.github/dependabot.yml` und jeder Workflow unter
 `.github/workflows/`. Zu Bedingung 1 der Kopftext-Ausnahme: Meldet
 `ast-gleich.py` bei Exit 0 eine **ACHTUNG-Zeile** — geänderte Shebang- oder
 Kodierungs-Zeile, ein `>>>`-Beispiel im Docstring, BOM oder Zeilenenden —,

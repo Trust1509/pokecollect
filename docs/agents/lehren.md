@@ -245,8 +245,10 @@ Eingaben: Ein Fall erwartete, dass git eine Kommentarzeile entfernt — bei
 zwei Zeilen, die git dort schreibt; der Wächter lehnte danach jeden echten
 Commit mit `-v` ab, die Probe blieb grün. **Regel:** Mindestens ein Fall
 bekommt seine Eingabe vom fremden Werkzeug selbst (echtes `git commit`). Bei
-uns betrifft das `.githooks/commit-msg`; der Hook hat bisher gar keine
-Selbstprobe (gemessen 19.10.2026). Entsteht eine, gilt diese Regel für sie.
+uns betrifft das `.githooks/commit-msg`. Er hatte bis #112 keine Selbstprobe
+und lehnte genau so jeden Commit mit `-v` ab, dessen Diff den Marker enthielt
+(gemessen 24.10.2026). Seine Selbstprobe `scripts/commit-msg-selbsttest.sh`
+lässt jede Eingabe von echtem `git commit` schreiben und läuft in Gate P.
 
 ---
 

@@ -99,8 +99,12 @@ whatsnew_paritaet_gate() {
 # nichts rot; dagegen hilft nur das Lesen der Erfolgszeilen (#106).
 # Die Vorlagen-CI fährt diese Prüfungen nicht (0 Treffer in docs/vorlagen/ci.yml)
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
+# Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
+# Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
+# kein git (gemessen 24.10.2026: `command -v git` → 127). ~4 s unter Git Bash.
 prozess_gate() {
-  echo "── Gate P: Prozess-Werkzeuge (Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
+  echo "── Gate P: Prozess-Werkzeuge (commit-msg-Hook, Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
+  sh "$ROOT/scripts/commit-msg-selbsttest.sh"
   MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w python:3.12-slim sh -eu -c '
     sh scripts/bau-brief-pruefen-selbsttest.sh
     /usr/local/bin/python3.12 -I -S docs/vorlagen/waechter-gate-probe-selbsttest.py
