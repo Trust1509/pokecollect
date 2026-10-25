@@ -211,7 +211,9 @@ Grenze ist der Systemaufruf, die HTTP-Anfrage, der Datenbank-Treffer.
 Prüfung aus der Gate-Datei streichen" gehört in jede Mutationsliste; in einem
 anderen Projekt rutschte genau das durch, weil die Selbstprobe das Prüfskript
 prüfte, nicht seinen Aufruf. Bei uns gilt das für jede Zeile von Gate P in
-`scripts/gates.sh`: Fehlt eine, wird keine der Selbstproben rot (#106).
+`scripts/gates.sh`: Fehlt eine, wird keine der Selbstproben rot. Seit #106
+zählt der CI-Job „Prozess (Gate P)" die Erfolgszeilen der Werkzeuge
+(`scripts/gate-p-erfolgszeilen.sh`); eine gestrichene Zeile macht dort rot.
 
 **Wer einen Mutanten für äquivalent erklärt, schuldet die Sonde, die ihm recht
 gäbe** (Vorlage §1, v1.18.2). Überlebt eine Mutation alle Tests, ist entweder

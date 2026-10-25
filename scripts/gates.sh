@@ -97,9 +97,11 @@ whatsnew_paritaet_gate() {
 # wenn prozess_gate nichts mehr prüft. GRENZE, gemessen im Abgleich v1.18.13:
 # Eine gestrichene Werkzeug-Zeile, ein `sh -u -c` statt `sh -eu -c` (dann zählt
 # nur der Exit der letzten Zeile) oder ein Ziel `all` ohne prozess_gate macht
-# nichts rot; dagegen hilft nur das Lesen der Erfolgszeilen (#106).
-# Die Vorlagen-CI fährt diese Prüfungen nicht (0 Treffer in docs/vorlagen/ci.yml)
-# — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
+# lokal nichts rot. Die CI fährt deshalb `gates.sh prozess` selbst (Job
+# „Prozess (Gate P)" in ci.yml, #106) und zählt danach die Erfolgszeilen mit
+# scripts/gate-p-erfolgszeilen.sh — kommt hier ein Werkzeug dazu, gehört seine
+# Erfolgszeile dorthin. Die Vorlagen-CI fährt diese Prüfungen nicht (0 Treffer
+# in docs/vorlagen/ci.yml); die Abweichung ist gewollt.
 # Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
 # Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
 # kein git (gemessen 24.10.2026: `command -v git` → 127). Unter Git Bash rund

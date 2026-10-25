@@ -97,6 +97,31 @@ jobs:
           mkdir -p /tmp/ci-images
           python -m pytest tests -q
 
+  # Gate P (#106): die Prozess-Werkzeuge aus scripts/gates.sh — hier fährt die
+  # CI gates.sh selbst, weil das Gate nur sh, git, awk und Docker braucht und
+  # der Runner alles hat (kein Nachbau, also keine zweite Fassung). Exit 0
+  # reicht nicht als Beleg: gate-p-erfolgszeilen.sh verlangt die Erfolgszeile
+  # jedes Werkzeugs genau einmal (Begründung im Skriptkopf).
+  # GRENZE: Wie die anderen Jobs läuft er beim Push nicht für reine *.md-
+  # Commits (paths-ignore oben) — und Commits tragen ohnehin den
+  # Überspring-Marker. Wirksam ist er im workflow_dispatch nach der Landung.
+  prozess:
+    name: Prozess (Gate P)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15   # siehe backend-Job; lokal gemessen 27–35 s
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - name: Gate P
+        run: |
+          set +e
+          sh scripts/gates.sh prozess > "$RUNNER_TEMP/gate-p.log" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/gate-p.log"
+          if [ "$rc" -ne 0 ]; then echo "gates.sh prozess: Exit $rc"; exit "$rc"; fi
+      - name: Erfolgszeilen der Werkzeuge zählen
+        run: sh scripts/gate-p-erfolgszeilen.sh "$RUNNER_TEMP/gate-p.log"
+
   web:
     name: Web (tsc + lint + next build)
     runs-on: ubuntu-latest

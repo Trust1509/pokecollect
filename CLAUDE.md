@@ -79,9 +79,11 @@ dort wirklich existieren. Ein Skill ist eine *Methode*, der Prozess ist die
    prozess`, rund 1 Minute, je nach Last, unter der Rechner-Sperre; Gegenprüfer, Abgleich v1.17.2).
    Gate P fährt dabei auch die Brief-Selbstprobe, die ein Doku-Commit an den
    Prüffragen, den „Randbedingungen, die immer mitmüssen" oder den „Typischen
-   Fallen" in `bau-brief.md` bricht (Vorlage v1.18.1). Die CI fährt Gate P nicht
-   — was es rot macht, ohne dass jemand daran denkt, ist bisher nichts
-   (erste Wächterfrage, `docs/agents/lehren.md` §10; offen in #106). Die Prüfungen
+   Fallen" in `bau-brief.md` bricht (Vorlage v1.18.1). Seit #106 fährt auch die
+   CI Gate P (Job „Prozess (Gate P)" in `ci.yml`) und zählt die Erfolgszeilen
+   der Werkzeuge (`scripts/gate-p-erfolgszeilen.sh`) — rot wird es also im
+   einen Lauf nach der Landung, auch wenn lokal niemand daran gedacht hat
+   (erste Wächterfrage, `docs/agents/lehren.md` §10). Die Prüfungen
    laufen **einmal auf dem finalen Baumzustand**, egal von wem: dieselbe Suite
    von Bauer, Arbiter und CI dreimal zu fahren ist Leerlauf. Bei Datei-
    Überlappung mehrerer Arbeitspakete sequenziell statt parallel (Git-Race).
@@ -207,12 +209,12 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`): Backend-pytest + Frontend
   tsc/lint/build, gespiegelt in `scripts/gates.sh`. Actions sind SHA-gepinnt, jeder
   Workflow hat einen `permissions:`-Block (Least Privilege). **Nur lokal**
-  laufen drei Teile von `gates.sh`: die Was-ist-neu-Parität (Gate 0), die
-  Paritäts-Prüfungen Gate ↔ CI im Web-Gate (`grep` auf `ci.yml`) und die
+  laufen zwei Teile von `gates.sh`: die Was-ist-neu-Parität (Gate 0) und die
+  Paritäts-Prüfungen Gate ↔ CI im Web-Gate (`grep` auf `ci.yml`) — wer sie
+  auslässt, macht nichts rot (`docs/agents/lehren.md` §10). Die
   Prozess-Werkzeuge (Gate P: Selbstprobe des commit-msg-Hooks, Brief-Selbstprobe,
-  Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) — die
-  CI ruft `gates.sh` nicht auf. Wer sie auslässt, macht nichts rot
-  (`docs/agents/lehren.md` §10).
+  Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) fährt
+  seit #106 auch die CI, als einzigen Teil über `gates.sh prozess` selbst.
 - **Rechner-Sperre für jeden schweren Lauf** — was als schwer gilt (auch
   `gates.sh prozess`: es startet einen Container) und der Wert: Schwellen-Inventar
   unten, Zeile „Schwere Läufe auf dem Rechner". Die zwei Blöcke zum Nehmen und
