@@ -15,7 +15,7 @@ passlib[bcrypt]==1.7.4
 # ohne Pin zog pip bcrypt 5.x. Beim Wechsel auf bcrypt 5 auch passlib ersetzen.
 bcrypt==4.0.1
 python-multipart==0.0.32
-httpx==0.27.0
+httpx==0.28.1
 # Cardmarket-OAuth (optionaler Preis-Fallback)
 requests-oauthlib==1.3.1
 apscheduler==3.10.4
