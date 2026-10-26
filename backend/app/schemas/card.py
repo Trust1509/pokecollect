@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.schemas._grenzen import MONEY_FIELD, PgNichtNegativ
 from app.schemas._validators import reject_control_chars, reject_explicit_null
 
 
@@ -71,12 +72,16 @@ class CardCreate(CardBase):
     # NUR auf dem SCHREIB-Weg prüfen: CardResponse erbt ebenfalls von CardBase,
     # dort würde die Sperre Bestandsdaten mit Steuerzeichen unlesbar machen
     # (Panel-Fund: GET /cards/{id} lieferte 500 statt der Karte).
+    # Dasselbe gilt für die Grenzen aus dem Spaltentyp (#117).
+    pokedex_nr: Optional[PgNichtNegativ] = None
+    wert_eur: Optional[Decimal] = MONEY_FIELD
+    kaufpreis_eur: Optional[Decimal] = MONEY_FIELD
     _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
 
 
 class CardUpdate(BaseModel):
     kartenname: Optional[str] = None
-    pokedex_nr: Optional[int] = None
+    pokedex_nr: Optional[PgNichtNegativ] = None
     englischer_name: Optional[str] = None
     set_edition: Optional[str] = None
     karten_nr: Optional[str] = None
@@ -90,8 +95,8 @@ class CardUpdate(BaseModel):
     wunschliste: Optional[bool] = None
     im_pokedex: Optional[bool] = None
     prioritaet: Optional[str] = None
-    wert_eur: Optional[Decimal] = None
-    kaufpreis_eur: Optional[Decimal] = None
+    wert_eur: Optional[Decimal] = MONEY_FIELD
+    kaufpreis_eur: Optional[Decimal] = MONEY_FIELD
     kaufdatum: Optional[date] = None
     notizen: Optional[str] = None
     zustand: Optional[str] = None

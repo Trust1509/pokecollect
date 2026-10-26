@@ -3,8 +3,12 @@ import mimetypes
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from urllib.parse import unquote_plus
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import text
@@ -13,6 +17,7 @@ from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.api.v1 import router as v1_router
 from app.services.cron import start_scheduler
+from app.schemas._validators import _CONTROL_CHARS
 
 logging.basicConfig(level=logging.INFO)
 
@@ -387,6 +392,44 @@ app = FastAPI(
     version=settings.app_version,
     lifespan=lifespan,
 )
+
+# #117: Steuerzeichen in Pfad oder Query-String (NUL u. a.) scheiterten erst in
+# Postgres (Text kann kein 0x00) — gefunden vom API-Fuzzing. Für Körper prüft
+# das reject_control_chars je Schema; Pfad und Query haben kein Schema, das
+# jede Route kennt, deshalb hier zentral. Registriert VOR der CORS-Middleware:
+# Starlette legt die zuletzt registrierte außen, so trägt auch die 422 die
+# CORS-Header.
+def _kodierbar(wert):
+    """Zeichenketten so umformen, dass sie sich als JSON/UTF-8 ausgeben lassen."""
+    if isinstance(wert, str):
+        return wert.encode("utf-8", "backslashreplace").decode("utf-8")
+    if isinstance(wert, (list, tuple)):
+        return [_kodierbar(w) for w in wert]
+    if isinstance(wert, dict):
+        return {_kodierbar(k): _kodierbar(w) for k, w in wert.items()}
+    return wert
+
+
+# #117: Ohne eigenen Handler schreibt FastAPI den abgelehnten Wert als "input"
+# (dazu "ctx") in die 422 — bei einem Passwortfeld das Passwort im Klartext, und
+# ein nicht kodierbarer Wert (einzelnes Surrogat) machte die Antwort selbst zum
+# 500. Ort, Art und Meldung reichen dem Client; das Frontend liest "input" nicht.
+@app.exception_handler(RequestValidationError)
+async def validierungsfehler_ohne_eingabe(request: Request, exc: RequestValidationError):
+    fehler = [
+        {k: _kodierbar(v) for k, v in f.items() if k not in ("input", "ctx")}
+        for f in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": fehler})
+
+
+@app.middleware("http")
+async def steuerzeichen_in_url_ablehnen(request: Request, call_next):
+    query = unquote_plus(request.scope.get("query_string", b"").decode("latin-1"), errors="replace")
+    if _CONTROL_CHARS.search(request.scope.get("path", "")) or _CONTROL_CHARS.search(query):
+        return JSONResponse(status_code=422, content={"detail": "Steuerzeichen in Pfad oder Query sind nicht erlaubt"})
+    return await call_next(request)
+
 
 # allow_credentials=False: Auth läuft über den Authorization-Header, nicht
 # über Cookies. Origins kommen aus CORS_ORIGINS (kommagetrennt); ohne Env

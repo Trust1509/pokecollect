@@ -145,8 +145,8 @@ Das Script macht automatisch: `git pull` → `chown` → API rebuild → Web reb
 
 | Änderung                        | Befehl                                          |
 |---------------------------------|-------------------------------------------------|
-| Backend Python-Code             | `docker compose build api && docker compose up -d api` |
-| Frontend TypeScript/TSX/CSS     | `docker compose build web && docker compose up -d web` |
+| Backend Python-Code             | `docker compose build --pull api && docker compose up -d api` |
+| Frontend TypeScript/TSX/CSS     | `docker compose build --pull web && docker compose up -d web` |
 | `NEXT_PUBLIC_API_URL` geändert  | `docker compose build web && docker compose up -d web` |
 | `docker-compose.yml` geändert   | `docker compose up -d`                          |
 | Alles (nach `git pull`)         | `bash deploy.sh`                                |

@@ -3,6 +3,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.schemas._grenzen import PgNichtNegativ
 from app.schemas._validators import reject_control_chars, reject_explicit_null
 from app.schemas.card import CardResponse
 
@@ -33,7 +34,8 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     beschreibung: Optional[str] = None
     binder_layout: Optional[str] = None
-    binder_slots: Optional[int] = None
+    # #117: integer-Spalte — ohne Grenze 500 aus der Datenbank statt 422
+    binder_slots: Optional[PgNichtNegativ] = None
 
     _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
     # name liegt auf einer NOT-NULL-Spalte (#55)
@@ -106,17 +108,17 @@ class CollectionCardResponse(CardResponse):
 
 class ReorderRequest(BaseModel):
     """Kompakte Neuordnung (Grid-DnD): Karten-IDs in gewünschter Reihenfolge."""
-    order: list[int]
+    order: list[PgNichtNegativ]
 
 
 class SlotRequest(BaseModel):
     """Binder-DnD: Karte auf Slot-Index verschieben (Tausch falls belegt)."""
-    slot: int
+    slot: PgNichtNegativ
 
 
 class CardPosition(BaseModel):
-    card_id: int
-    position: int
+    card_id: PgNichtNegativ
+    position: PgNichtNegativ
 
 
 class PositionsRequest(BaseModel):

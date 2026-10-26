@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas._grenzen import MONEY_FIELD  # noqa: F401 (auch von außen genutzt)
 from app.schemas._validators import reject_control_chars, reject_explicit_null
 
 # Fester Typ-Katalog (Issue #35). Interne ASCII-tauglichen Werte = zugleich
@@ -27,9 +28,6 @@ MAX_SET_CODES = 50
 # werden, aber Missbrauch früh (auf Feldebene) abprallt. (#38, Codex-Review)
 MAX_SET_CODES_RAW = 200
 MAX_NAME_LEN = 200
-# Numeric(8,2) → max. 999.999,99; ohne Grenze → Postgres-Overflow/500.
-# Negative Beträge würden die Statistik still verfälschen → ge=0.
-MONEY_FIELD = Field(default=None, ge=0, max_digits=8, decimal_places=2)
 
 
 def _validate_name(v: Optional[str]) -> Optional[str]:

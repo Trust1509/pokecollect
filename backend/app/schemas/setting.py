@@ -1,7 +1,7 @@
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas._validators import reject_control_chars, reject_explicit_null
+from app.schemas._validators import reject_control_chars, reject_explicit_null, require_utf8
 
 
 DEFAULTS: dict[str, str] = {
@@ -123,3 +123,6 @@ class PasswordChange(BaseModel):
     # akzeptiert es ja weiterhin).
     current_password: str
     new_password: str
+
+    # #117: nicht kodierbares Passwort → 422 statt 500 aus bcrypt
+    _v_utf8 = field_validator("*", mode="before")(require_utf8)

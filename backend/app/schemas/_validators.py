@@ -37,6 +37,22 @@ _MAX_TIEFE = 12
 _MAX_ELEMENTE = 10_000
 
 
+def require_utf8(v: Any) -> Any:
+    """
+    Strings ablehnen, die sich nicht als UTF-8 kodieren lassen (#117).
+
+    Ein einzelnes Surrogat (JSON \\ud800) ist gültiges JSON, aber kein
+    kodierbarer Text — bcrypt scheiterte daran mit 500. Für Passwortfelder,
+    die bewusst KEINE Steuerzeichen-Sperre tragen (setting.py, PasswordChange).
+    """
+    if isinstance(v, str):
+        try:
+            v.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError("Text enthält ungültige Zeichen (nicht als UTF-8 kodierbar)")
+    return v
+
+
 def reject_control_chars(v: Any, _tiefe: int = 0) -> Any:
     """
     Strings mit Steuerzeichen ablehnen (422 statt 500 aus der DB). Rekursiv

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db, run_with_session
 from app.models.card import PokemonCard, PreisHistorie
+from app.schemas._grenzen import PG_INTEGER_MAX
 from app.schemas.card import PreisHistorieResponse
 from app.services.pricing import refresh_prices_for_cards, refresh_sealed_prices
 
@@ -29,7 +30,8 @@ async def trigger_price_refresh(
 @router.get("/history/{card_id}", response_model=list[PreisHistorieResponse])
 def get_price_history(
     card_id: int,
-    limit: int = 90,
+    # #117: negatives oder übergroßes LIMIT scheiterte erst in der Datenbank (500)
+    limit: int = Query(90, ge=0, le=PG_INTEGER_MAX),
     db: Session = Depends(get_db),
 ):
     if not db.get(PokemonCard, card_id):

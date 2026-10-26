@@ -17,8 +17,11 @@ git pull origin main
 
 chown -R 3010:3010 .
 
-# Backend und Frontend neu bauen (Code-Änderungen erfordern immer einen Rebuild)
-docker compose build api web
+# Backend und Frontend neu bauen (Code-Änderungen erfordern immer einen Rebuild).
+# --pull (#117): ohne holt der Build die Basis-Images (python:3.12-slim,
+# node:*-alpine) nie neu — Sicherheitskorrekturen im Basis-System kamen dann nie
+# an, und die Schichten mit apt/pip blieben aus dem Cache auf altem Stand.
+docker compose build --pull api web
 docker compose up -d
 
 echo "Deploy abgeschlossen."
