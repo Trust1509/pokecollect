@@ -1,5 +1,38 @@
 # Changelog
 
+## [v1.10.0] – 2026-10-26 (Sicherheits-Update, Bild-Optimierung wieder an) — gefahrlos
+
+**Keine Migration, keine Änderung an deinen Daten.** Dieses Update bringt das
+Frontend-Framework und die Server-Bibliotheken auf einen Stand ohne bekannte
+Sicherheitslücken. Deine Anmeldung bleibt bestehen.
+
+### Behoben
+- **Selbst aufgenommene Fotos werden wieder angezeigt.** Seit v1.9.2 blieben
+  eigene Fotos von Karten und Sealed-Produkten leer, solange die
+  Bild-Optimierung an war. Sie kommen jetzt direkt vom PokéCollect-Server.
+
+### Sicherheit
+- **Bild-Optimierung wieder an, auf einem Framework-Stand ohne die
+  kritischen Lücken** (Next.js 15). Die Sofortmaßnahme aus v1.9.3 ist damit
+  aufgehoben: Kartenbilder kommen wieder verkleinert vom PokéCollect-Server,
+  das spart auf dem Handy Datenvolumen. Eine von Hand eingetragene Bild-Adresse
+  zu einer fremden Seite bleibt dafür wieder leer — der Server lädt Bilder nur
+  von den bekannten Karten-Datenbanken und von PokéCollect selbst.
+- **Server-Bibliotheken aktualisiert**: Bildverarbeitung, Web-Server und
+  Anmeldung — die bekannten Lücken darin sind geschlossen. Die Anmeldung läuft
+  über eine andere Bibliothek; bestehende Anmeldungen bleiben gültig.
+- **Ungültige Eingaben werden sauber abgelehnt** statt einen Serverfehler
+  auszulösen: unsinnig große Zahlen, unsichtbare Steuerzeichen und kaputte
+  Zeichen in Textfeldern. Ein Kauf- oder Wertpreis darf nicht negativ sein und
+  höchstens zwei Nachkommastellen haben (wie schon bei Sealed); drei
+  Nachkommastellen werden jetzt abgelehnt statt still gerundet.
+
+### Intern
+- Laufzeitumgebung des Frontends auf eine unterstützte Version angehoben, nicht
+  benötigte Werkzeuge aus dem Server-Abbild entfernt.
+- Beim Aktualisieren werden die Basis-Abbilder jetzt immer frisch geladen,
+  damit Sicherheitskorrekturen des Betriebssystems ankommen.
+
 ## [v1.9.3] – 2026-10-26 (Sicherheits-Hotfix: Bild-Optimierung abgeschaltet) — gefahrlos
 
 **Keine Migration, keine Änderung an deinen Daten.** Kartenbilder werden ab
