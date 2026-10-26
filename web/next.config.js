@@ -26,6 +26,16 @@ const nextConfig = {
   // an einem Lint-Error scheitern, und Gate/CI wuerden doppelt linten.
   eslint: { ignoreDuringBuilds: true },
   images: {
+    // HOTFIX (Oktober 2026): Bild-Optimizer AUS. Zwei kritische Lücken im
+    // Optimizer von Next.js (GHSA-2xp9-vwfh-vxw4, GHSA-2464-fhr4-w9xw:
+    // Code-Ausführung ohne Anmeldung) sind erst in 15.5.28 behoben; der
+    // 14er-Zweig endet bei 14.2.35 (diese Version). Gemessen am gebauten
+    // Image: mit dieser Zeile antwortet /_next/image mit 404 statt 200, der
+    // Endpunkt existiert also nicht mehr; <Image> lädt die Originale direkt.
+    // ZURÜCKNEHMEN mit dem Umstieg auf Next 15 — dann gelten die Muster und
+    // Wächter unten wieder (e2e/tests/bildoptimizer.spec.ts, alte Fassung in
+    // der Git-Historie).
+    unoptimized: true,
     // #91 Panel-Härtung: vorher https+http je "**" — die self-hosted Instanz war
     // damit ein offener Bild-Proxy (/_next/image?url=<beliebig> nahm JEDEN Host
     // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8). Jetzt NUR die

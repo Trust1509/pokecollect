@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.9.3] – 2026-10-26 (Sicherheits-Hotfix: Bild-Optimierung abgeschaltet) — gefahrlos
+
+**Keine Migration, keine Änderung an deinen Daten.** Kartenbilder werden ab
+jetzt in Originalgröße geladen statt vom Server verkleinert. Das kann auf dem
+Handy etwas mehr Datenvolumen kosten; sonst ändert sich nichts.
+
+### Sicherheit
+- **Bild-Optimierung vorübergehend abgeschaltet.** Im Bild-Dienst des
+  Frontend-Frameworks (Next.js) sind zwei kritische Lücken bekannt geworden,
+  über die ein Angreifer im Netzwerk ohne Anmeldung Code auf dem Server
+  ausführen könnte. Behoben sind sie erst in einer neueren Hauptversion des
+  Frameworks; der Umstieg darauf folgt. Bis dahin ist der Bild-Dienst aus —
+  der betroffene Endpunkt antwortet nicht mehr, die Bilder kommen direkt von
+  ihrer Quelle.
+
 ## [v1.9.2] – 2026-09-06 (Was ist neu-Box, echte Bild-Optimierung) — gefahrlos
 
 **Keine Migration, keine Änderung an deinen Daten.** Sichtbar ist vor allem
