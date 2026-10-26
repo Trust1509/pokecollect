@@ -61,7 +61,8 @@ test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {
  *
  * Warum es die braucht (beide Panel-Stimmen, unabhängig): Der Rauchtest
  * meldete 18/18 grün, WÄHREND beide Fehler bestanden — er war für sie nie
- * ein Wächter. Grund im Next-Quelltext (v14.2.35 image-optimizer.ts):
+ * ein Wächter. Grund im Next-Quelltext (v14.2.35 image-optimizer.ts; unter
+ * 15.5.28 im Panel zu #117 gemessen: sharp liefert webp, Cache HIT):
  * Schlägt die Optimierung fehl, fängt ein catch den Fehler und liefert das
  * UNveränderte Original mit dessen ursprünglichem Content-Type aus
  * ("If we fail to optimize, fallback to the original image"). Die Seite
@@ -122,6 +123,29 @@ test.describe("Bild-Optimizer optimiert und cacht wirklich (#98)", () => {
     const mitQuery = `${apiUrl}/images/test98-gibt-es-nicht.webp?cachebust=1`;
     const antwort = await request.get(
       `${baseURL}/_next/image?url=${encodeURIComponent(mitQuery)}&w=64&q=75`,
+    );
+    expect(antwort.status(), await antwort.text()).toBe(400);
+  });
+});
+
+/**
+ * #117 Panel (Web-Slice, Blind- und Gegenprüfer gemessen): `search: ""` wirkt
+ * nur auf remotePatterns. Ein LOKALES Bild mit angehängtem Querystring und
+ * jeder Qualitätswert 1–100 ergaben je einen eigenen Cache-Eintrag. Seit
+ * images.localPatterns (search "") und images.qualities ([75]) lehnt Next beides
+ * ab. Gegenstück, das durchgehen muss: der #98-Test oben (lokale Datei, q=75).
+ */
+test.describe("Bild-Optimizer: keine Cache-Vervielfältigung über lokale Ziele (#117)", () => {
+  test("Querystring an einem lokalen Bild wird abgelehnt", async ({ request, baseURL }) => {
+    const antwort = await request.get(
+      `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png?x=1")}&w=64&q=75`,
+    );
+    expect(antwort.status(), await antwort.text()).toBe(400);
+  });
+
+  test("anderer Qualitätswert als 75 wird abgelehnt", async ({ request, baseURL }) => {
+    const antwort = await request.get(
+      `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png")}&w=64&q=50`,
     );
     expect(antwort.status(), await antwort.text()).toBe(400);
   });

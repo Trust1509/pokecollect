@@ -46,7 +46,8 @@ updates:
     groups:
       npm-monatlich:
         patterns: ["*"]
-    # Generationssprung des Frontend-Stacks (Next 16 / React 19 / Tailwind 4 / TS 7)
+    # Generationssprung des Frontend-Stacks (Next 16 / Tailwind 4 / TS 7; Next 15 +
+    # React 19 sind seit #117 da)
     # ist Owner-Entscheid (#87) und wird bewusst geplant, nicht per Sammel-PR gemergt:
     # Major-Updates dieser Pakete ignorieren; Minor/Patch laufen weiter. ACHTUNG
     # (Panel-Fund): `ignore` gilt laut Dependabot-Referenz AUCH für Sicherheits-
@@ -63,7 +64,7 @@ updates:
     # sie sinkt, ist eine spätere Owner-Frage, kein technischer Automatismus.
     #
     # eslint + eslint-config-next unten aus demselben Grund wie next selbst
-    # (nicht dem Generationssprung, sondern reinem Next-14-Gleichschritt, #91):
+    # (nicht dem Generationssprung, sondern reinem Gleichschritt mit next, #91):
     # eslint-config-next ist an next gekoppelt (SemVer-Major folgt Next-Major)
     # und ESLint 9 braucht eslint-config-next >= 15 — ein Sprung auf ESLint 9
     # allein bräche die Lint-Konfiguration, bevor next selbst springt.

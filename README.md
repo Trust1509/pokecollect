@@ -54,11 +54,11 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 ```
 web (Next.js 15, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  PostgreSQL 16
         │                              │
-        │  <img> direct                ├──►  TCGdex API (cards, images, prices)
+        │  next/image (allowlist)      ├──►  TCGdex API (cards, images, prices)
         └──────────────────────────────┴──►  Gemini API (optional, card scan)
 ```
 
-Card images load directly from `assets.tcgdex.net` in the browser; own photos are served from the API's `/images` static mount.
+Card images are fetched and resized by the web server's image optimizer (`next/image`, fixed host allowlist in `web/next.config.js`); own photos are served from the API's `/images` static mount.
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
 - **Frontend** `web/` — Next.js 15 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.

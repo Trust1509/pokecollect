@@ -45,7 +45,9 @@ services:
     ports:
       - "3011:3000"
     # #98 Panel-Nacharbeit: HARTE Obergrenze für den next/image-Cache.
-    # Next 14 räumt diesen Cache NIE auf — kein LRU, keine Größengrenze,
+    # Next 14 räumte diesen Cache NIE auf — kein LRU, keine Größengrenze,
+    # (Next 15 hat eine LRU bis zur Hälfte des freien Platzes im Ordner —
+    # der tmpfs-Deckel bleibt die harte Grenze; im Panel zu #117 geflutet: hält)
     # nur eine Max-Age im Dateinamen (31536000 = ein Jahr). Ohne Deckel kann
     # jeder, der die Instanz erreicht, unbegrenzt Plattenplatz belegen; auf
     # einem geteilten Server trifft eine volle Platte auch fremde Dienste.

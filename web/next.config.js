@@ -21,11 +21,25 @@ const nextConfig = {
   output: "standalone",
   // #72 Panel-Nacharbeit: Lint gehoert ins explizite Gate (scripts/gates.sh) und
   // den CI-Schritt "npm run lint --max-warnings 0" -- NICHT in `next build`.
-  // Ohne diese Zeile lintet Next 14 beim Build automatisch, sobald eslint +
+  // Ohne diese Zeile lintet Next (14 wie 15) beim Build automatisch, sobald eslint +
   // Konfiguration vorhanden sind: Der Produktions-Image-Build (deploy.sh) koennte
   // an einem Lint-Error scheitern, und Gate/CI wuerden doppelt linten.
   eslint: { ignoreDuringBuilds: true },
   images: {
+    // #117 Panel (Web-Slice): Querystring an LOKALEN Bildern und freie
+    // Qualitätswerte erzeugten beliebig viele Cache-Einträge — `search: ""`
+    // unten wirkt nur auf remotePatterns. Next 15 bietet dafür eigene Grenzen.
+    // Die App setzt nirgends `quality`, also gilt nur der Standard 75.
+    localPatterns: [{ pathname: "/**", search: "" }],
+    qualities: [75],
+    // GRENZE (gemessen im Panel zu #117, Blind- und Gegenprüfer): Der
+    // Optimizer folgt Weiterleitungen und prüft das Ziel danach NICHT mehr
+    // gegen diese Muster (image-optimizer.js: fetch ohne redirect-Option;
+    // in Next 14.2.35 genauso). Leitet einer der erlaubten Hosts unten weiter
+    // (offene Weiterleitung), ruft der Web-Server jedes Ziel ab, auch
+    // interne. Unser eigener /images-Mount leitet nicht weiter; die drei
+    // fremden CDNs sind die Annahme. Folge-Issue: eigener Loader/Proxy mit
+    // redirect: "manual".
     // #91 Panel-Härtung: vorher https+http je "**" — die self-hosted Instanz war
     // damit ein offener Bild-Proxy (/_next/image?url=<beliebig> nahm JEDEN Host
     // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8). Jetzt NUR die
@@ -52,18 +66,18 @@ const nextConfig = {
     remotePatterns: [
       // TCGdex-CDN: auto-gesetztes bild_karte_url, Backend erzwingt denselben
       // Host bereits selbst (services/tcgdex.py ALLOWED_IMAGE_HOSTS/image_url()).
-      { protocol: "https", hostname: "assets.tcgdex.net", search: "" },
+      { protocol: "https", hostname: "assets.tcgdex.net", port: "", search: "" },
       // TCGplayer-CDN: JP-Bildfallback bei Karten (dieselbe ALLOWED_IMAGE_HOSTS)
       // UND Sealed-Produktbilder (services/tcgcsv.py hires_image_url() prüft
       // denselben Host EXAKT — kein Substring —, bevor er in
       // SealedCatalog.image_url landet).
-      { protocol: "https", hostname: "tcgplayer-cdn.tcgplayer.com", search: "" },
+      { protocol: "https", hostname: "tcgplayer-cdn.tcgplayer.com", port: "", search: "" },
       // Pokédex-Sprite-Platzhalter (web/src/lib/utils.ts pokemonPlaceholderUrl,
       // letztes Glied der cardImageSrc-Kette) — fließt mit Default
       // placeholderEnabled=true tatsächlich in sechs der acht next/image-Stellen
       // (u. a. die Start-Binderansicht), pathname eng auf den einen genutzten
       // Unterpfad.
-      { protocol: "https", hostname: "www.pokemon.com", pathname: "/static-assets/**", search: "" },
+      { protocol: "https", hostname: "www.pokemon.com", port: "", pathname: "/static-assets/**", search: "" },
       // API-Origin für eigene Fotos + Katalog-Bild-Cache (nur der eine Mount,
       // der Bilder ausliefert: backend/app/main.py app.mount("/images", …)).
       // pathname eng auf /images/** statt "**" — ein offener Proxy auf JEDEN
