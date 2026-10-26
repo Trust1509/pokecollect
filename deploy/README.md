@@ -22,8 +22,12 @@ zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/db
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/images
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/config
 
-chown -R 3010:3010 /mnt/HDDs/Applications/pokecollect/
+find /mnt/HDDs/Applications/pokecollect/ -name .zfs -prune -o -exec chown -h 3010:3010 {} +
 ```
+
+> Nicht `chown -R`: Ist an einem Dataset `snapdir=visible` gesetzt, liegt darin
+> ein schreibgeschützter `.zfs`-Ordner mit allen Snapshots — `chown -R` läuft
+> hinein und scheitert („Read-only file system"). Dasselbe gilt für `deploy.sh`.
 
 > Das frühere `cache`-Dataset (Redis) wird seit v0.9.11 nicht mehr benötigt –
 > Redis war ungenutzt und wurde aus dem Stack entfernt. Ein vorhandenes Dataset

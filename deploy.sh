@@ -15,7 +15,13 @@ fi
 
 git pull origin main
 
-chown -R 3010:3010 .
+# Rechte für den App-Nutzer, OHNE die ZFS-Snapshot-Ordner (.zfs). Ist am
+# Dataset snapdir=visible gesetzt, liegt dort ein schreibgeschützter Baum aller
+# Snapshots; `chown -R` lief hinein, scheiterte („Read-only file system") und
+# brach den Deploy per set -e VOR dem Build ab (Deploy v1.10.0, 26.10.2026).
+# -h ändert Symlinks selbst (.env), nicht ihr Ziel — wie vorher `chown -R`.
+# Scheitert chown an einer anderen Datei, bricht der Deploy weiter ab.
+find . -name .zfs -prune -o -exec chown -h 3010:3010 {} +
 
 # Backend und Frontend neu bauen (Code-Änderungen erfordern immer einen Rebuild).
 # --pull (#117): ohne holt der Build die Basis-Images (python:3.12-slim,
