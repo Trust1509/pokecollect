@@ -1,5 +1,7 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.schemas._validators import reject_control_chars
 
 
 class CatalogItem(BaseModel):
@@ -68,3 +70,6 @@ class CatalogAddRequest(BaseModel):
     folierung: Optional[str] = None
     erste_edition: Optional[bool] = None
     prioritaet: Optional[str] = None
+
+    # #117: Steuerzeichen/Surrogate endeten sonst als 500 aus der Datenbank
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)

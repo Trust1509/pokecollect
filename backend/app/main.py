@@ -425,10 +425,14 @@ async def validierungsfehler_ohne_eingabe(request: Request, exc: RequestValidati
 
 
 # #117: Netz für den Rest der Klasse. Ein Wert, den die Datenbank nicht
-# darstellen kann (Zahl außerhalb des Spaltentyps, NUL im Text), kommt fast
-# immer aus der Eingabe — die Schemas fangen die bekannten Felder vorher ab,
-# dieses Netz die übersehenen. Keine Datenbank-Interna nach außen; die
-# Einzelheit steht im Log.
+# darstellen kann (Zahl außerhalb des Spaltentyps), kommt fast immer aus der
+# Eingabe. NUL und einzelne Surrogate fängt es NICHT — die wirft der Treiber
+# schon vor der Datenbank als ValueError/UnicodeEncodeError; dafür sind
+# reject_control_chars und require_utf8 an den Schemas zuständig. GRENZE: Auch
+# ein echter Programmfehler der Art DataError (z. B. Division durch null in
+# einer Abfrage) käme als 422 an; die Einzelheit steht im Log (Warnung).
+# Die Schemas fangen die bekannten Felder vorher ab, dieses Netz die
+# übersehenen. Keine Datenbank-Interna nach außen.
 @app.exception_handler(DataError)
 async def datenbank_wertfehler(request: Request, exc: DataError):
     logging.getLogger(__name__).warning("DataError bei %s %s: %s", request.method, request.url.path, exc.orig)

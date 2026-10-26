@@ -54,6 +54,10 @@ def require_utf8(v: Any) -> Any:
             v.encode("utf-8")
         except UnicodeEncodeError:
             raise ValueError("Text enthält ungültige Zeichen (nicht als UTF-8 kodierbar)")
+        # bcrypt lehnt NUL selbst mit einer Ausnahme ab (→ 500); ein Passwort
+        # mit NUL kann es also nicht geben (#117, Nacharbeit 2).
+        if chr(0) in v:
+            raise ValueError("Text enthält ein NUL-Zeichen")
     return v
 
 

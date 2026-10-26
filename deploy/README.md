@@ -313,7 +313,7 @@ docker exec authelia authelia validate-config --config /config/configuration.yml
 
    ```bash
    cd /mnt/HDDs/Applications/pokecollect/app
-   docker compose build web && docker compose up -d web api
+   docker compose build --pull web && docker compose up -d web api
    ```
 
    > Hinweis: Danach spricht das Web-Frontend die API **nur noch über

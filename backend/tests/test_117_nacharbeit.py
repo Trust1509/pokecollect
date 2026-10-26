@@ -72,29 +72,69 @@ def test_echtes_emoji_bleibt_erlaubt(client):
 # --- Ganzzahl-Geschwisterfelder ----------------------------------------------
 
 
+def _vom_schema(r, feld: str) -> None:
+    """422 UND vom Schema ausgelöst (Feld in loc) — nicht vom DataError-Netz.
+    Ohne diese Prüfung blieb ein Rückbau der Schema-Grenze grün, weil die
+    Datenbank dann DataError warf und das Netz ebenfalls 422 lieferte
+    (Blindprüfer, Nacharbeit 1, gemessen an drei Mutanten)."""
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert isinstance(detail, list), r.text
+    assert any(f["loc"][-1] == feld for f in detail), r.text
+
+
 def test_pokedex_nr_karte_ausserhalb_wird_abgelehnt(client):
-    assert client.post("/api/v1/cards", json={"kartenname": "Dex #117", "pokedex_nr": ZU_GROSS}).status_code == 422
+    _vom_schema(client.post("/api/v1/cards", json={"kartenname": "Dex #117", "pokedex_nr": ZU_GROSS}), "pokedex_nr")
     kid = client.post("/api/v1/cards", json={"kartenname": "Dex #117"}).json()["id"]
-    assert client.put(f"/api/v1/cards/{kid}", json={"pokedex_nr": -1}).status_code == 422
+    _vom_schema(client.put(f"/api/v1/cards/{kid}", json={"pokedex_nr": -1}), "pokedex_nr")
 
 
 @pytest.mark.parametrize("feld, wert", [("pokedex_nr", ZU_GROSS), ("dex_id", ZU_GROSS), ("position", ZU_GROSS), ("position", -5)])
 def test_scan_commit_ganzzahlen_ausserhalb_werden_abgelehnt(client, feld, wert):
     r = client.post("/api/v1/scan/commit", json={"target": "pokedex", "items": [{"kartenname": "Scan #117", feld: wert}]})
-    assert r.status_code == 422, r.text
+    _vom_schema(r, feld)
 
 
 @pytest.mark.parametrize("wert", [ZU_GROSS, -5])
 def test_soll_position_ausserhalb_wird_abgelehnt(client, wert):
     # Der Körper wird vor dem Handler geprüft — die IDs müssen nicht existieren.
-    r = client.put("/api/v1/collections/1/soll/1", json={"position": wert})
-    assert r.status_code == 422, r.text
+    _vom_schema(client.put("/api/v1/collections/1/soll/1", json={"position": wert}), "position")
 
 
 @pytest.mark.parametrize("pfad", ["/api/v1/cards", "/api/v1/catalog"])
 def test_seite_ausserhalb_wird_abgelehnt(client, pfad):
-    r = client.get(pfad, params={"page": 10**21})
+    _vom_schema(client.get(pfad, params={"page": 10**21}), "page")
+
+
+# --- Nacharbeit 2: weitere Eingabe-Schemas ohne Steuerzeichen-Sperre --------
+
+
+@pytest.mark.parametrize(
+    "methode, pfad, koerper",
+    [
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "a\u0000b"}'),
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "x", "soll_folierung": "\ud800"}'),
+        ("put", "/api/v1/collections/1/soll/1", rb'{"soll_folierung": "a\u0000b"}'),
+        ("post", "/api/v1/catalog/x/wishlist", rb'{"sprache": "\ud800"}'),
+        ("post", "/api/v1/catalog/x/collection", rb'{"zustand": "a\u0000b"}'),
+    ],
+)
+def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper):
+    r = getattr(client, methode)(pfad, content=koerper, headers={"Content-Type": "application/json"})
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.parametrize(
+    "pfad, koerper, erlaubt",
+    [
+        ("/api/v1/auth/login", rb'{"username": "admin", "password": "a\u0000b"}', (401, 422)),
+        ("/api/v1/settings/change-password", rb'{"current_password": "a\u0000b", "new_password": "neu-neu-neu"}', (400, 422)),
+        ("/api/v1/settings/change-password", rb'{"current_password": "x", "new_password": "a\u0000b"}', (400, 422)),
+    ],
+)
+def test_nul_im_passwort_kein_500(client, pfad, koerper, erlaubt):
+    r = client.post(pfad, content=koerper, headers={"Content-Type": "application/json"})
+    assert r.status_code in erlaubt, r.text
 
 
 # --- Netz für den Rest der Klasse: DataError aus der Datenbank → 422 --------

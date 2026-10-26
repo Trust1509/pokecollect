@@ -71,10 +71,15 @@ class SollSlotCreate(BaseModel):
     tcgdex_card_id: str
     soll_folierung: Optional[str] = None  # NULL = Regel (ziel_folierung) gilt
 
+    # #117: Steuerzeichen/Surrogate endeten sonst als 500 aus der Datenbank
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)
+
 
 class SollSlotUpdate(BaseModel):
     soll_folierung: Optional[str] = None
     position: Optional[PgNichtNegativ] = None  # #117
+
+    _v_ctrl = field_validator("*", mode="before")(reject_control_chars)  # #117
 
 
 class SollSlotResponse(BaseModel):
