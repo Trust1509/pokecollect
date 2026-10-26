@@ -9,9 +9,19 @@ import { expect, test } from "@playwright/test";
  * der Datei steht.
  *
  * Gemessen am gebauten Web-Image (vorher/nachher, gleicher Stand sonst):
- * vorher erlaubter Host 200 mit Bilddaten, fremder Host 400; nachher 404 für
- * alle drei Arten von Ziel. Rot-Beweis: ohne die Option antwortet der
- * Endpunkt wieder (200/400/500), keiner der Fälle unten ist dann 404.
+ * vorher lokale Datei bzw. echtes CDN-Bild 200 mit Bilddaten, eigene API mit
+ * fehlender Datei 500, fremder Host 400; nachher 404 für alle drei Arten von
+ * Ziel. Rot-Beweis: ohne die Option antwortet der Endpunkt wieder
+ * (200/500/400), keiner der Fälle unten ist dann 404.
+ *
+ * Gegenkontrolle (Panel zum Hotfix): Ein 404 beweist nur etwas, wenn wirklich
+ * der Next-Server an der Wurzel antwortet. Zeigt BASE_URL auf einen anderen
+ * Dienst oder verlegt ein `basePath` die App samt Optimizer
+ * (/<base>/_next/image), wären die 404 unten grün, obwohl der Optimizer
+ * läuft. Deshalb muss /login von Next kommen und seine Skripte unter
+ * /_next/static/ an der Wurzel laden.
+ * GRENZE: Ein eigener Bild-Proxy oder ein `loader` auf eine eigene Route
+ * fällt hier nicht auf — das prüft nur das Lesen von next.config.js.
  *
  * ZURÜCKNEHMEN mit dem Umstieg auf Next 15: Dann kommen die Wächter für
  * Host-Allowlist, sharp und Cache (#91, #98) aus der Git-Historie dieser
@@ -30,6 +40,12 @@ test.describe("Bild-Optimizer ist abgeschaltet (Hotfix bis Next 15)", () => {
     { name: "erlaubter Host (eigene API)", url: `${apiUrl}/images/hotfix-gibt-es-nicht.webp` },
     { name: "fremder Host", url: "https://evil.invalid/x.svg" },
   ];
+  test("Gegenkontrolle: der Next-Server antwortet an der Wurzel", async ({ request, baseURL }) => {
+    const seite = await request.get(`${baseURL}/login`);
+    expect(seite.status()).toBe(200);
+    expect(seite.headers()["x-powered-by"] ?? "").toContain("Next.js");
+    expect(await seite.text()).toContain('src="/_next/static/');
+  });
   for (const ziel of ziele) {
     test(`/_next/image antwortet nicht mehr: ${ziel.name}`, async ({ request, baseURL }) => {
       const antwort = await request.get(

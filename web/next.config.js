@@ -36,6 +36,10 @@ const nextConfig = {
     // Wächter unten wieder (e2e/tests/bildoptimizer.spec.ts, alte Fassung in
     // der Git-Historie).
     unoptimized: true,
+    // SOLANGE unoptimized gilt, WIRKEN die remotePatterns unten NICHT: Der
+    // Browser lädt jede <Image>-Quelle direkt, auch eine manuell gesetzte
+    // bild_pokedex_url zu einem fremden Host. Die Kommentare unten
+    // beschreiben den Stand mit Optimizer (bis v1.9.2).
     // #91 Panel-Härtung: vorher https+http je "**" — die self-hosted Instanz war
     // damit ein offener Bild-Proxy (/_next/image?url=<beliebig> nahm JEDEN Host
     // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8). Jetzt NUR die

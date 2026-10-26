@@ -3,8 +3,11 @@
 ## [v1.9.3] – 2026-10-26 (Sicherheits-Hotfix: Bild-Optimierung abgeschaltet) — gefahrlos
 
 **Keine Migration, keine Änderung an deinen Daten.** Kartenbilder werden ab
-jetzt in Originalgröße geladen statt vom Server verkleinert. Das kann auf dem
-Handy etwas mehr Datenvolumen kosten; sonst ändert sich nichts.
+jetzt in Originalgröße geladen statt vom Server verkleinert. Das kostet auf
+dem Handy deutlich mehr Datenvolumen, und Bilder von Karten-Datenbanken und
+Platzhalter holt jetzt dein Browser selbst bei deren Bild-Servern (bisher
+holte sie der PokéCollect-Server). Eine von Hand eingetragene Bild-Adresse
+zu einer fremden Seite wird jetzt angezeigt; bisher blieb sie leer.
 
 ### Sicherheit
 - **Bild-Optimierung vorübergehend abgeschaltet.** Im Bild-Dienst des
@@ -12,7 +15,7 @@ Handy etwas mehr Datenvolumen kosten; sonst ändert sich nichts.
   über die ein Angreifer im Netzwerk ohne Anmeldung Code auf dem Server
   ausführen könnte. Behoben sind sie erst in einer neueren Hauptversion des
   Frameworks; der Umstieg darauf folgt. Bis dahin ist der Bild-Dienst aus —
-  der betroffene Endpunkt antwortet nicht mehr, die Bilder kommen direkt von
+  der betroffene Endpunkt ist abgeschaltet, die Bilder kommen direkt von
   ihrer Quelle.
 
 ## [v1.9.2] – 2026-09-06 (Was ist neu-Box, echte Bild-Optimierung) — gefahrlos

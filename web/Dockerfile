@@ -16,6 +16,8 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Derzeit ohne Wirkung: seit v1.9.3 ist der Bild-Optimizer AUS (web/next.config.js, images.unoptimized);
+# sharp und der Cache-Ordner bleiben für die Rückkehr mit Next 15.
 # #98: Was dieser Container seit sharp NEU verbraucht (Panel-Fund: die
 # Dauerlast stand nirgends). sharp/libvips rechnet nativ und mehrfädig —
 # Next drosselt in production auf cpus()/2 Threads (image-optimizer.ts).

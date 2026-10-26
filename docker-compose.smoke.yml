@@ -55,6 +55,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # Derzeit ohne Wirkung: seit v1.9.3 ist der Bild-Optimizer AUS (web/next.config.js, images.unoptimized);
+    # der Deckel bleibt für die Rückkehr mit Next 15 stehen.
     # #98 Panel-Nacharbeit: HARTE Obergrenze für den next/image-Cache.
     # Next 14 räumt diesen Cache NIE auf — kein LRU, keine Größengrenze,
     # nur eine Max-Age im Dateinamen (31536000 = ein Jahr). Ohne Deckel kann
