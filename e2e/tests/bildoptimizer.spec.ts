@@ -136,17 +136,27 @@ test.describe("Bild-Optimizer optimiert und cacht wirklich (#98)", () => {
  * ab. Gegenstück, das durchgehen muss: der #98-Test oben (lokale Datei, q=75).
  */
 test.describe("Bild-Optimizer: keine Cache-Vervielfältigung über lokale Ziele (#117)", () => {
-  test("Querystring an einem lokalen Bild wird abgelehnt", async ({ request, baseURL }) => {
-    const antwort = await request.get(
-      `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png?x=1")}&w=64&q=75`,
-    );
-    expect(antwort.status(), await antwort.text()).toBe(400);
-  });
+  // Mehrere Dateien und Werte statt je eines (Blindprüfer, Nacharbeit 1: eine
+  // Allowlist nur für /icon-512.png bzw. qualities mit zehn Werten außer 50
+  // ließ die Ein-Punkt-Fassung grün). Dazu der Grund im Antworttext — ein 400
+  // aus anderem Anlass zählt nicht.
+  for (const datei of ["/icon-512.png", "/icon-192.png"]) {
+    test(`Querystring an lokalem Bild wird abgelehnt: ${datei}`, async ({ request, baseURL }) => {
+      const antwort = await request.get(
+        `${baseURL}/_next/image?url=${encodeURIComponent(`${datei}?x=1`)}&w=64&q=75`,
+      );
+      expect(antwort.status()).toBe(400);
+      expect(await antwort.text()).toContain("not allowed");
+    });
+  }
 
-  test("anderer Qualitätswert als 75 wird abgelehnt", async ({ request, baseURL }) => {
-    const antwort = await request.get(
-      `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png")}&w=64&q=50`,
-    );
-    expect(antwort.status(), await antwort.text()).toBe(400);
-  });
+  for (const q of [1, 50, 60, 76, 100]) {
+    test(`Qualitätswert ${q} wird abgelehnt`, async ({ request, baseURL }) => {
+      const antwort = await request.get(
+        `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png")}&w=64&q=${q}`,
+      );
+      expect(antwort.status()).toBe(400);
+      expect(await antwort.text()).toContain("not allowed");
+    });
+  }
 });

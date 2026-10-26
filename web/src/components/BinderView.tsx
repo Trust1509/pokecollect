@@ -1,6 +1,6 @@
 "use client";
 import { DragEvent as ReactDragEvent, TouchEvent as ReactTouchEvent, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import Link from "next/link";
 import { Card, BINDER_LAYOUTS } from "@/lib/api";
 import { cardImageSrc, setCodeFromEdition } from "@/lib/utils";

@@ -1,1 +1,22 @@
-{ "extends": "next/core-web-vitals" }
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "next/image",
+            "message": "Bilder über @/components/AppImage einbinden: eigene Fotos müssen am Optimizer vorbei (#117)."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/components/AppImage.tsx"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
+}

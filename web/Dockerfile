@@ -30,9 +30,9 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 # weitere kommt aus dem Cache (0,004 s). Der Cache selbst liegt zur Laufzeit
 # in einem tmpfs mit hartem 256-MB-Deckel (alle drei Compose-Dateien) und
 # zählt damit gegen den Arbeitsspeicher, nicht gegen die Platte. Das Image
-# wächst durch die Plattform-Binaries deutlich (gemessen 226 → 287 MB; mit
-# Next 15 und Node 22 355 MB, gemessen 26.10.2026,
-# +27 %); Abspecken ist als eigenes Thema notiert, nicht Teil dieses Slices.
+# wächst durch die Plattform-Binaries deutlich (gemessen 226 → 287 MB,
+# +27 %; mit Next 15 und Node 22 355 MB, gemessen 26.10.2026); Abspecken
+# ist als eigenes Thema notiert, nicht Teil dieses Slices.
 
 RUN addgroup --system --gid 3010 pokecollect && \
     adduser --system --uid 3010 --ingroup pokecollect pokecollect

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import toast from "react-hot-toast";
 import { API_BASE, SealedCatalogItem, SealedEnums, SealedProduct, sealedApi } from "@/lib/api";
 import { CurrencyField, DateField, SelectField, TextareaField } from "@/components/CardFormFields";

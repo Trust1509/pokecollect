@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import Link from "next/link";
 import { CollectionCard } from "@/lib/api";
 import { cardImageSrc } from "@/lib/utils";

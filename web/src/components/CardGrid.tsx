@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import Link from "next/link";
 import { Card } from "@/lib/api";
 import { cardImageSrc, extractSetCode, formatEur } from "@/lib/utils";

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import { API_BASE, cardApi, pricesApi, Card } from "@/lib/api";
 import RarityBadge from "@/components/RarityBadge";
 import PriceChart from "@/components/PriceChart";

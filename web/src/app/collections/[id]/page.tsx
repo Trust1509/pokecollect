@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/AppImage";
 import toast from "react-hot-toast";
 import { API_BASE, Card, CollectionCard, Collection, cardApi, collectionApi } from "@/lib/api";
 import SortableCardGrid from "@/components/SortableCardGrid";

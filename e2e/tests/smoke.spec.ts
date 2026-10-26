@@ -96,6 +96,39 @@ test.describe("Kernflüsse", () => {
     }
   });
 
+  test("eigenes Foto erscheint in der Detailansicht (#117)", async ({ page, request }) => {
+    // Bis #117 lieferte jedes eigene Foto 400 und blieb leer, sobald der
+    // Bild-Optimizer an war: imageUrl() hängt ?v=<Zeitstempel> an, und das
+    // API-Muster in next.config.js lehnt jeden Querystring ab. Kein Test hatte
+    // je ein hochgeladenes Foto geladen. Fixture: ein erfundenes 1×1-PNG.
+    const t = await token(request);
+    const name = einmalName("RT-Foto");
+    const id = await karteAnlegen(request, t, { kartenname: name });
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    try {
+      const hoch = await request.post(`${API}/api/v1/cards/${id}/image`, {
+        headers: { Authorization: `Bearer ${t}` },
+        multipart: { file: { name: "foto.png", mimeType: "image/png", buffer: png } },
+      });
+      expect(hoch.status(), await hoch.text()).toBe(200);
+
+      await page.goto(`/cards/${id}`);
+      const bild = page.getByRole("img", { name }).first();
+      await expect(bild).toBeVisible();
+      // Geladen heißt: der Browser hat Bilddaten bekommen (naturalWidth > 0).
+      await expect
+        .poll(() => bild.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+      // Und zwar direkt von der API, nicht über den Optimizer.
+      expect(await bild.getAttribute("src")).not.toContain("/_next/image");
+    } finally {
+      await karteLoeschen(request, t, id);
+    }
+  });
+
   test("Karte anlegen, bearbeiten und löschen", async ({ page, request }) => {
     const t = await token(request);
     const name = einmalName("RT-Neu");
