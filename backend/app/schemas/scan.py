@@ -6,6 +6,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
 
+from app.schemas._grenzen import PgNichtNegativ  # #117
 from app.schemas._validators import reject_control_chars
 
 ScanMode = Literal["single", "multi", "binder"]
@@ -77,7 +78,7 @@ class ScanResponse(BaseModel):
 
 class ScanCommitItem(BaseModel):
     kartenname: str
-    pokedex_nr: Optional[int] = None
+    pokedex_nr: Optional[PgNichtNegativ] = None
     englischer_name: Optional[str] = None
     set_edition: Optional[str] = None
     karten_nr: Optional[str] = None
@@ -90,9 +91,9 @@ class ScanCommitItem(BaseModel):
     notizen: Optional[str] = None
     tcgdex_card_id: Optional[str] = None
     set_id: Optional[str] = None
-    dex_id: Optional[int] = None
+    dex_id: Optional[PgNichtNegativ] = None
     bild_karte_url: Optional[str] = None   # TCGdex high.webp (wird host-validiert)
-    position: Optional[int] = None         # Binder-Slot (0-basiert) für die Ablage
+    position: Optional[PgNichtNegativ] = None  # Binder-Slot (0-basiert) für die Ablage
     im_pokedex: bool = False               # je Karte: als Pokédex-Vertreter setzen
     prioritaet: Optional[str] = None       # nur für Wunschliste
 

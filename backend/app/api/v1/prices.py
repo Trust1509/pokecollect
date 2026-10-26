@@ -30,7 +30,9 @@ async def trigger_price_refresh(
 @router.get("/history/{card_id}", response_model=list[PreisHistorieResponse])
 def get_price_history(
     card_id: int,
-    # #117: negatives oder übergroßes LIMIT scheiterte erst in der Datenbank (500)
+    # #117: negatives oder übergroßes LIMIT scheiterte erst in der Datenbank (500).
+    # LIMIT ist in Postgres bigint; die Obergrenze 2^31-1 ist gewählt, nicht
+    # vom Spaltentyp erzwungen — mehr Einträge hat keine Karte.
     limit: int = Query(90, ge=0, le=PG_INTEGER_MAX),
     db: Session = Depends(get_db),
 ):

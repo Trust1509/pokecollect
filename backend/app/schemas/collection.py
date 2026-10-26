@@ -74,7 +74,7 @@ class SollSlotCreate(BaseModel):
 
 class SollSlotUpdate(BaseModel):
     soll_folierung: Optional[str] = None
-    position: Optional[int] = None
+    position: Optional[PgNichtNegativ] = None  # #117
 
 
 class SollSlotResponse(BaseModel):

@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Qu
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.schemas._grenzen import PG_INTEGER_MAX
 from app.database import get_db, run_with_session
 from app.domain.pokedex import GEN_RANGES
 from app.domain.search import parse_kurzcode
@@ -31,7 +32,8 @@ def list_catalog(
     generation: int | None = None,
     region: str | None = None,   # "west" | "ja" | … (None = alle)
     sort: str = Query("set", pattern="^(set|name|dex)$"),
-    page: int = Query(1, ge=1),
+    # #117: ohne Obergrenze sprengte (page-1)*limit den OFFSET (bigint) → 500
+    page: int = Query(1, ge=1, le=PG_INTEGER_MAX),
     limit: int = Query(60, ge=1, le=500),
     db: Session = Depends(get_db),
 ):

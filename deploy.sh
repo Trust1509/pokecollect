@@ -20,7 +20,9 @@ chown -R 3010:3010 .
 # Backend und Frontend neu bauen (Code-Änderungen erfordern immer einen Rebuild).
 # --pull (#117): ohne holt der Build die Basis-Images (python:3.12-slim,
 # node:*-alpine) nie neu — Sicherheitskorrekturen im Basis-System kamen dann nie
-# an, und die Schichten mit apt/pip blieben aus dem Cache auf altem Stand.
+# an. Ändert sich das Basis-Image, baut Docker auch die apt-/pip-Schichten neu.
+# Folge: Ohne erreichbare Registry bricht der Deploy hier ab (set -e), der
+# laufende Stand bleibt unverändert.
 docker compose build --pull api web
 docker compose up -d
 

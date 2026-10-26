@@ -26,7 +26,11 @@ import re
 from typing import Any
 
 # C0-Steuerzeichen ohne \t (09), \n (0A), \r (0D) + DEL.
-_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+# #117: dazu einzelne Surrogate (U+D800..U+DFFF) — gültiges JSON, aber kein
+# kodierbarer Text; Postgres bzw. bcrypt scheiterten daran mit 500. Ein echtes
+# Zeichen aus einem Surrogat-PAAR kommt beim JSON-Parsen als EIN Zeichen an
+# und ist hier nicht betroffen.
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff]")
 
 
 # Grenzen der Rekursion (Panel-Funde): ohne Tiefenlimit sprengte ein tief

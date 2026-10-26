@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import text
+from sqlalchemy.exc import DataError
 
 from app.config import settings
 from app.database import Base, engine, SessionLocal
@@ -421,6 +422,17 @@ async def validierungsfehler_ohne_eingabe(request: Request, exc: RequestValidati
         for f in exc.errors()
     ]
     return JSONResponse(status_code=422, content={"detail": fehler})
+
+
+# #117: Netz für den Rest der Klasse. Ein Wert, den die Datenbank nicht
+# darstellen kann (Zahl außerhalb des Spaltentyps, NUL im Text), kommt fast
+# immer aus der Eingabe — die Schemas fangen die bekannten Felder vorher ab,
+# dieses Netz die übersehenen. Keine Datenbank-Interna nach außen; die
+# Einzelheit steht im Log.
+@app.exception_handler(DataError)
+async def datenbank_wertfehler(request: Request, exc: DataError):
+    logging.getLogger(__name__).warning("DataError bei %s %s: %s", request.method, request.url.path, exc.orig)
+    return JSONResponse(status_code=422, content={"detail": "Ein Wert liegt außerhalb des gültigen Bereichs"})
 
 
 @app.middleware("http")

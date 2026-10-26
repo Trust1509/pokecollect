@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from sqlalchemy import func, select, update, or_, and_, cast, String
 from sqlalchemy.orm import Session
 
+from app.schemas._grenzen import PG_INTEGER_MAX
 from app.database import get_db
 from app.domain.pokedex import GEN_RANGES
 from app.services.card_creation import _trigger_image_fetch, create_owned_card
@@ -57,7 +58,8 @@ def list_cards(
     pokedex_nr: Optional[int] = None,
     bild_status: Optional[str] = Query(None, pattern="^(eigenes_foto|externe_url|platzhalter)$"),
     sort: str = Query("pokedex_nr", pattern="^(pokedex_nr|wert|hinzugefuegt_am|set)$"),
-    page: int = Query(1, ge=1),
+    # #117: ohne Obergrenze sprengte (page-1)*limit den OFFSET (bigint) → 500
+    page: int = Query(1, ge=1, le=PG_INTEGER_MAX),
     limit: int = Query(50, ge=1, le=5000),  # Binder-Ansicht lädt den ganzen Pokédex auf einmal
     db: Session = Depends(get_db),
 ):
