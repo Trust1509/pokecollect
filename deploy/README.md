@@ -22,12 +22,14 @@ zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/db
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/images
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/pokecollect/config
 
-find /mnt/HDDs/Applications/pokecollect/ -name .zfs -prune -o -exec chown -h 3010:3010 {} +
+find /mnt/HDDs/Applications/pokecollect/ -type d -name .zfs -prune -o -exec chown -h 3010:3010 {} +
 ```
 
 > Nicht `chown -R`: Ist an einem Dataset `snapdir=visible` gesetzt, liegt darin
 > ein schreibgeschützter `.zfs`-Ordner mit allen Snapshots — `chown -R` läuft
-> hinein und scheitert („Read-only file system"). Dasselbe gilt für `deploy.sh`.
+> hinein und scheitert („Read-only file system“). Dasselbe gilt für `deploy.sh`.
+> **Nur bei der Ersteinrichtung** (leere Datasets): Die Zeile geht auch durch
+> `db/`; über ein schon gefülltes Postgres-Datenverzeichnis nicht wiederholen.
 
 > Das frühere `cache`-Dataset (Redis) wird seit v0.9.11 nicht mehr benötigt –
 > Redis war ungenutzt und wurde aus dem Stack entfernt. Ein vorhandenes Dataset
@@ -182,7 +184,7 @@ Das Script macht automatisch: `git pull` → `chown` → API rebuild → Web reb
 ```bash
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/authelia/config
 zfs create -o acltype=posixacl -o xattr=sa HDDs/Applications/authelia/data
-chown -R 1000:1000 /mnt/HDDs/Applications/authelia/
+find /mnt/HDDs/Applications/authelia/ -type d -name .zfs -prune -o -exec chown -h 1000:1000 {} +
 ```
 
 ### Schritt 2 – Konfigurationsdateien hochladen
