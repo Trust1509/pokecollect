@@ -59,7 +59,7 @@ backend_gate() {
 # REPO-Ebene mit CHANGELOG.md in Reichweite: neu erzeugen und vergleichen.
 whatsnew_paritaet_gate() {
   echo "── Gate 0/2: Was-ist-neu-Notizen stammen wirklich aus den Quellen ──"
-  MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w node:20-alpine     node web/scripts/generate-whatsnew.mjs --check
+  MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w node:22-alpine     node web/scripts/generate-whatsnew.mjs --check
 }
 
 # Abgleich v1.17.2: die Prozess-Werkzeuge der Vorlage — Brief-Prüfskript samt

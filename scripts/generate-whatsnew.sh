@@ -19,9 +19,9 @@ host_path() {
 
 # Repo-Wurzel mounten (der Generator braucht CHANGELOG.md eine Ebene über
 # web/), Arbeitsverzeichnis auf web/ setzen — dieselbe Node-Version wie
-# web/Dockerfile (node:20-alpine).
+# web/Dockerfile (node:22-alpine).
 docker run --rm \
   -v "$(host_path "$ROOT")":/w \
   -w /w/web \
-  node:20-alpine \
+  node:22-alpine \
   node scripts/generate-whatsnew.mjs

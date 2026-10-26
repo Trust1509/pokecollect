@@ -26,7 +26,7 @@ Migrations-Framework entfällt z. B. der Rückwärts-Roundtrip, **nicht** die
 Datenerhalt-Probe.
 
 Self-hosted Pokémon-TCG-Sammlungs-App. FastAPI (Python 3.12) + PostgreSQL 16 +
-Next.js 14 (einzige Client-Plattform, mobile-first/PWA — ADR-0002). ~1.025
+Next.js 15 (einzige Client-Plattform, mobile-first/PWA — ADR-0002). ~1.025
 Karten, Scan per Handy-Browser (Gemini-Ecken + manueller CornerEditor),
 Preise via TCGdex/Cardmarket.
 
@@ -178,9 +178,10 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   lokal" war falsch (gemessen 28.09.2026, wiederholt 19.10.2026:
   `node --version` Exit 0, v24.18.0; `npm --version` Exit 0, 11.16.0). Der
   Grund für die Regel ist ein anderer: Container und CI laufen auf npm
-  **10.8.2** (`node:20-alpine`, im Abbild gemessen 19.10.2026: node v20.20.2,
-  npm 10.8.2; die CI setzt `node-version: 20`), und ein Lock aus npm 11 kann in
-  der CI scheitern.
+  **10** (seit #117 `node:22-alpine`, im Abbild gemessen 26.10.2026: node
+  v22.23.4, npm 10.9.9; die CI setzt `node-version: 22`; vorher Node 20, das
+  keine Unterstützung mehr hat), und ein Lock aus npm 11 kann in der CI
+  scheitern.
   `scripts/gates.sh` fährt pytest, tsc, lint und next build in Docker;
   `package-lock.json` nur im Node-Container erzeugen (Kommando in
   `docs/agents/bau-brief.md`, Projektabschnitt).

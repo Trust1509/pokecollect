@@ -1001,11 +1001,12 @@ Regeln hier, damit sie in jeden Brief wandern:
 
 **Sperrdateien nur im Container.** Node und npm SIND lokal installiert, aber in
 einer anderen Hauptversion als Container und CI (gemessen 28.09.2026:
-`npm --version` lokal 11.16.0, im Abbild `node:20-alpine` 10.8.2; die CI
-setzt `node-version: 20`). Ein lokal erzeugter `package-lock.json` kann in der
-CI scheitern. Lock-Änderungen deshalb nur so:
+`npm --version` lokal 11.16.0; im Abbild `node:22-alpine` seit #117 npm
+10.9.9, gemessen 26.10.2026; die CI setzt `node-version: 22`). Ein lokal
+erzeugter `package-lock.json` kann in der CI scheitern. Lock-Änderungen
+deshalb nur so:
 
-    MSYS_NO_PATHCONV=1 docker run --rm -v "<web>":/w -w //w node:20-alpine npm install --package-lock-only
+    MSYS_NO_PATHCONV=1 docker run --rm -v "<web>":/w -w //w node:22-alpine npm install --package-lock-only
 
 ### Hausbelege
 

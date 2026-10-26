@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -12,12 +12,14 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY . .
 RUN mkdir -p public && npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Derzeit ohne Wirkung: seit v1.9.3 ist der Bild-Optimizer AUS (web/next.config.js, images.unoptimized);
-# sharp und der Cache-Ordner bleiben für die Rückkehr mit Next 15.
+# #117: npm samt seinem mitgelieferten tar wird zur Laufzeit nicht gebraucht
+# (CMD ist node server.js) — Trivy meldete tar 6.2.1 aus genau diesem npm.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 # #98: Was dieser Container seit sharp NEU verbraucht (Panel-Fund: die
 # Dauerlast stand nirgends). sharp/libvips rechnet nativ und mehrfädig —
 # Next drosselt in production auf cpus()/2 Threads (image-optimizer.ts).

@@ -55,8 +55,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    # Derzeit ohne Wirkung: seit v1.9.3 ist der Bild-Optimizer AUS (web/next.config.js, images.unoptimized);
-    # der Deckel bleibt für die Rückkehr mit Next 15 stehen.
     # #98 Panel-Nacharbeit: HARTE Obergrenze für den next/image-Cache.
     # Next 14 räumt diesen Cache NIE auf — kein LRU, keine Größengrenze,
     # nur eine Max-Age im Dateinamen (31536000 = ein Jahr). Ohne Deckel kann
@@ -70,7 +68,7 @@ services:
     tmpfs:
       - /app/.next/cache/images:size=256m,uid=3010,gid=3010,mode=0700
     healthcheck:
-      # node:20-alpine → wget kommt aus busybox. NICHT gegen localhost prüfen:
+      # node:22-alpine → wget kommt aus busybox. NICHT gegen localhost prüfen:
       # der Next-Standalone-Server bindet an $HOSTNAME (= Container-ID → dessen
       # Netz-IP), nicht an 127.0.0.1 — eine localhost-Prüfung schlägt fehl,
       # obwohl der Server läuft. Von außen (web:3000) ist er trotzdem erreichbar.

@@ -193,8 +193,7 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
             <div className="aspect-square relative bg-gray-800 rounded-lg overflow-hidden">
               {imgSrc ? (
                 // TCGplayer-CDN: seit #91 namentlich in remotePatterns erlaubt
-                // (vorher Wildcard "**", next.config.js) — wirkt erst wieder,
-                // wenn der Bild-Optimizer zurück ist (seit v1.9.3 aus)
+                // (vorher Wildcard "**", next.config.js)
                 <Image src={imgSrc} alt={name || "Sealed"} fill
                   className={hatEigenesFoto ? "object-cover" : "object-contain"} />
               ) : (

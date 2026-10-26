@@ -5,9 +5,9 @@
 # WICHTIG, Merge-Ritual:
 # * npm-PRs: package-lock.json wird NUR im Node-Container erzeugen/geprüft
 #   (CLAUDE.md, „Build, Gates, Teststand": lokal läuft npm 11, Abbild und CI
-#   npm 10.8.2 — ein lokal erzeugter Lock ist dort inkompatibel; die frühere
+#   npm 10 — ein lokal erzeugter Lock ist dort inkompatibel; die frühere
 #   Aussage „kein Node/npm lokal" war falsch). Nach dem Merge zur Sicherheit einmal
-#   `docker run --rm -v "$PWD/web":/w -w /w node:20-alpine npm install
+#   `docker run --rm -v "$PWD/web":/w -w /w node:22-alpine npm install
 #   --package-lock-only` laufen lassen, bevor der nächste Release-Build läuft.
 #   Deshalb npm nur MONATLICH und gruppiert — wenig PRs, ein Ritual-Lauf.
 # * pip-PRs: kein Lock-Mechanismus (backend/requirements.txt ist die einzige

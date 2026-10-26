@@ -2,7 +2,7 @@
 
 A free, self-hosted Pokémon TCG collection tracker. Track your physical cards in a Pokédex-style grid or page-flip binder, scan new cards with your phone camera (Gemini Vision or local OCR), browse the full TCGdex catalog, and keep all data on your own hardware — no subscription, no cloud, no third-party account required.
 
-> **Current version: v0.9.11** — Actively developed. [Roadmap →](ROADMAP.md) · [Changelog →](CHANGELOG.md)
+> **Current version: see [Changelog](CHANGELOG.md)** — Actively developed. [Roadmap →](ROADMAP.md) · [Changelog →](CHANGELOG.md)
 
 ---
 
@@ -52,7 +52,7 @@ A free, self-hosted Pokémon TCG collection tracker. Track your physical cards i
 ## Architecture
 
 ```
-web (Next.js 14, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  PostgreSQL 16
+web (Next.js 15, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  PostgreSQL 16
         │                              │
         │  <img> direct                ├──►  TCGdex API (cards, images, prices)
         └──────────────────────────────┴──►  Gemini API (optional, card scan)
@@ -61,7 +61,7 @@ web (Next.js 14, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  Pos
 Card images load directly from `assets.tcgdex.net` in the browser; own photos are served from the API's `/images` static mount.
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
-- **Frontend** `web/` — Next.js 14 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
+- **Frontend** `web/` — Next.js 15 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
 - **Auth:** every API route (except `/auth/login`, `/health` and the `/images` static mount) requires a JWT obtained via the web login. There is no built-in default password — the API refuses to start without `APP_PASSWORD_HASH` (or a hash set in-app). External access can additionally be protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)).
 
 ---
@@ -119,7 +119,7 @@ Updates: `bash deploy.sh` (git pull → rebuild api+web → restart).
 | Layer | Technology |
 |-------|-----------|
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2, PostgreSQL 16, APScheduler |
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS, PWA |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS, PWA |
 | Scan | Google Gemini (REST) / Tesseract OCR, Pillow, Canvas-Homographie |
 | Data | TCGdex API (cards, images, Cardmarket prices) |
 | Deployment | Docker Compose, Portainer, Caddy, Authelia |

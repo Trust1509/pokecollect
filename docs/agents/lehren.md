@@ -374,11 +374,11 @@ ins Protokoll und lief weiter — der Container stand elf Tage in „Created"):
   trägt den echten Bestand des Owners und dessen API-Schlüssel; `teststand.sh
   reset` löscht ihn samt Schlüssel.
 - **package-locks nur im Node-Container erzeugen.** Der lokale npm schreibt
-  Locks einer anderen Hauptversion (lokal npm 11; Abbild und CI npm 10.8.2,
+  Locks einer anderen Hauptversion (lokal npm 11; Abbild und CI npm 10,
   gemessen 28.09.2026) — lokal grün, im Abbild und in der CI rot. Allgemein (Vorlage §21, v1.15.0): **Das lokale Gate läuft
   im Werkzeug-Major der CI, und jeder übersprungene Schritt nennt sein
   lokales Äquivalent** — sonst ist „lokal grün" eine Aussage über ein
-  anderes Werkzeug. Bei uns: npm 11 lokal, npm 10.8.2 in Container und CI
+  anderes Werkzeug. Bei uns: npm 11 lokal, npm 10 in Container und CI
   (gemessen 28.09.2026), deshalb laufen `gates.sh` und die Sperrdateien im
   Container.
 - **CI-Läufe run-id-gepinnt beobachten** (`gh run watch <id> --exit-status`),

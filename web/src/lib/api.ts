@@ -6,8 +6,7 @@ import axios from "axios";
 // ein Pfad, den das remotePatterns-Muster ("/images/**") NICHT deckt. Am
 // echten Optimizer gemessen: 400 "url parameter is not allowed". Ein
 // abschließender Schrägstrich in der .env ist ein plausibler Tippfehler und
-// hätte still alle eigenen Fotos ausgeblendet. Seit v1.9.3 ist der Optimizer
-// aus (next.config.js); die Normalisierung bleibt für die Rückkehr nötig.
+// hätte still alle eigenen Fotos ausgeblendet.
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3010")
   .replace(/\/+$/, "");
 
