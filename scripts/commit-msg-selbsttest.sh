@@ -45,7 +45,7 @@ GIT_CONFIG_GLOBAL=/dev/null
 GIT_CONFIG_NOSYSTEM=1
 export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
 
-MINDEST=27
+MINDEST=36
 
 HIER=$(cd "$(dirname "$0")/.." && pwd)
 HOOKS=${1:-$HIER/.githooks}
@@ -112,6 +112,15 @@ fall "-m, Marker im Betreff"                  an "$M Betreff${NL}${NL}Rumpf ohne
 fall "-m, Marker im Rumpf"                    ab "" -m "Betreff" -m "Rumpf mit $M."
 fall "-m, Marker in Zeile 2 (ohne Leerzeile)" ab "" -m "Betreff${NL}Zweite Zeile $M"
 fall "-m, Marker in Zeile 9"                  ab "" -m "Betreff" -m "a${NL}b${NL}c${NL}d${NL}e${NL}f${NL}Spaet $M"
+# #116: je ein Fall für die Hook-Varianten, die die Probe vorher grün ließ
+# (gemessen vom Blindprüfer zu #112): Ablehnung reiner Betreff-Nachrichten,
+# Prüfung nur bis Zeile 9 bzw. nur des ersten Absatzes, grep -w, Muster ohne
+# eckige Klammern.
+fall "-m, nur Betreff"                        an "Betreff" -m "Betreff"
+VIELE=$(i=0; while [ $i -lt 30 ]; do printf 'zeile %s\n' $i; i=$((i + 1)); done)
+fall "-m, Marker in Zeile 40, dritter Absatz" ab "" -m "Betreff" -m "Absatz eins" -m "Absatz zwei${NL}${VIELE}${NL}Spaet $M"
+fall "-m, Marker direkt an einem Wort"        ab "" -m "Betreff" -m "foo$M bar"
+fall "-m, die Woerter ohne Klammern"          an "Betreff${NL}${NL}Rumpf mit skip ci ohne Klammern." -m "Betreff" -m "Rumpf mit skip ci ohne Klammern."
 # jede Form des Musters, auch gross geschrieben
 for v in "skip ci" "skip-ci" "ci skip" "ci-skip" "no ci" "no-ci" \
          "skip actions" "skip-actions" "actions skip" "actions-skip" "SKIP CI" "No-Ci"; do
@@ -128,7 +137,23 @@ printf 'Betreff\n\n# ------------------------ >8 ------------------------\n# Do 
 fall "-F, nur zwei der drei Scheren-Zeilen, Marker danach" ab "" -F "$W/f.txt"
 printf 'Betreff\n\nZitat:\ndiff --git a/x b/x\n+%s\n-alt\n+neu\n' "$M" > "$W/f.txt"
 fall "-F, zitierter Diff im Rumpf"            ab "" -F "$W/f.txt"
+# #116: Schnitt nur an einem Teil der drei Scheren-Zeilen, an anderen
+# Kommentarzeilen von git, und Zitatzeilen — überall bleibt der Marker in der
+# gespeicherten Nachricht stehen, der Hook muss ablehnen. Hinter dem Marker
+# stehen noch zwei Zeilen: Der Hook sucht die Schere nur, solange danach zwei
+# Zeilen folgen — ohne sie erreichte ein Schnitt-Mutant die Stelle nie
+# (gemessen beim Bau, Mutant „nur letzte Hinweiszeile" blieb grün).
+printf 'Betreff\n\nRumpf.\n# Do not modify or remove the line above.\n# Everything below it will be ignored.\nnach zwei Hinweiszeilen %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
+fall "-F, nur die zwei Hinweiszeilen ohne Schere" ab "" -F "$W/f.txt"
+printf 'Betreff\n\nRumpf.\n# Everything below it will be ignored.\nnach einer Hinweiszeile %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
+fall "-F, nur die letzte Hinweiszeile"        ab "" -F "$W/f.txt"
+printf 'Betreff\n\n# Please enter the commit message for your changes.\nnach dem Vorlagentext %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
+fall "-F, Vorlagentext von git, Marker danach" ab "" -F "$W/f.txt"
+printf 'Betreff\n\n> Zitat mit %s\n' "$M" > "$W/f.txt"
+fall "-F, Marker in einer Zitatzeile"         ab "" -F "$W/f.txt"
 # -v: git haengt Schere und Diff an und schneidet sie nach dem Hook ab
+nachricht 'Betreff\n'
+fall "-v, nur Betreff (#116)"                 an "Betreff" -v
 nachricht 'Betreff\n\nRumpf ohne Marker.\n'
 INHALT_MIT_MARKER=ja
 fall "-v, Marker nur im gestagten Inhalt"     an "Betreff${NL}${NL}Rumpf ohne Marker." -v

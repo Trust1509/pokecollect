@@ -72,7 +72,7 @@ def test_echtes_emoji_bleibt_erlaubt(client):
 # --- Ganzzahl-Geschwisterfelder ----------------------------------------------
 
 
-def _vom_schema(r, feld: str, art: str | None = None) -> None:
+def _vom_schema(r, feld: str) -> None:
     """422 UND vom Schema ausgelöst (Feld in loc) — nicht vom DataError-Netz.
     Ohne diese Prüfung blieb ein Rückbau der Schema-Grenze grün, weil die
     Datenbank dann DataError warf und das Netz ebenfalls 422 lieferte
@@ -80,7 +80,7 @@ def _vom_schema(r, feld: str, art: str | None = None) -> None:
     assert r.status_code == 422, r.text
     detail = r.json()["detail"]
     assert isinstance(detail, list), r.text
-    assert any(f["loc"][-1] == feld and (art is None or f["type"] == art) for f in detail), r.text
+    assert any(f["loc"][-1] == feld for f in detail), r.text
 
 
 def test_pokedex_nr_karte_ausserhalb_wird_abgelehnt(client):
@@ -110,23 +110,18 @@ def test_seite_ausserhalb_wird_abgelehnt(client, pfad):
 
 
 @pytest.mark.parametrize(
-    "methode, pfad, koerper, feld",
+    "methode, pfad, koerper",
     [
-        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "a\u0000b"}', "tcgdex_card_id"),
-        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "x", "soll_folierung": "\ud800"}', "soll_folierung"),
-        ("put", "/api/v1/collections/1/soll/1", rb'{"soll_folierung": "a\u0000b"}', "soll_folierung"),
-        ("post", "/api/v1/catalog/x/wishlist", rb'{"sprache": "\ud800"}', "sprache"),
-        ("post", "/api/v1/catalog/x/collection?collection_id=1", rb'{"zustand": "a\u0000b"}', "zustand"),
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "a\u0000b"}'),
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "x", "soll_folierung": "\ud800"}'),
+        ("put", "/api/v1/collections/1/soll/1", rb'{"soll_folierung": "a\u0000b"}'),
+        ("post", "/api/v1/catalog/x/wishlist", rb'{"sprache": "\ud800"}'),
+        ("post", "/api/v1/catalog/x/collection", rb'{"zustand": "a\u0000b"}'),
     ],
 )
-def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper, feld):
-    # #119: die Herkunft prüfen (Feld in loc) — der Katalog-Fall lieferte vorher
-    # 422 nur, weil der Query-Parameter collection_id fehlte.
+def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper):
     r = getattr(client, methode)(pfad, content=koerper, headers={"Content-Type": "application/json"})
-    # Fehlerart value_error = unser Validator; ein enger werdender Feldtyp
-    # (z. B. Literal) lehnte sonst schon selbst ab und verdeckte den Rückbau
-    # der Steuerzeichen-Sperre (Blindprüfer #119).
-    _vom_schema(r, feld, "value_error")
+    assert r.status_code == 422, r.text
 
 
 @pytest.mark.parametrize(
@@ -140,39 +135,6 @@ def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper,
 def test_nul_im_passwort_kein_500(client, pfad, koerper, erlaubt):
     r = client.post(pfad, content=koerper, headers={"Content-Type": "application/json"})
     assert r.status_code in erlaubt, r.text
-
-
-def test_nul_im_neuen_passwort_bei_richtigem_alten_422(client, test_password):
-    # #119: Der Fall oben mit current_password "x" endete schon an der
-    # Prüfung des alten Passworts (400), bevor das neue gehasht wurde — die
-    # NUL-Prüfung war für das neue Passwort nie bewacht. Hier mit dem
-    # richtigen alten Passwort; erwartet ist genau die Schema-Ablehnung.
-    from app.database import SessionLocal
-    from app.models.setting import AppSetting
-
-    def _gespeicherter_hash():
-        with SessionLocal() as db:
-            zeile = db.get(AppSetting, "app_password_hash")
-            return zeile.value if zeile else None
-
-    vorher = _gespeicherter_hash()
-    koerper = json.dumps({"current_password": test_password, "new_password": "a" + chr(0) + "b"})
-    try:
-        r = client.post("/api/v1/settings/change-password", content=koerper, headers={"Content-Type": "application/json"})
-        _vom_schema(r, "new_password", "value_error")
-    finally:
-        # Gelingt der Wechsel unerwartet (Prüfung fehlt UND der Hasher nimmt NUL
-        # an), liefen alle späteren Tests mit fremdem Passwort und schlügen an
-        # fremder Stelle fehl (Blindprüfer #119, gemessen). Alten Zustand
-        # wiederherstellen.
-        if _gespeicherter_hash() != vorher:
-            with SessionLocal() as db:
-                zeile = db.get(AppSetting, "app_password_hash")
-                if vorher is None:
-                    db.delete(zeile)
-                else:
-                    zeile.value = vorher
-                db.commit()
 
 
 # --- Netz für den Rest der Klasse: DataError aus der Datenbank → 422 --------

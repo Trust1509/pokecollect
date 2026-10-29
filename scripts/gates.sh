@@ -102,10 +102,28 @@ whatsnew_paritaet_gate() {
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
 # Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
 # Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
-# kein git (gemessen 24.10.2026: `command -v git` → 127). 15–16 s unter Git Bash (27 Fälle, gemessen 24.10.2026).
+# kein git (gemessen 24.10.2026: `command -v git` → 127). 47–63 s unter Git Bash (36 Fälle, gemessen 29.10.2026; schwankt mit der Last auf dem Rechner).
 prozess_gate() {
   echo "── Gate P: Prozess-Werkzeuge (commit-msg-Hook, Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
   sh "$ROOT/scripts/commit-msg-selbsttest.sh"
+  # #116: Ausführbit des Hooks im Git-Index. Unter Windows bemerkt die
+  # Selbstprobe einen Rückfall auf 100644 nicht (git führt den Hook dort
+  # trotzdem aus); auf Linux und Mac ignoriert git ihn dann still. Nur in einer
+  # Arbeitskopie prüfbar — in einem git-archive-Auszug (kein .git) mit Meldung
+  # übersprungen. Gibt es ein .git und git scheitert, ist das ROT, kein
+  # Überspringen. git per cd statt `git -C "$ROOT"`: Wegen MSYS_NO_PATHCONV
+  # (oben) bekäme das native git den Pfad /c/... wörtlich, fände kein Repo, und
+  # die Prüfung lief still in den Überspring-Zweig (Rot-Probe beim Bau, #116).
+  if [ -e "$ROOT/.git" ]; then
+    hook_modus=$(cd "$ROOT" && git ls-files -s .githooks/commit-msg | cut -c1-6)
+    if [ "$hook_modus" != "100755" ]; then
+      echo "FEHLER: .githooks/commit-msg hat im Index Modus '$hook_modus' statt 100755 — auf Linux/Mac ignoriert git den Hook."
+      exit 1
+    fi
+    echo "commit-msg-Hook im Index ausführbar (100755)"
+  else
+    echo "Modus des commit-msg-Hooks NICHT geprüft: kein Git-Arbeitsbaum"
+  fi
   MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w python:3.12-slim sh -eu -c '
     sh scripts/bau-brief-pruefen-selbsttest.sh
     /usr/local/bin/python3.12 -I -S docs/vorlagen/waechter-gate-probe-selbsttest.py
