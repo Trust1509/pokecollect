@@ -112,15 +112,16 @@ fall "-m, Marker im Betreff"                  an "$M Betreff${NL}${NL}Rumpf ohne
 fall "-m, Marker im Rumpf"                    ab "" -m "Betreff" -m "Rumpf mit $M."
 fall "-m, Marker in Zeile 2 (ohne Leerzeile)" ab "" -m "Betreff${NL}Zweite Zeile $M"
 fall "-m, Marker in Zeile 9"                  ab "" -m "Betreff" -m "a${NL}b${NL}c${NL}d${NL}e${NL}f${NL}Spaet $M"
-# #116: je ein Fall für die Hook-Varianten, die die Probe vorher grün ließ
-# (gemessen vom Blindprüfer zu #112): Ablehnung reiner Betreff-Nachrichten,
-# Prüfung nur bis Zeile 9 bzw. nur des ersten Absatzes, grep -w, Muster ohne
+# #116: je ein Fall fuer die Hook-Varianten, die die Probe vorher gruen liess
+# (gemessen vom Blindpruefer zu #112): Ablehnung reiner Betreff-Nachrichten,
+# Pruefung nur bis Zeile 9 bzw. nur des ersten Absatzes, grep -w, Muster ohne
 # eckige Klammern.
 fall "-m, nur Betreff"                        an "Betreff" -m "Betreff"
 VIELE=$(i=0; while [ $i -lt 120 ]; do printf 'zeile %s\n' $i; i=$((i + 1)); done)
 # Zeile 132: Betreff, vier kurze Absaetze (je mit Leerzeile), Absatz fuenf mit
-# 120 Zeilen, dann der Marker — faengt auch "nur bis Zeile N" und "nur die
-# ersten zwei Absaetze" (Nacharbeit 1: der fruehere Fall stand in Zeile 36).
+# 120 Zeilen, dann der Marker — faengt auch "nur bis Zeile N" (fuer N < 132; eine
+# hoehere Grenze bleibt unfangbar) und "nur die ersten zwei Absaetze"
+# (Nacharbeit 1: der fruehere Fall stand in Zeile 36).
 fall "-m, Marker in Zeile 132, fuenfter Rumpf-Absatz" ab "" -m "Betreff" -m "Absatz eins" -m "Absatz zwei" \
      -m "Absatz drei" -m "Absatz vier" -m "Absatz fuenf${NL}${VIELE}${NL}Spaet $M"
 fall "-m, Marker direkt an einem Wort"        ab "" -m "Betreff" -m "foo$M bar"
@@ -150,11 +151,11 @@ fall "-F, nur zwei der drei Scheren-Zeilen, Marker danach" ab "" -F "$W/f.txt"
 printf 'Betreff\n\nZitat:\ndiff --git a/x b/x\n+%s\n-alt\n+neu\n' "$M" > "$W/f.txt"
 fall "-F, zitierter Diff im Rumpf"            ab "" -F "$W/f.txt"
 # #116: Schnitt nur an einem Teil der drei Scheren-Zeilen, an anderen
-# Kommentarzeilen von git, und Zitatzeilen — überall bleibt der Marker in der
+# Kommentarzeilen von git, und Zitatzeilen — ueberall bleibt der Marker in der
 # gespeicherten Nachricht stehen, der Hook muss ablehnen. Hinter dem Marker
 # stehen noch zwei Zeilen: Der Hook sucht die Schere nur, solange danach zwei
 # Zeilen folgen — ohne sie erreichte ein Schnitt-Mutant die Stelle nie
-# (gemessen beim Bau, Mutant „nur letzte Hinweiszeile" blieb grün).
+# (gemessen beim Bau, Mutant "nur letzte Hinweiszeile" blieb gruen).
 printf 'Betreff\n\nRumpf.\n# Do not modify or remove the line above.\n# Everything below it will be ignored.\nnach zwei Hinweiszeilen %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
 fall "-F, nur die zwei Hinweiszeilen ohne Schere" ab "" -F "$W/f.txt"
 printf 'Betreff\n\nRumpf.\n# Everything below it will be ignored.\nnach einer Hinweiszeile %s\nweiter\nweiter\n' "$M" > "$W/f.txt"

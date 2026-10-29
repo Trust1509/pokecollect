@@ -103,7 +103,7 @@ whatsnew_paritaet_gate() {
 # Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
 # Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
 # kein git (gemessen 24.10.2026: `command -v git` → 127). Unter Git Bash rund
-# 1–2 Minuten, je nach Last.
+# eine halbe bis eine Minute, je nach Last.
 prozess_gate() {
   echo "── Gate P: Prozess-Werkzeuge (commit-msg-Hook, Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
   sh "$ROOT/scripts/commit-msg-selbsttest.sh"
