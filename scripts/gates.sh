@@ -102,7 +102,8 @@ whatsnew_paritaet_gate() {
 # — sie gehören ins lokale Gate, deshalb hier keine Paritäts-Zeile für ci.yml.
 # Die Selbstprobe des commit-msg-Hooks (#112) läuft auf dem HOST, nicht im
 # Container: Sie braucht echte `git commit`-Aufrufe, und python:3.12-slim hat
-# kein git (gemessen 24.10.2026: `command -v git` → 127). 47–63 s unter Git Bash (36 Fälle, gemessen 29.10.2026; schwankt mit der Last auf dem Rechner).
+# kein git (gemessen 24.10.2026: `command -v git` → 127). Unter Git Bash rund
+# 1–2 Minuten, je nach Last.
 prozess_gate() {
   echo "── Gate P: Prozess-Werkzeuge (commit-msg-Hook, Brief-Prüfskript, Wächter-Selbstprobe, ast-gleich, Lehren-Verweise) ──"
   sh "$ROOT/scripts/commit-msg-selbsttest.sh"
@@ -111,16 +112,23 @@ prozess_gate() {
   # trotzdem aus); auf Linux und Mac ignoriert git ihn dann still. Nur in einer
   # Arbeitskopie prüfbar — in einem git-archive-Auszug (kein .git) mit Meldung
   # übersprungen. Gibt es ein .git und git scheitert, ist das ROT, kein
-  # Überspringen. git per cd statt `git -C "$ROOT"`: Wegen MSYS_NO_PATHCONV
-  # (oben) bekäme das native git den Pfad /c/... wörtlich, fände kein Repo, und
-  # die Prüfung lief still in den Überspring-Zweig (Rot-Probe beim Bau, #116).
+  # Überspringen. Geprüft werden Index UND HEAD (Index allein ließ ein
+  # `update-index --chmod=+x` ohne Commit grün; Gegenprüfer #116), nicht das
+  # Dateirecht in der Arbeitskopie. git per cd statt `git -C "$ROOT"`: Wegen
+  # MSYS_NO_PATHCONV (oben) bekäme das native git den Pfad /c/... wörtlich und
+  # fände kein Repo. Die GIT_*-Umgebung wird abgeschottet wie in der
+  # Selbstprobe: Mit geerbtem GIT_DIR/GIT_INDEX_FILE las die Prüfung ein fremdes
+  # Repo und meldete grün (gemessen, Panel #116).
   if [ -e "$ROOT/.git" ]; then
-    hook_modus=$(cd "$ROOT" && git ls-files -s .githooks/commit-msg | cut -c1-6)
-    if [ "$hook_modus" != "100755" ]; then
-      echo "FEHLER: .githooks/commit-msg hat im Index Modus '$hook_modus' statt 100755 — auf Linux/Mac ignoriert git den Hook."
+    hook_modi=$(cd "$ROOT" && unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+                  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_CEILING_DIRECTORIES &&
+                printf '%s %s' "$(git ls-files -s .githooks/commit-msg | cut -c1-6)" \
+                               "$(git ls-tree HEAD .githooks/commit-msg | cut -c1-6)")
+    if [ "$hook_modi" != "100755 100755" ]; then
+      echo "FEHLER: .githooks/commit-msg hat Modus '$hook_modi' (Index HEAD) statt 100755 — auf Linux/Mac ignoriert git den Hook."
       exit 1
     fi
-    echo "commit-msg-Hook im Index ausführbar (100755)"
+    echo "commit-msg-Hook in Index und HEAD ausführbar (100755)"
   else
     echo "Modus des commit-msg-Hooks NICHT geprüft: kein Git-Arbeitsbaum"
   fi

@@ -45,7 +45,7 @@ GIT_CONFIG_GLOBAL=/dev/null
 GIT_CONFIG_NOSYSTEM=1
 export GIT_CONFIG_GLOBAL GIT_CONFIG_NOSYSTEM
 
-MINDEST=36
+MINDEST=43
 
 HIER=$(cd "$(dirname "$0")/.." && pwd)
 HOOKS=${1:-$HIER/.githooks}
@@ -117,13 +117,25 @@ fall "-m, Marker in Zeile 9"                  ab "" -m "Betreff" -m "a${NL}b${NL
 # Prüfung nur bis Zeile 9 bzw. nur des ersten Absatzes, grep -w, Muster ohne
 # eckige Klammern.
 fall "-m, nur Betreff"                        an "Betreff" -m "Betreff"
-VIELE=$(i=0; while [ $i -lt 30 ]; do printf 'zeile %s\n' $i; i=$((i + 1)); done)
-fall "-m, Marker in Zeile 40, dritter Absatz" ab "" -m "Betreff" -m "Absatz eins" -m "Absatz zwei${NL}${VIELE}${NL}Spaet $M"
+VIELE=$(i=0; while [ $i -lt 120 ]; do printf 'zeile %s\n' $i; i=$((i + 1)); done)
+# Zeile 132: Betreff, vier kurze Absaetze (je mit Leerzeile), Absatz fuenf mit
+# 120 Zeilen, dann der Marker — faengt auch "nur bis Zeile N" und "nur die
+# ersten zwei Absaetze" (Nacharbeit 1: der fruehere Fall stand in Zeile 36).
+fall "-m, Marker in Zeile 132, fuenfter Rumpf-Absatz" ab "" -m "Betreff" -m "Absatz eins" -m "Absatz zwei" \
+     -m "Absatz drei" -m "Absatz vier" -m "Absatz fuenf${NL}${VIELE}${NL}Spaet $M"
 fall "-m, Marker direkt an einem Wort"        ab "" -m "Betreff" -m "foo$M bar"
 fall "-m, die Woerter ohne Klammern"          an "Betreff${NL}${NL}Rumpf mit skip ci ohne Klammern." -m "Betreff" -m "Rumpf mit skip ci ohne Klammern."
-# jede Form des Musters, auch gross geschrieben
+# Nacharbeit 1: eingerueckte Zeilen (Code-Block im Rumpf) und ein Rueckstrich
+# vor dem Marker — `echo` statt printf im Hook verschluckt unter dash alles
+# hinter \c (unter Git Bash ist sh die bash, dort bleibt der Fall gruen).
+fall "-m, Marker in eingerueckter Zeile"      ab "" -m "Betreff" -m "Code:${NL}    Text $M"
+fall "-m, Marker in Zeile mit Tabulator"      ab "" -m "Betreff" -m "Code:${NL}	Text $M"
+fall "-m, Rueckstrich-c vor dem Marker"       ab "" -m "Betreff" -m "Text \\c dahinter $M"
+# jede Form des Musters, auch gross und gemischt geschrieben (gemischt: ein
+# Hook ohne -i, der nur die grossen Formen aufzaehlt, faellt so auf)
 for v in "skip ci" "skip-ci" "ci skip" "ci-skip" "no ci" "no-ci" \
-         "skip actions" "skip-actions" "actions skip" "actions-skip" "SKIP CI" "No-Ci"; do
+         "skip actions" "skip-actions" "actions skip" "actions-skip" "SKIP CI" "No-Ci" \
+         "sKiP cI" "aCtIoNs-SkIp"; do
     fall "-m, Form [$v] im Rumpf"             ab "" -m "Betreff" -m "Rumpf mit [$v]."
 done
 # -F: git laesst Kommentar- und Scheren-Zeilen stehen, der Hook prueft sie mit
@@ -149,6 +161,12 @@ printf 'Betreff\n\nRumpf.\n# Everything below it will be ignored.\nnach einer Hi
 fall "-F, nur die letzte Hinweiszeile"        ab "" -F "$W/f.txt"
 printf 'Betreff\n\n# Please enter the commit message for your changes.\nnach dem Vorlagentext %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
 fall "-F, Vorlagentext von git, Marker danach" ab "" -F "$W/f.txt"
+# Nacharbeit 1: der Hook muss alle drei Zeilen GENAU vergleichen — eine
+# fremde Mittelzeile oder eine nur scheren-aehnliche Zeile ist kein Schnitt
+printf 'Betreff\n\n# ------------------------ >8 ------------------------\n# andere Zeile\n# Everything below it will be ignored.\nnach falscher Mittelzeile %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
+fall "-F, Schere mit fremder Mittelzeile"     ab "" -F "$W/f.txt"
+printf 'Betreff\n\n# ---- >8 ----\n# Do not modify or remove the line above.\n# Everything below it will be ignored.\nnach scheren-aehnlicher Zeile %s\nweiter\nweiter\n' "$M" > "$W/f.txt"
+fall "-F, nur scheren-aehnliche Zeile"        ab "" -F "$W/f.txt"
 printf 'Betreff\n\n> Zitat mit %s\n' "$M" > "$W/f.txt"
 fall "-F, Marker in einer Zitatzeile"         ab "" -F "$W/f.txt"
 # -v: git haengt Schere und Diff an und schneidet sie nach dem Hook ab
