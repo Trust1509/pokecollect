@@ -110,18 +110,20 @@ def test_seite_ausserhalb_wird_abgelehnt(client, pfad):
 
 
 @pytest.mark.parametrize(
-    "methode, pfad, koerper",
+    "methode, pfad, koerper, feld",
     [
-        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "a\u0000b"}'),
-        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "x", "soll_folierung": "\ud800"}'),
-        ("put", "/api/v1/collections/1/soll/1", rb'{"soll_folierung": "a\u0000b"}'),
-        ("post", "/api/v1/catalog/x/wishlist", rb'{"sprache": "\ud800"}'),
-        ("post", "/api/v1/catalog/x/collection", rb'{"zustand": "a\u0000b"}'),
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "a\u0000b"}', "tcgdex_card_id"),
+        ("post", "/api/v1/collections/1/soll", rb'{"tcgdex_card_id": "x", "soll_folierung": "\ud800"}', "soll_folierung"),
+        ("put", "/api/v1/collections/1/soll/1", rb'{"soll_folierung": "a\u0000b"}', "soll_folierung"),
+        ("post", "/api/v1/catalog/x/wishlist", rb'{"sprache": "\ud800"}', "sprache"),
+        ("post", "/api/v1/catalog/x/collection?collection_id=1", rb'{"zustand": "a\u0000b"}', "zustand"),
     ],
 )
-def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper):
+def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper, feld):
+    # #119: die Herkunft prüfen (Feld in loc) — der Katalog-Fall lieferte vorher
+    # 422 nur, weil der Query-Parameter collection_id fehlte.
     r = getattr(client, methode)(pfad, content=koerper, headers={"Content-Type": "application/json"})
-    assert r.status_code == 422, r.text
+    _vom_schema(r, feld)
 
 
 @pytest.mark.parametrize(
@@ -135,6 +137,17 @@ def test_weitere_schemas_lehnen_steuerzeichen_ab(client, methode, pfad, koerper)
 def test_nul_im_passwort_kein_500(client, pfad, koerper, erlaubt):
     r = client.post(pfad, content=koerper, headers={"Content-Type": "application/json"})
     assert r.status_code in erlaubt, r.text
+
+
+def test_nul_im_neuen_passwort_bei_richtigem_alten_422(client, test_password):
+    # #119: Der Fall oben mit current_password "x" endete schon an der
+    # Prüfung des alten Passworts (400), bevor das neue gehasht wurde — die
+    # NUL-Prüfung war für das neue Passwort nie bewacht. Hier mit dem
+    # richtigen alten Passwort; erwartet ist genau die Schema-Ablehnung.
+    import json
+    koerper = json.dumps({"current_password": test_password, "new_password": "a" + chr(0) + "b"})
+    r = client.post("/api/v1/settings/change-password", content=koerper, headers={"Content-Type": "application/json"})
+    _vom_schema(r, "new_password")
 
 
 # --- Netz für den Rest der Klasse: DataError aus der Datenbank → 422 --------
