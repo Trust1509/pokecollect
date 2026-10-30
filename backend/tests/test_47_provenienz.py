@@ -22,10 +22,12 @@ _TESTNAME = "test47-Provenienzkarte"
 _TCGDEX_URL = "https://assets.tcgdex.net/de/xx/test47/high.webp"
 _TCGPLAYER_URL = "https://tcgplayer-cdn.tcgplayer.com/product/test47/high.webp"
 _FREMDER_HOST_URL = "https://example.com/test47/high.webp"
-# Manuell gesetzte Bild-URL (Glied 2 der Kette, bild_pokedex_url) — bewusst
-# EIN Host außerhalb der erlaubten Liste: dieses Feld ist Nutzereingabe ohne
-# Host-Deutung, jeder Host ist hier gültig.
-_MANUELLE_BILD_URL = "https://i.example-photos.test/test47-manuell.jpg"
+# Manuell gesetzte Bild-URL (Glied 2 der Kette, bild_pokedex_url). Seit #120
+# wird sie nur auf den drei Bild-Hosts angezeigt (Owner-Entscheid A) — daher
+# ein pokemon.com-Pfad; die Herkunft bleibt "url" (Nutzereingabe), auch wenn
+# der Host einer der erlaubten ist.
+_MANUELLE_BILD_URL = "https://www.pokemon.com/static-assets/test47/manuell.png"
+_MANUELLE_FREMDE_URL = "https://i.example-photos.test/test47-manuell.jpg"
 # Adversarial: der erlaubte Hostname taucht als TEILSTRING auf, ist aber NICHT
 # der tatsächliche Host (Panel-Nacharbeit, WICHTIG 2) — eine naive
 # Teilstring-Prüfung würde beide fälschlich als "tcgdex" durchlassen.
@@ -69,6 +71,22 @@ def test_bild_quelle_tcgdex_url():
 def test_bild_quelle_tcgplayer_url():
     card = PokemonCard(kartenname=_TESTNAME, bild_karte_url=_TCGPLAYER_URL)
     assert bild_quelle(card) == "tcgplayer"
+
+
+def test_bild_quelle_folgt_der_anzeige_bei_fremder_pokedex_url():
+    """#120: eine Pokédex-URL auf fremdem Host wird nicht angezeigt — zu
+    sehen ist das Kartenbild, also ist die Herkunft dessen Host."""
+    card = PokemonCard(kartenname=_TESTNAME, bild_pokedex_url=_MANUELLE_FREMDE_URL,
+                       bild_karte_url=_TCGDEX_URL)
+    assert bild_quelle(card) == "tcgdex"
+    assert bild_quelle(PokemonCard(kartenname=_TESTNAME, bild_pokedex_url=_MANUELLE_FREMDE_URL)) is None
+
+
+def test_bild_quelle_nicht_spiegelbare_karten_url_ist_none():
+    """#120: der Türsteher von einst lässt einen Port durch, der Spiegel
+    nicht — angezeigt wird dann der Platzhalter, keine Herkunft."""
+    card = PokemonCard(kartenname=_TESTNAME, bild_karte_url="https://assets.tcgdex.net:443/de/x/high.webp")
+    assert bild_quelle(card) is None
 
 
 def test_bild_quelle_fremder_host_ist_none():

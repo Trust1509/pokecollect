@@ -28,6 +28,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from app.models.card import PokemonCard
+from app.services.bild_spiegel import ist_spiegelbar
 from app.services.tcgdex import is_allowed_image_url
 
 # Host → Bild-Herkunfts-Kürzel für Glied 3 der Kette (bild_karte_url). NUR ein
@@ -63,12 +64,16 @@ def bild_quelle(card: PokemonCard) -> Optional[str]:
     - None: kein Bild (Glied 4, Platzhalter) ODER ein nicht erkannter/fremder
       Host – beide Fälle raten NICHT, sie zeigen nichts statt eines
       Ersatz-Labels.
+    Seit #120 zeigt die Kette eine URL nur, wenn sie spiegelbar ist
+    (bild_spiegel.ist_spiegelbar — die Felder *_spiegel sind sonst null).
+    Dieselbe Prüfung gilt hier, sonst sagte die Herkunft "url", während das
+    Kartenbild zu sehen ist (Blindprüfer #120, gemessen).
     """
     if card.bild_karte_pfad:
         return "foto"
-    if card.bild_pokedex_url:
+    if ist_spiegelbar(card.bild_pokedex_url):
         return "url"
-    if not is_allowed_image_url(card.bild_karte_url):
+    if not (is_allowed_image_url(card.bild_karte_url) and ist_spiegelbar(card.bild_karte_url)):
         return None
     return _HOST_QUELLE.get(urlparse(card.bild_karte_url).hostname)
 

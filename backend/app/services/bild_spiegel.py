@@ -4,11 +4,18 @@ Bild-Spiegel (#120): fremde Bilder über die eigene API ausliefern.
 Warum: Der Bild-Optimizer von Next folgt Weiterleitungen und prüft das Ziel
 danach nicht mehr gegen seine Allowlist (gemessen im Panel zu #117). Leitete
 eines der fremden CDNs weiter, rief der Web-Server jedes Ziel ab, auch
-interne. Seit #120 sieht weder der Optimizer noch der Browser ein fremdes
-CDN: Fremde Bilder holt dieses Modul — ohne Weiterleitungen
-(fremdbild_abruf.bild_holen) — und legt sie unter images_dir/spiegel/ ab.
-Der Browser lädt sie von hier wie eigene Fotos, am Optimizer vorbei
-(web/src/components/AppImage.tsx).
+interne. Seit #120 holt der Optimizer nichts Fremdes mehr: Die Bilder der
+Karten, Sealed-Produkte und Platzhalter holt dieses Modul — ohne
+Weiterleitungen (fremdbild_abruf.bild_holen) — und legt sie unter
+images_dir/spiegel/ ab. Der Browser lädt sie von hier wie eigene Fotos, am
+Optimizer vorbei (web/src/components/AppImage.tsx). GRENZE: Katalog,
+Soll-Ansicht und Scan zeigen CDN-Bilder weiter per rohem <img> direkt vom
+CDN (kein Server-Abruf, also keine Weiterleitungs-Lücke).
+
+Die Ablage ist Zwischenspeicher: ohne Deckel (sie wächst nur mit Quellen,
+die das Backend signiert hat), nicht im Backup (api/v1/data.py), und ihre
+Dateinamen hängen am JWT-Geheimnis — nach einem Wechsel wird neu geholt,
+die alten Dateien bleiben liegen und dürfen gelöscht werden.
 
 Der Spiegel-Pfad ist auth-frei (ein <img>-Tag schickt keinen
 Authorization-Header — wie beim /images-Mount, ADR-0003) und darum KEIN

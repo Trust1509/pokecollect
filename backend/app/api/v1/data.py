@@ -32,6 +32,7 @@ from starlette.background import BackgroundTask
 from app.config import settings
 from app.database import Base, engine
 from app.models.card import PokemonCard
+from app.services import bild_spiegel
 from app.services.card_images import MEDIA_PATH_COLUMNS, safe_media_path
 
 logger = logging.getLogger(__name__)
@@ -153,6 +154,11 @@ def backup():
                 for p in sorted(images_dir.rglob("*")):
                     if p.is_file():
                         rel = p.relative_to(images_dir).as_posix()
+                        # #120: die Ablage des Bild-Spiegels ist Zwischenspeicher
+                        # fremder Bilder, kein Bestand — sie wird bei Bedarf neu
+                        # geholt, und ihre Namen hängen am JWT-Geheimnis.
+                        if rel.startswith(f"{bild_spiegel.UNTERORDNER}/"):
+                            continue
                         zf.write(p, arcname=f"images/{rel}")
         tmp.close()
     except Exception:

@@ -22,6 +22,8 @@ import { API_BASE } from "@/lib/api";
  * zeigt im Web-Container auf ihn selbst, und hinter Caddy mit Authelia hat
  * der Server keine Sitzung (Blindprüfer #120). Der Browser lädt beides so
  * wie eigene Fotos, und der Optimizer ruft gar nichts mehr von außen ab.
+ * Preis: Spiegel-Bilder kommen in Originalgröße (TCGdex high.webp, TCGplayer
+ * 1000×1000), nicht verkleinert — anders als eigene Fotos ohne Vorschaubild.
  */
 export function istApiBild(src: ImageProps["src"]): boolean {
   return (

@@ -58,11 +58,11 @@ web (Next.js 15, Port 3011)  ──►  api (FastAPI, Port 3010)  ──►  Pos
         └──────────────────────────────┴──►  Gemini API (optional, card scan)
 ```
 
-Card images are fetched and resized by the web server's image optimizer (`next/image`, fixed host allowlist in `web/next.config.js`); own photos are served from the API's `/images` static mount.
+Card images from TCGdex/TCGplayer/pokemon.com are fetched by the API (`/bild-spiegel`, signed paths, no redirects followed, three fixed hosts) and served to the browser like own photos, which come from the API's `/images` static mount. The web server's image optimizer (`next/image`) only accepts the API's own origin.
 
 - **Backend** `backend/` — FastAPI + SQLAlchemy. Schema is created automatically on startup (`create_all` + idempotent light migrations in `app/main.py`); no Alembic.
 - **Frontend** `web/` — Next.js 15 App Router, Tailwind CSS, Axios. `NEXT_PUBLIC_API_URL` is baked in at **build time**.
-- **Auth:** every API route (except `/auth/login`, `/health` and the `/images` static mount) requires a JWT obtained via the web login. There is no built-in default password — the API refuses to start without `APP_PASSWORD_HASH` (or a hash set in-app). External access can additionally be protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)).
+- **Auth:** every API route (except `/auth/login`, `/health`, the `/images` static mount and the signed `/bild-spiegel` image paths) requires a JWT obtained via the web login. There is no built-in default password — the API refuses to start without `APP_PASSWORD_HASH` (or a hash set in-app). External access can additionally be protected via Authelia + Caddy (see [deploy/README.md](deploy/README.md)).
 
 ---
 

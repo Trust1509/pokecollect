@@ -11,7 +11,7 @@ selbst signiert hat; einen unsignierten Pfad gibt es nicht.
 Nicht im OpenAPI-Schema (wie der /images-Mount): Die Pfade sind kein Teil der
 Fach-Schnittstelle, und ein Fuzzer erreicht ohne Signatur ohnehin nur 404.
 Ein Fehlschlag beim fremden Host ist ebenfalls 404, nicht 502 — für den
-Aufrufer (Optimizer, Browser) ist das Bild schlicht nicht da.
+Aufrufer (den Browser) ist das Bild schlicht nicht da.
 """
 
 from __future__ import annotations

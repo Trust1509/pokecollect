@@ -66,6 +66,16 @@ def netz(monkeypatch):
     return setzen
 
 
+def _keine_ablage(url: str) -> None:
+    """Weder eine Datei noch ein TMP-Rest zur Quelle — gesucht über den
+    Stamm des echten Ablage-Namens (Blindprüfer #120: die frühere Suche nach
+    sha256(url) fand nach dem Umstieg auf HMAC nie etwas und prüfte nichts)."""
+    stamm = bild_spiegel._ablage(url, "").name
+    ordner = bild_spiegel._ablage(url, "").parent
+    reste = sorted(p.name for p in ordner.glob("*") if p.name.startswith(stamm)) if ordner.exists() else []
+    assert reste == []
+
+
 def _bild(daten: bytes, typ: str = "image/png"):
     return lambda request: httpx.Response(200, headers={"content-type": typ}, content=daten)
 
@@ -266,17 +276,14 @@ def test_spiegel_fehlschlag_beim_host_ist_404_und_legt_nichts_ab(anon_client, ne
     url = _eindeutig()
     netz(lambda request: httpx.Response(500))
     assert anon_client.get(bild_spiegel.spiegel_pfad(url)).status_code == 404
-    name = bild_spiegel.hashlib.sha256(url.encode()).hexdigest()
-    assert list(bild_spiegel._ablage(url, ".png").parent.glob(f"{name}*")) == []
+    _keine_ablage(url)
 
 
 def test_spiegel_legt_kaputtes_bild_nicht_ab(anon_client, netz):
     url = _eindeutig()
     netz(_bild(b"kein bild"))
     assert anon_client.get(bild_spiegel.spiegel_pfad(url)).status_code == 404
-    name = bild_spiegel.hashlib.sha256(url.encode()).hexdigest()
-    ablage = bild_spiegel._ablage(url, ".png").parent
-    assert [p for p in ablage.glob(f"{name}*")] == []
+    _keine_ablage(url)
 
 
 def test_platzhalter_kommt_signiert_aus_der_karte():
@@ -337,6 +344,20 @@ def test_ablage_name_ist_nicht_aus_der_quelle_ableitbar(anon_client, netz, png_b
     roh = bild_spiegel.hashlib.sha256(url.encode()).hexdigest()
     assert anon_client.get(f"/images/spiegel/{roh}.png").status_code == 404
     assert bild_spiegel._ablage(url, ".png").is_file()
+    name = bild_spiegel._ablage(url, "").name
+    # keine schlüssellose Ableitung der Quelle …
+    for algo in ("md5", "sha1", "sha224", "sha256", "sha384", "sha512", "blake2b", "blake2s", "sha3_256"):
+        assert name != bild_spiegel.hashlib.new(algo, url.encode()).hexdigest(), algo
+    # … nicht die (öffentliche) Signatur und nicht mit ihr verwandt …
+    signatur = bild_spiegel._signatur(url)
+    assert signatur not in name and name[:16] != signatur[:16]
+    # … und hängt am Geheimnis
+    alt = name
+    bild_spiegel.settings.jwt_secret, vorher = "ein-anderes-geheimnis", bild_spiegel.settings.jwt_secret
+    try:
+        assert bild_spiegel._ablage(url, "").name != alt
+    finally:
+        bild_spiegel.settings.jwt_secret = vorher
 
 
 @pytest.mark.parametrize("fmt,typ,endung", [("WEBP", "image/webp", ".webp"), ("JPEG", "image/jpeg", ".jpg"),
@@ -415,6 +436,44 @@ def test_gleichzeitige_anfragen_holen_einmal(netz, png_bytes):
     assert aufgezeichnet["anfragen"] == [url]
 
 
+def test_ein_langsamer_host_haelt_andere_quellen_nicht_auf(netz, png_bytes):
+    """Je Quelle ein Lock, kein globales (Blindprüfer NA1 #120)."""
+    langsam_url, schnell_url = _eindeutig(), _eindeutig()
+    reihenfolge: list[str] = []
+
+    async def antwort(request):
+        if str(request.url) == langsam_url:
+            await asyncio.sleep(0.3)
+        reihenfolge.append(str(request.url))
+        return _bild(png_bytes)(request)
+
+    netz(lambda request: antwort(request))
+
+    async def beide():
+        langsam = asyncio.create_task(bild_spiegel.datei_fuer(langsam_url))
+        await asyncio.sleep(0.05)
+        await bild_spiegel.datei_fuer(schnell_url)
+        await langsam
+
+    asyncio.run(beide())
+    assert reihenfolge == [schnell_url, langsam_url]
+
+
+def test_kaputtes_bild_zaehlt_als_fehlschlag(anon_client, netz):
+    url = _eindeutig()
+    aufgezeichnet = netz(_bild(b"kein bild"))
+    for _ in range(3):
+        assert anon_client.get(bild_spiegel.spiegel_pfad(url)).status_code == 404
+    assert aufgezeichnet["anfragen"] == [url]
+
+
+def test_fehlschlag_frist_und_speicher_sind_begrenzt():
+    assert bild_spiegel._FEHLSCHLAG_SEKUNDEN >= 300
+    for i in range(bild_spiegel._FEHLSCHLAG_MAX_EINTRAEGE + 50):
+        bild_spiegel._fehlschlag_merken(f"https://assets.tcgdex.net/x/{i}")
+    assert len(bild_spiegel._fehlschlaege) <= bild_spiegel._FEHLSCHLAG_MAX_EINTRAEGE
+
+
 def test_fehlschlag_wird_eine_weile_nicht_wiederholt(anon_client, netz, monkeypatch, png_bytes):
     url = _eindeutig()
     antworten = {"status": 500}
@@ -483,3 +542,19 @@ def test_ein_byte_ueber_der_kappe_ohne_kopf_ist_zu_gross(netz):
 def test_spiegel_pfade_stehen_nicht_im_schema(anon_client):
     pfade = anon_client.get("/openapi.json").json()["paths"]
     assert not [p for p in pfade if p.startswith(bild_spiegel.PRAEFIX)]
+
+
+def test_backup_laesst_die_spiegel_ablage_aus(client, netz, png_bytes):
+    """Blindprüfer NA1 #120: die Ablage wuchs ungedeckelt ins Backup-ZIP —
+    sie ist Zwischenspeicher, kein Bestand."""
+    import io
+    import zipfile
+
+    url = _eindeutig()
+    netz(_bild(png_bytes))
+    assert asyncio.run(bild_spiegel.datei_fuer(url)) is not None
+    r = client.get("/api/v1/data/backup")
+    assert r.status_code == 200
+    namen = zipfile.ZipFile(io.BytesIO(r.content)).namelist()
+    assert "data.json" in namen
+    assert not [n for n in namen if n.startswith(f"images/{bild_spiegel.UNTERORDNER}/")]
