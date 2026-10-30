@@ -32,71 +32,41 @@ const nextConfig = {
     // Die App setzt nirgends `quality`, also gilt nur der Standard 75.
     localPatterns: [{ pathname: "/**", search: "" }],
     qualities: [75],
-    // GRENZE (gemessen im Panel zu #117, Blind- und Gegenprüfer): Der
-    // Optimizer folgt Weiterleitungen und prüft das Ziel danach NICHT mehr
-    // gegen diese Muster (image-optimizer.js: fetch ohne redirect-Option;
-    // in Next 14.2.35 genauso). Leitet einer der erlaubten Hosts unten weiter
-    // (offene Weiterleitung), ruft der Web-Server jedes Ziel ab, auch
-    // interne. Unser eigener /images-Mount leitet nicht weiter; die drei
-    // fremden CDNs sind die Annahme. Folge-Issue: eigener Loader/Proxy mit
-    // redirect: "manual".
+    // #120: NUR NOCH DIE EIGENE API. Der Optimizer folgt Weiterleitungen und
+    // prüft das Ziel danach NICHT mehr gegen diese Muster (gemessen im Panel
+    // zu #117: image-optimizer.js fetch ohne redirect-Option; in 14.2.35
+    // genauso). Mit fremden CDNs im Muster hätte eine offene Weiterleitung
+    // bei einem von ihnen den Web-Server jedes Ziel abrufen lassen, auch
+    // interne. Fremde Bilder holt seither das Backend (Bild-Spiegel,
+    // backend/app/services/bild_spiegel.py: ohne Weiterleitungen, nur
+    // signierte Quellen auf drei Hosts), der Optimizer sieht nur noch
+    // /images/** und /bild-spiegel/** der eigenen API — und die leiten nicht
+    // weiter.
     // #91 Panel-Härtung: vorher https+http je "**" — die self-hosted Instanz war
     // damit ein offener Bild-Proxy (/_next/image?url=<beliebig> nahm JEDEN Host
-    // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8). Jetzt NUR die
-    // Hosts, die laut Host-Inventar (Bau-Bericht #91, alle acht next/image-
-    // Stellen bis zur Quelle zurückverfolgt) tatsächlich in ein <Image src>
-    // fließen. Bekannte Lücke, bewusst NICHT abgedeckt: `bild_pokedex_url`
-    // (manuell vom Nutzer gesetzte Karten-URL, PhotoPanel.tsx) hat KEINE
-    // Host-Prüfung im Backend (backend/app/services/provenance.py Zeile 52ff.,
-    // Absicht) — eine bereits gesetzte URL zu einem fremden Host lädt ab jetzt
-    // nicht mehr über den Optimizer. Siehe Bau-Bericht #91 für den Befund.
+    // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8).
     // #98 Panel-Nacharbeit: `search: ""` an JEDEM Muster. Ohne diese Zeile
     // vergleicht Next den Querystring gar nicht (match-remote-pattern.ts
     // prüft `search` nur, wenn es gesetzt ist) — dieselbe Bilddatei mit
     // ?n=1, ?n=2, … ergibt dann beliebig viele VERSCHIEDENE Cache-Schlüssel.
-    // Am laufenden Teststand reproduziert: 5 Abrufe desselben Bildes mit
-    // ?cachebust=1..5 → Cache-Einträge 1 → 6. Rot-Beweis: Sperre entfernt →
-    // der Wächter in e2e/tests/bildoptimizer.spec.ts fällt (404 statt 400).
-    // Kein einziger echter Bild-Wert trägt einen Querystring (37.372 Zeilen
-    // im echten Bestand geprüft: 33.953 tcgdex_catalog + 3.030 sealed_catalog
-    // + 389 pokemon_sets + die eigenen Karten — 0 Treffer auf '%?%'), die
-    // Zeile kostet uns also nichts. Zweite, unabhängige Bremse: die
-    // Cache-Größe ist in allen drei Compose-Dateien hart gedeckelt
-    // (tmpfs auf /app/.next/cache/images).
-    remotePatterns: [
-      // TCGdex-CDN: auto-gesetztes bild_karte_url, Backend erzwingt denselben
-      // Host bereits selbst (services/tcgdex.py ALLOWED_IMAGE_HOSTS/image_url()).
-      { protocol: "https", hostname: "assets.tcgdex.net", port: "", search: "" },
-      // TCGplayer-CDN: JP-Bildfallback bei Karten (dieselbe ALLOWED_IMAGE_HOSTS)
-      // UND Sealed-Produktbilder (services/tcgcsv.py hires_image_url() prüft
-      // denselben Host EXAKT — kein Substring —, bevor er in
-      // SealedCatalog.image_url landet).
-      { protocol: "https", hostname: "tcgplayer-cdn.tcgplayer.com", port: "", search: "" },
-      // Pokédex-Sprite-Platzhalter (web/src/lib/utils.ts pokemonPlaceholderUrl,
-      // letztes Glied der cardImageSrc-Kette) — fließt mit Default
-      // placeholderEnabled=true tatsächlich in sechs der acht next/image-Stellen
-      // (u. a. die Start-Binderansicht), pathname eng auf den einen genutzten
-      // Unterpfad.
-      { protocol: "https", hostname: "www.pokemon.com", port: "", pathname: "/static-assets/**", search: "" },
-      // API-Origin für eigene Fotos + Katalog-Bild-Cache (nur der eine Mount,
-      // der Bilder ausliefert: backend/app/main.py app.mount("/images", …)).
-      // pathname eng auf /images/** statt "**" — ein offener Proxy auf JEDEN
-      // Pfad dieses Hosts wäre derselbe Fehler nur einen Host kleiner. protocol
-      // kommt aus apiOrigin (oben) und ist damit http NUR für diesen einen
-      // Origin, nie als eigenes Wildcard-Muster.
-      {
-        protocol: apiOrigin.protocol.replace(":", ""),
-        hostname: apiOrigin.hostname,
-        port: apiOrigin.port || "",
-        // Pfad-Präfix des Origins mitnehmen (#91-Nacharbeit): bei
-        // NEXT_PUBLIC_API_URL="https://host/prefix" baut imageUrl()
-        // "/prefix/images/…"; ein festes "/images/**" träfe das nicht.
-        // Abschließender Schrägstrich ergibt hier "" (api.ts normalisiert
-        // dieselbe Variable an der Wurzel) — beide Seiten bleiben gleich.
-        pathname: `${apiOrigin.pathname.replace(/\/+$/, "")}/images/**`,
-        search: "",
-      },
-    ],
+    // Rot-Beweis: Sperre entfernt → der Wächter in
+    // e2e/tests/bildoptimizer.spec.ts fällt (404 statt 400). Kein Spiegel-
+    // Pfad trägt einen Querystring (Signatur und Quelle stehen im Pfad).
+    // Zweite, unabhängige Bremse: die Cache-Größe ist in allen drei
+    // Compose-Dateien hart gedeckelt (tmpfs auf /app/.next/cache/images).
+    // protocol kommt aus apiOrigin (oben) und ist damit http NUR für diesen
+    // einen Origin, nie als eigenes Wildcard-Muster. Pfad-Präfix des Origins
+    // mitnehmen (#91-Nacharbeit): bei NEXT_PUBLIC_API_URL="https://host/prefix"
+    // baut imageUrl() "/prefix/images/…"; ein festes "/images/**" träfe das
+    // nicht. Abschließender Schrägstrich ergibt hier "" (api.ts normalisiert
+    // dieselbe Variable an der Wurzel) — beide Seiten bleiben gleich.
+    remotePatterns: ["images", "bild-spiegel"].map((wurzel) => ({
+      protocol: apiOrigin.protocol.replace(":", ""),
+      hostname: apiOrigin.hostname,
+      port: apiOrigin.port || "",
+      pathname: `${apiOrigin.pathname.replace(/\/+$/, "")}/${wurzel}/**`,
+      search: "",
+    })),
   },
 };
 

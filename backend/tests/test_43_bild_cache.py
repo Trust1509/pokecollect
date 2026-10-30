@@ -383,40 +383,38 @@ def test_a_jpeg_quelle_ergibt_jpg_pfad(db, monkeypatch, jpeg_bytes):
         catalog_images.catalog_image_disk_path(cid, ".jpg").unlink(missing_ok=True)
 
 
-def test_a_redirect_auf_verbotenen_host_scheitert(db, monkeypatch, png_bytes):
-    """Neuer Test A(d): Redirect-Endprüfung in _fetch_image_bytes — die
-    AUSGANGS-URL ist erlaubt, der Server leitet aber auf einen fremden Host
-    um. httpx.AsyncClient wird gemockt (NICHT der Seam _fetch_image_bytes
-    selbst — sonst prüfte der Test nur den Mock, nie den echten Code)."""
+def test_a_redirect_wird_nicht_verfolgt(db, monkeypatch, png_bytes):
+    """Neuer Test A(d), seit #120 verschärft: Die AUSGANGS-URL ist erlaubt,
+    der Server leitet aber auf einen fremden Host um. Vorher folgte der Abruf
+    und verwarf erst die finale URL — die Zwischenstation war da schon
+    abgerufen. Jetzt wird die Weiterleitung gar nicht verfolgt. Gemockt ist
+    nur das Netz (httpx-MockTransport), NICHT der Seam _fetch_image_bytes —
+    sonst prüfte der Test nur den Mock, nie den echten Code."""
+    import httpx
+
+    from app.services import fremdbild_abruf
+
     cid = "test43-d-redirect"
     row = _zeile(db, cid, image_url=_url("d-redirect"))
     db.commit()
 
-    class _FakeResponse:
-        url = "https://evil.example.com/x.webp"  # finale URL NACH dem Redirect
-        headers = {"content-type": "image/webp"}
-        content = png_bytes
+    anfragen: list[str] = []
 
-        def raise_for_status(self):
-            pass
+    def handler(request):
+        anfragen.append(str(request.url))
+        if request.url.host == "evil.example.com":
+            return httpx.Response(200, headers={"content-type": "image/png"}, content=png_bytes)
+        return httpx.Response(302, headers={"location": "https://evil.example.com/x.webp"})
 
-    class _FakeAsyncClient:
-        def __init__(self, *a, **kw):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        async def get(self, url):
-            return _FakeResponse()
-
-    monkeypatch.setattr(catalog_images.httpx, "AsyncClient", _FakeAsyncClient)
+    echt = httpx.AsyncClient
+    monkeypatch.setattr(
+        fremdbild_abruf.httpx, "AsyncClient",
+        lambda **kw: echt(transport=httpx.MockTransport(handler), **kw),
+    )
 
     ok = asyncio.run(catalog_images.download_one(db, row))
     assert ok is False
+    assert anfragen == [_url("d-redirect")]   # das Ziel der Weiterleitung nie angefragt
     db.expire_all()
     assert db.get(TcgdexCatalog, cid).image_pfad is None
     assert not catalog_images.catalog_image_disk_path(cid).exists()

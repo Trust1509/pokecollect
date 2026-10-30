@@ -39,7 +39,6 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-import httpx
 from PIL import Image
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -48,7 +47,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.card import PokemonCard
 from app.models.tcgdex_catalog import TcgdexCatalog
-from app.services import tcgdex
+from app.services import fremdbild_abruf, tcgdex
 from app.services.card_images import _MAX_UPLOAD_BYTES, safe_media_path
 from app.services.settings import get_setting
 
@@ -197,31 +196,18 @@ def stage_allows(db: Session, card_id: str, stage: str) -> bool:
 async def _fetch_image_bytes(url: str) -> bytes:
     """
     Reine Netz-I/O, keine Validierung/kein Schreiben (eigener Seam fürs Mocken
-    in Tests — netzfrei, wie tcgdex.get_card). Wirft bei HTTP-Fehler,
-    Nicht-2xx, unerwartetem Content-Type ODER wenn die FINALE URL nach
-    Redirects nicht mehr auf einem erlaubten Host liegt (Panel-Nacharbeit #43:
-    die Host-Prüfung vor dem Abruf sieht nur die AUSGANGS-URL — ein erlaubter
-    Host könnte auf einen fremden umleiten); der Aufrufer (download_one) fängt
-    das ab.
+    in Tests — netzfrei, wie tcgdex.get_card). Seit #120 die gemeinsame Routine
+    fremdbild_abruf.bild_holen: Weiterleitungen werden NICHT verfolgt, jede
+    Antwort außer 200 ist ein Fehlschlag (vorher folgte der Abruf ihnen und
+    prüfte nur die finale URL — die Zwischenstationen waren da schon
+    abgerufen). Wirft; der Aufrufer (download_one) fängt das ab.
     """
-    async with httpx.AsyncClient(
-        timeout=10.0, follow_redirects=True,
-        headers={"User-Agent": "PokeCollect/0.7 (+self-hosted)"},
-    ) as client:
-        resp = await client.get(url)
-    resp.raise_for_status()
-    if not tcgdex.is_allowed_image_url(str(resp.url)):
-        raise ValueError(f"finale URL nach Redirects nicht erlaubt: {resp.url!r}")
-    content_type = resp.headers.get("content-type", "")
-    if content_type and not content_type.lower().startswith("image/"):
-        raise ValueError(f"unerwarteter Content-Type: {content_type!r}")
-    return resp.content
+    return await fremdbild_abruf.bild_holen(url)
 
 
 # Katalogbilder, deren Endung download_one nach dem echten PIL-Format wählt
-# (Panel-Nacharbeit #43) — alles andere gilt als nicht darstellbares/nicht
-# unterstütztes Format und wird verworfen (kein .svg/.gif/.bmp im Bildbaum).
-_FORMAT_EXTENSIONS = {"WEBP": ".webp", "JPEG": ".jpg", "PNG": ".png"}
+# (Panel-Nacharbeit #43) — dieselbe Tabelle wie im Bild-Spiegel (#120).
+_FORMAT_EXTENSIONS = fremdbild_abruf.FORMAT_ENDUNGEN
 
 
 async def download_one(db: Session, row: TcgdexCatalog) -> bool:
@@ -232,8 +218,8 @@ async def download_one(db: Session, row: TcgdexCatalog) -> bool:
     jeden Erfolg sofort dauerhaft, unabhängig vom Ausgang der nächsten Zeile).
 
     Nur erlaubte Hosts (tcgdex.is_allowed_image_url — kein eigenes
-    Host-Urteil, Lehre aus #47; _fetch_image_bytes prüft zusätzlich die
-    FINALE URL nach Redirects). Byte-Kappe WIEDERVERWENDET
+    Host-Urteil, Lehre aus #47; _fetch_image_bytes folgt keiner
+    Weiterleitung, #120). Byte-Kappe WIEDERVERWENDET
     card_images._MAX_UPLOAD_BYTES (12 MB, DRY — keine zweite Konstante für
     dieselbe Bedeutung).
 

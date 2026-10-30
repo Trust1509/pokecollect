@@ -99,10 +99,21 @@ export function imageUrl(
   return version ? `${base}?v=${encodeURIComponent(String(version))}` : base;
 }
 
-export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined): string | null {
+/**
+ * #120: Fremde Bilder laufen über den Bild-Spiegel der eigenen API
+ * (backend/app/services/bild_spiegel.py) — der Bild-Optimizer erlaubt nur
+ * noch die eigene API (next.config.js). Der Pfad kommt signiert aus dem
+ * Backend (Felder `*_spiegel`); hier wird nur der API-Origin davorgesetzt.
+ */
+export function spiegelUrl(pfad: string | null | undefined, apiBase: string): string | null {
+  return pfad ? `${apiBase}${pfad}` : null;
+}
+
+/** Pokédex-Artwork als Platzhalter — über die feste Vorlage des Bild-Spiegels (#120). */
+export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined, apiBase: string): string | null {
   if (!pokedexNr || pokedexNr < 1 || pokedexNr > 1025) return null;
   const nr = String(pokedexNr).padStart(3, "0");
-  return `https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/${nr}.png`;
+  return `${apiBase}/bild-spiegel/pokedex/${nr}.png`;
 }
 
 /**
@@ -124,8 +135,8 @@ export function extractSetCode(setEdition: string | null | undefined): string {
 type CardImageFields = {
   bild_karte_pfad?: string | null;      // eigenes Foto in voller Auflösung
   bild_thumbnail_pfad?: string | null;  // eigenes Foto als Thumbnail
-  bild_pokedex_url?: string | null;
-  bild_karte_url?: string | null;
+  bild_pokedex_spiegel?: string | null;  // #120: bild_pokedex_url über die eigene API
+  bild_karte_spiegel?: string | null;    // #120: bild_karte_url über die eigene API
   pokedex_nr?: number | null;
   aktualisiert_am?: string | null;   // für Cache-Busting eigener Fotos
 };
@@ -139,6 +150,9 @@ type CardImageFields = {
  *   2. bild_pokedex_url — manuell gesetzte URL
  *   3. bild_karte_url — auto von TCGdex
  *   4. Pokédex-Artwork — Platzhalter als letzter Fallback
+ * Glieder 2–4 seit #120 über den Bild-Spiegel der API (`*_spiegel`). Liegt
+ * eine manuelle URL auf keinem erlaubten Host, ist ihr Spiegel null und die
+ * Kette fällt aufs nächste Glied (Owner-Entscheid #120, Variante A).
  *
  * variant "thumb" (Raster/Binder) nutzt bild_thumbnail_pfad,
  * variant "full" (Detailseite) nutzt bild_karte_pfad.
@@ -151,10 +165,12 @@ export function cardImageSrc(
 ): { src: string | null; isPlaceholder: boolean } {
   const ownPath = variant === "full" ? card.bild_karte_pfad : card.bild_thumbnail_pfad;
   const own = imageUrl(ownPath, apiBase, card.aktualisiert_am);
+  const pokedex = spiegelUrl(card.bild_pokedex_spiegel, apiBase);
+  const karte = spiegelUrl(card.bild_karte_spiegel, apiBase);
   const src = own
-    ?? card.bild_pokedex_url
-    ?? card.bild_karte_url
-    ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr) : null);
-  const isPlaceholder = !own && !card.bild_pokedex_url && !card.bild_karte_url && !!src;
+    ?? pokedex
+    ?? karte
+    ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr, apiBase) : null);
+  const isPlaceholder = !own && !pokedex && !karte && !!src;
   return { src, isPlaceholder };
 }

@@ -54,6 +54,38 @@ test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {
     );
     expect(antwort.status(), await antwort.text()).not.toBe(400);
   });
+
+  // #120: Der Bild-Spiegel der eigenen API ist das zweite erlaubte Muster;
+  // die drei fremden CDNs stehen NICHT mehr in der Allowlist (der Optimizer
+  // folgt Weiterleitungen ungeprüft — fremde Bilder holt jetzt das Backend).
+  test("Bild-Spiegel der eigenen API wird nicht als Fremd-Host abgelehnt (#120)", async ({
+    request,
+    baseURL,
+  }) => {
+    const apiUrl = process.env.API_URL ?? "http://api:8000";
+    const spiegel = `${apiUrl}/bild-spiegel/${"0".repeat(32)}/gibt-es-nicht`;
+    const antwort = await request.get(
+      `${baseURL}/_next/image?url=${encodeURIComponent(spiegel)}&w=64&q=75`,
+    );
+    expect(antwort.status(), await antwort.text()).not.toBe(400);
+  });
+
+  for (const fremd of [
+    "https://assets.tcgdex.net/de/swsh/swsh3/136/high.webp",
+    "https://tcgplayer-cdn.tcgplayer.com/product/42346_in_1000x1000.jpg",
+    "https://www.pokemon.com/static-assets/content-assets/cms2/img/pokedex/full/025.png",
+  ]) {
+    test(`frühere CDN-Quelle wird abgelehnt (#120): ${new URL(fremd).hostname}`, async ({
+      request,
+      baseURL,
+    }) => {
+      const antwort = await request.get(
+        `${baseURL}/_next/image?url=${encodeURIComponent(fremd)}&w=64&q=75`,
+      );
+      expect(antwort.status()).toBe(400);
+      expect(await antwort.text()).toContain('"url" parameter is not allowed');
+    });
+  }
 });
 
 /**
@@ -146,7 +178,7 @@ test.describe("Bild-Optimizer: keine Cache-Vervielfältigung über lokale Ziele 
         `${baseURL}/_next/image?url=${encodeURIComponent(`${datei}?x=1`)}&w=64&q=75`,
       );
       expect(antwort.status()).toBe(400);
-      expect(await antwort.text()).toContain("not allowed");
+      expect(await antwort.text()).toContain('"url" parameter is not allowed');
     });
   }
 
@@ -156,7 +188,7 @@ test.describe("Bild-Optimizer: keine Cache-Vervielfältigung über lokale Ziele 
         `${baseURL}/_next/image?url=${encodeURIComponent("/icon-512.png")}&w=64&q=${q}`,
       );
       expect(antwort.status()).toBe(400);
-      expect(await antwort.text()).toContain("not allowed");
+      expect(await antwort.text()).toContain(`"q" parameter (quality) of ${q} is not allowed`);
     });
   }
 });

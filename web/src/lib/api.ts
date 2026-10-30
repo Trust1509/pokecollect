@@ -69,6 +69,11 @@ export type Card = {
   zustand: string | null;
   bild_pokedex_url: string | null;
   bild_karte_url: string | null;       // auto: TCGdex high.webp
+  // #120: dieselben Bilder als signierter Spiegel-Pfad der eigenen API —
+  // NUR diese Felder fließen in die Anzeige (lib/utils.ts cardImageSrc).
+  // null bei fehlender URL oder fremdem Host.
+  bild_karte_spiegel?: string | null;
+  bild_pokedex_spiegel?: string | null;
   bild_karte_pfad: string | null;
   bild_thumbnail_pfad: string | null;
   bild_original_pfad: string | null;
@@ -151,6 +156,7 @@ export type SealedProduct = {
   // Sealed-Katalog (#46): TCGplayer-Verknüpfung + CDN-Bild + Auto-Wert-Stand
   tcgplayer_product_id?: number | null;
   bild_url?: string | null;
+  bild_spiegel?: string | null;   // #120: bild_url über die eigene API
   wert_aktualisiert?: string | null;
   hinzugefuegt_am: string | null;
   unrealisierter_gv_eur: string | null;
@@ -167,6 +173,7 @@ export type SealedCatalogItem = {
   set_code: string | null;
   name: string;
   image_url: string | null;
+  image_spiegel?: string | null;  // #120: image_url über die eigene API
   price_usd: number | null;
   price_usd_updated: string | null;
 };

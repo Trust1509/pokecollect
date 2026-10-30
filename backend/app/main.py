@@ -17,6 +17,7 @@ from sqlalchemy.exc import DataError
 from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.api.v1 import router as v1_router
+from app.api.bild_spiegel import router as bild_spiegel_router
 from app.services.cron import start_scheduler
 from app.schemas._validators import _CONTROL_CHARS
 
@@ -464,6 +465,10 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+# #120: auth-frei wie der /images-Mount (der Bild-Optimizer schickt keine
+# Anmeldung mit); geschützt durch die Signatur, Begründung in
+# services/bild_spiegel.py.
+app.include_router(bild_spiegel_router)
 
 # #43-Nacharbeit: im python:3.12-slim-Container liefert mimetypes.guess_type()
 # für ".webp" oft None (schlanke Distro-MIME-Registry ohne Bildtypen) —

@@ -266,6 +266,11 @@ export default function PhotoPanel({ card, onCardUpdated, onCardSaved, onImageCl
           <button type="button" onClick={handleSaveUrl} className="text-xs bg-green-700 text-white rounded px-2 py-1 hover:bg-green-600">OK</button>
         </div>
       )}
+      {/* #120 (Owner-Entscheid A): nur drei Bild-Hosts werden angezeigt */}
+      {showUrlInput && <p className="mt-1 text-[11px] text-gray-500">{t.detail_url_hosts}</p>}
+      {card.bild_pokedex_url && !card.bild_pokedex_spiegel && (
+        <p className="mt-1 text-[11px] text-amber-400">{t.detail_url_not_shown}</p>
+      )}
       {(card.bild_karte_pfad || card.bild_pokedex_url) && (
         <button type="button"
           onClick={card.bild_karte_pfad ? handleDeleteImage : handleClearPokedexUrl}

@@ -1,6 +1,7 @@
 """
 Auth-Zwang (Issue #1): Alle Fach-Router verlangen ein gültiges JWT.
-Auth-frei bleiben nur /auth/login, /health und der /images-StaticFiles-Mount.
+Auth-frei bleiben nur /auth/login, /health, der /images-StaticFiles-Mount und
+der signierte Bild-Spiegel /bild-spiegel (#120, Tests in test_120_bild_spiegel.py).
 Dazu: Start-Guard — ohne konfiguriertes Passwort verweigert die App den Start.
 """
 

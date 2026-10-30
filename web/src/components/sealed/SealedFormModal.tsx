@@ -7,7 +7,7 @@ import { CurrencyField, DateField, SelectField, TextareaField } from "@/componen
 import SearchableSelect from "@/components/SearchableSelect";
 import { useSets } from "@/lib/useSets";
 import { useSetOptions } from "@/lib/useSetOptions";
-import { formatEur, imageUrl } from "@/lib/utils";
+import { formatEur, imageUrl, spiegelUrl } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
 // Anlage-/Detail-Formular für Sealed-Produkte (Issue #35). EIN Formular für
@@ -50,7 +50,8 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
   // Sealed-Katalog-Picker (#46): Suche gegen echte TCGplayer-Produkte.
   // linkId = aktuelle Verknüpfung (0 = beim Speichern lösen).
   const [linkId, setLinkId] = useState<number | null>(product?.tcgplayer_product_id ?? null);
-  const [linkImage, setLinkImage] = useState<string | null>(product?.bild_url ?? null);
+  // #120: Anzeige über den Bild-Spiegel der eigenen API, nie die CDN-URL direkt
+  const [linkImage, setLinkImage] = useState<string | null>(spiegelUrl(product?.bild_spiegel, API_BASE));
   const [catSearch, setCatSearch] = useState("");
   const [catResults, setCatResults] = useState<SealedCatalogItem[]>([]);
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function SealedFormModal({ product, enums, onClose, onSaved }: Pr
 
   const pickCatalog = (item: SealedCatalogItem) => {
     setLinkId(item.product_id);
-    setLinkImage(item.image_url);
+    setLinkImage(spiegelUrl(item.image_spiegel, API_BASE));
     if (!name.trim()) setName(item.name);
     setCatSearch("");
     setCatResults([]);

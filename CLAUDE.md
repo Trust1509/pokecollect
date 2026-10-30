@@ -346,7 +346,10 @@ muss, ist deshalb Standard, nicht Option. Konkret:
 
 - **Auth-Zwang (Issue #1, ADR-0003):** Alle Fach-Router erzwingen ein JWT
   (`require_auth` via `include_router`-dependencies); auth-frei sind nur
-  `/auth/login`, `/health` und der `/images`-Mount. Neue Router IMMER unter den
+  `/auth/login`, `/health`, der `/images`-Mount und der Bild-Spiegel
+  `/bild-spiegel` (#120 — der Bild-Optimizer schickt keine Anmeldung mit;
+  statt ihrer schützt eine Signatur, Begründung in
+  `backend/app/services/bild_spiegel.py`). Neue Router IMMER unter den
   Auth-Zwang in `api/v1/__init__.py` hängen.
 - **Secrets nie im Klartext ausgeben.** `GET /settings` liefert sie nur maskiert
   (`*_set` / `*_masked`). Ohne `APP_PASSWORD_HASH` startet die App nicht.

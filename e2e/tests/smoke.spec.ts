@@ -5,6 +5,12 @@ import {
   sammlungLoeschen, sealedIdFinden, sealedLoeschen, token,
 } from "./helfer";
 
+// Erfundenes 1×1-PNG für die Foto-Tests (#117, #120).
+const PNG_1x1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==",
+  "base64",
+);
+
 /**
  * Rauchtest (#52): die Flüsse, deren Ausfall die App unbenutzbar macht.
  *
@@ -126,6 +132,75 @@ test.describe("Kernflüsse", () => {
       expect(await bild.getAttribute("src")).not.toContain("/_next/image");
     } finally {
       await karteLoeschen(request, t, id);
+    }
+  });
+
+  // #120: Rasteransicht und Sealed — fiele eine dieser Stellen auf ein rohes
+  // next/image zurück, bliebe das eigene Foto leer (Querystring ?v=, siehe
+  // Test oben), ohne dass die Detailansicht es zeigte.
+  test("eigenes Foto erscheint im Raster und der Platzhalter läuft über den Spiegel (#120)", async ({
+    page,
+    request,
+  }) => {
+    const t = await token(request);
+    const mitFoto = einmalName("RT-Raster");
+    const ohneFoto = einmalName("RT-Platzhalter");
+    const idFoto = await karteAnlegen(request, t, { kartenname: mitFoto, pokedex_nr: 25 });
+    const idPlatz = await karteAnlegen(request, t, { kartenname: ohneFoto, pokedex_nr: 26 });
+    try {
+      const hoch = await request.post(`${API}/api/v1/cards/${idFoto}/image`, {
+        headers: { Authorization: `Bearer ${t}` },
+        multipart: { file: { name: "foto.png", mimeType: "image/png", buffer: PNG_1x1 } },
+      });
+      expect(hoch.status(), await hoch.text()).toBe(200);
+
+      await page.goto("/");
+      const foto = page.locator(`a[href="/cards/${idFoto}"] img`).first();
+      await expect(foto).toBeVisible();
+      await expect
+        .poll(() => foto.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+      expect(await foto.getAttribute("src")).not.toContain("/_next/image");
+
+      // Der Platzhalter kommt über den Bild-Spiegel der API, nie direkt vom
+      // fremden Host. Ob das Bild lädt, hängt am Netz des Stapels — geprüft
+      // wird der Weg, nicht das Bild.
+      const platz = page.locator(`a[href="/cards/${idPlatz}"] img`).first();
+      await expect(platz).toBeAttached();
+      const src = decodeURIComponent((await platz.getAttribute("src")) ?? "");
+      expect(src).toContain("/bild-spiegel/pokedex/026.png");
+      expect(src).not.toContain("pokemon.com");
+    } finally {
+      await karteLoeschen(request, t, idFoto);
+      await karteLoeschen(request, t, idPlatz);
+    }
+  });
+
+  test("eigenes Foto erscheint in der Sealed-Übersicht (#120)", async ({ page, request }) => {
+    const t = await token(request);
+    const name = einmalName("RT-Sealed");
+    const neu = await request.post(`${API}/api/v1/sealed`, {
+      headers: { Authorization: `Bearer ${t}` },
+      data: { name },
+    });
+    expect(neu.status(), await neu.text()).toBe(201);
+    const id = (await neu.json()).id as number;
+    try {
+      const hoch = await request.post(`${API}/api/v1/sealed/${id}/image`, {
+        headers: { Authorization: `Bearer ${t}` },
+        multipart: { file: { name: "foto.png", mimeType: "image/png", buffer: PNG_1x1 } },
+      });
+      expect(hoch.status(), await hoch.text()).toBe(200);
+
+      await page.goto("/sealed");
+      const bild = page.getByRole("img", { name }).first();
+      await expect(bild).toBeVisible();
+      await expect
+        .poll(() => bild.evaluate((e) => (e as HTMLImageElement).naturalWidth))
+        .toBeGreaterThan(0);
+      expect(await bild.getAttribute("src")).not.toContain("/_next/image");
+    } finally {
+      await sealedLoeschen(request, t, id);
     }
   });
 

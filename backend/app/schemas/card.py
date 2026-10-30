@@ -2,10 +2,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, computed_field, field_validator
 
 from app.schemas._grenzen import MONEY_FIELD, PgNichtNegativ
 from app.schemas._validators import reject_control_chars, reject_explicit_null
+from app.services.bild_spiegel import spiegel_pfad
 
 
 SELTENHEIT_VALUES = [
@@ -126,6 +127,21 @@ class CardResponse(CardBase):
     id: int
     wert_aktualisiert: Optional[datetime] = None
     bild_karte_url: Optional[str] = None
+
+    # #120: die fremden Bild-URLs als signierter Spiegel-Pfad der eigenen API
+    # (services/bild_spiegel.py) — die Anzeige nutzt NUR diese Felder, die
+    # *_url-Felder bleiben für Bearbeiten und Herkunft. None, wenn die URL
+    # fehlt oder auf keinem der erlaubten Hosts liegt.
+    @computed_field
+    @property
+    def bild_karte_spiegel(self) -> Optional[str]:
+        return spiegel_pfad(self.bild_karte_url)
+
+    @computed_field
+    @property
+    def bild_pokedex_spiegel(self) -> Optional[str]:
+        return spiegel_pfad(self.bild_pokedex_url)
+
     bild_karte_pfad: Optional[str] = None
     bild_thumbnail_pfad: Optional[str] = None
     bild_original_pfad: Optional[str] = None

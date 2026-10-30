@@ -16,6 +16,11 @@ Authelia + Caddy. Issue #1 (P0) schließt das.
    Auth-frei bleiben nur `/auth/login`, `/health` und der
    `/images`-StaticFiles-Mount (`<img>`-Tags können keine
    Authorization-Header senden).
+   **Nachtrag #120 (30.10.2026):** dazu der Bild-Spiegel `/bild-spiegel`
+   — aus demselben Grund (der Bild-Optimizer von Next ruft ihn
+   serverseitig ohne Anmeldung ab). Statt der Anmeldung schützt eine
+   HMAC-Signatur: Abgerufen wird nur, was das Backend selbst signiert hat,
+   und nur von drei festen Bild-Hosts (`backend/app/services/bild_spiegel.py`).
 2. **Token-Ablage: localStorage** (Key `token`). Bewusste Entscheidung
    trotz XSS-Theorie-Risiko: Single-User-LAN-App hinter Authelia, kein
    Fremd-Content, kein Cookie-/CSRF-Apparat nötig; das Plumbing

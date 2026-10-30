@@ -2,10 +2,11 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from app.schemas._grenzen import MONEY_FIELD  # noqa: F401 (auch von außen genutzt)
 from app.schemas._validators import reject_control_chars, reject_explicit_null
+from app.services.bild_spiegel import spiegel_pfad
 
 # Fester Typ-Katalog (Issue #35). Interne ASCII-tauglichen Werte = zugleich
 # Anzeige-Label (kurz gehalten); das Frontend darf eigene Label-Maps ergänzen.
@@ -141,6 +142,13 @@ class SealedProductResponse(BaseModel):
     # Unrealisierter G/V = wert_eur − kaufpreis_eur (nur wenn BEIDE gesetzt).
     unrealisierter_gv_eur: Optional[Decimal] = None
 
+    # #120: CDN-Bild als signierter Spiegel-Pfad der eigenen API (siehe
+    # schemas/card.py CardResponse.bild_karte_spiegel).
+    @computed_field
+    @property
+    def bild_spiegel(self) -> Optional[str]:
+        return spiegel_pfad(self.bild_url)
+
     model_config = {"from_attributes": True}
 
 
@@ -158,5 +166,11 @@ class SealedCatalogItem(BaseModel):
     image_url: Optional[str] = None
     price_usd: Optional[float] = None
     price_usd_updated: Optional[str] = None
+
+    # #120: siehe SealedProductResponse.bild_spiegel
+    @computed_field
+    @property
+    def image_spiegel(self) -> Optional[str]:
+        return spiegel_pfad(self.image_url)
 
     model_config = {"from_attributes": True}
