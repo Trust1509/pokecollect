@@ -19,6 +19,7 @@ Eigenimplementierung (MIT). Kein Code aus Drittprojekten übernommen.
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Callable
 
 import httpx
 from PIL import Image
@@ -36,13 +37,20 @@ class AbrufFehler(Exception):
     """Ein fremdes Bild ließ sich nicht abrufen oder ist kein erlaubtes Bild."""
 
 
-async def bild_holen(url: str) -> bytes:
-    """Holt die Bytes von `url`. Wirft AbrufFehler (oder einen httpx-Fehler)
-    bei jeder Antwort außer 200, bei fehlendem oder fremdem Content-Type und
-    bei Überschreiten der Byte-Kappe. Prüft NICHT den Host — das tut der
-    Aufrufer vorher mit seinem eigenen Urteil."""
+async def bild_holen(url: str, *, erlaubt: Callable[[str], bool]) -> bytes:
+    """Holt die Bytes von `url`. Wirft AbrufFehler (oder einen httpx-Fehler),
+    wenn `erlaubt(url)` nicht wahr ist — VOR jeder Verbindung —, bei jeder
+    Antwort außer 200, bei fehlendem oder fremdem Content-Type und bei
+    Überschreiten der Byte-Kappe. Das Host-Urteil ist Pflicht-Argument (Panel
+    #120): Ein künftiger Aufrufer kann die Prüfung nicht vergessen."""
+    if not erlaubt(url):
+        raise AbrufFehler(f"Quelle nicht erlaubt: {url!r}")
+    # identity: Die Kappe zählt gelesene Bytes; bei gzip zählte sie entpackte,
+    # und ein einzelner entpackter Block läge vor der Prüfung ganz im Speicher
+    # (Gegenprüfer #120). Bilder sind ohnehin komprimiert.
     async with httpx.AsyncClient(
-        timeout=10.0, follow_redirects=False, headers={"User-Agent": USER_AGENT},
+        timeout=10.0, follow_redirects=False,
+        headers={"User-Agent": USER_AGENT, "Accept-Encoding": "identity"},
     ) as client:
         async with client.stream("GET", url) as resp:
             if resp.status_code != 200:

@@ -6,7 +6,7 @@ from pydantic import BaseModel, computed_field, field_validator
 
 from app.schemas._grenzen import MONEY_FIELD, PgNichtNegativ
 from app.schemas._validators import reject_control_chars, reject_explicit_null
-from app.services.bild_spiegel import spiegel_pfad
+from app.services.bild_spiegel import pokedex_url, spiegel_pfad
 
 
 SELTENHEIT_VALUES = [
@@ -141,6 +141,13 @@ class CardResponse(CardBase):
     @property
     def bild_pokedex_spiegel(self) -> Optional[str]:
         return spiegel_pfad(self.bild_pokedex_url)
+
+    # Pokédex-Artwork als Platzhalter (letztes Glied der Bild-Kette im
+    # Frontend) — ebenfalls signiert, es gibt keinen unsignierten Spiegel-Pfad.
+    @computed_field
+    @property
+    def bild_platzhalter_spiegel(self) -> Optional[str]:
+        return spiegel_pfad(pokedex_url(self.pokedex_nr))
 
     bild_karte_pfad: Optional[str] = None
     bild_thumbnail_pfad: Optional[str] = None

@@ -39,9 +39,12 @@ const nextConfig = {
     // bei einem von ihnen den Web-Server jedes Ziel abrufen lassen, auch
     // interne. Fremde Bilder holt seither das Backend (Bild-Spiegel,
     // backend/app/services/bild_spiegel.py: ohne Weiterleitungen, nur
-    // signierte Quellen auf drei Hosts), der Optimizer sieht nur noch
-    // /images/** und /bild-spiegel/** der eigenen API — und die leiten nicht
-    // weiter.
+    // signierte Quellen auf drei Hosts). Der Browser lädt /images/** und
+    // /bild-spiegel/** direkt von der API, am Optimizer vorbei
+    // (src/components/AppImage.tsx: der Web-Server erreicht die API unter
+    // NEXT_PUBLIC_API_URL nicht in jeder Aufstellung). Die zwei Muster unten
+    // bleiben als enge Allowlist stehen, falls doch ein API-Bild den
+    // Optimizer erreicht; fremde Hosts lehnt er ab.
     // #91 Panel-Härtung: vorher https+http je "**" — die self-hosted Instanz war
     // damit ein offener Bild-Proxy (/_next/image?url=<beliebig> nahm JEDEN Host
     // an, s. GHSA-9g9p-9gw9-jx7f/-h64f-5h5j-jqjh/-3x4c-7xq6-9pq8).

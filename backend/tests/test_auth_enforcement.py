@@ -82,3 +82,41 @@ def test_start_guard_akzeptiert_env_hash(client):
     from app import main
 
     main._ensure_password_configured()
+
+
+def _blaetter(routen, abh=()):
+    """Jede Route samt aller Abhängigkeiten auf dem Weg dorthin. Seit FastAPI
+    0.16x stehen eingebundene Router als _IncludedRouter in app.routes — ohne
+    Abstieg sähe man sie nicht. Geliefert wird der Pfad der Route selbst
+    (ohne die Präfixe der einbindenden Router): Wie FastAPI die Präfixe über
+    include_context verteilt, ist inneres Verhalten (beim Bau gemessen: einmal
+    fehlte "/api/v1", einmal stand es doppelt) — für das Inventar reicht der
+    eigene Pfad."""
+    for r in routen:
+        innen = getattr(r, "original_router", None)
+        if innen is not None:
+            kontext = getattr(r, "include_context", None)
+            dazu = tuple(getattr(kontext, "dependencies", None) or ()) + tuple(innen.dependencies or ())
+            yield from _blaetter(innen.routes, abh + dazu)
+        else:
+            yield getattr(r, "path", repr(r)), abh + tuple(getattr(r, "dependencies", None) or ())
+
+
+def test_inventar_der_auth_freien_routen():
+    """Blindprüfer #120: Ein zusätzlicher auth-freier Pfad fiel bisher
+    niemandem auf. Hier steht jeder Pfad ohne require_auth — ein neuer Eintrag
+    ist eine bewusste Entscheidung (CLAUDE.md „Auth-Zwang"), keine
+    Nebenwirkung."""
+    from app.api.deps import require_auth
+    from app.main import app
+
+    blaetter = list(_blaetter(app.routes))
+    assert len(blaetter) > 50, "Abstieg in die Router greift nicht — Inventar wäre blind"
+    frei = {pfad for pfad, abh in blaetter if not any(d.dependency is require_auth for d in abh)}
+    assert frei == {
+        "/auth/login",                              # unter /api/v1
+        "/health",
+        "/images",                                  # StaticFiles-Mount
+        "/bild-spiegel/{signatur}/{kodiert}",       # #120, signiert
+        "/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc",   # FastAPI-Doku
+    }

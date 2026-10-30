@@ -62,7 +62,8 @@ export default function PhotoPanel({ card, onCardUpdated, onCardSaved, onImageCl
   // Bild-Prioritätskette zentral in cardImageSrc (Vertrag mit dem Backend,
   // siehe backend/app/services/card_image_service.py:14-18) — Issue #10
   const { src: imgSrc, isPlaceholder } = cardImageSrc(card, API_BASE, true, "full");
-  const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_url && !!card.bild_karte_url;
+  // #120: nach dem, was angezeigt wird (Spiegel), nicht nach den Rohfeldern
+  const isAutoCard = !card.bild_karte_pfad && !card.bild_pokedex_spiegel && !!card.bild_karte_spiegel;
   // Tap/Klick aufs Bild öffnet die Lightbox — außer direkt nach einem Wisch.
   const handleImageClick = () => {
     if (swipeSuppressClick.current) { swipeSuppressClick.current = false; return; }

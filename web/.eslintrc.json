@@ -12,7 +12,7 @@
         ],
         "patterns": [
           {
-            "group": ["next/legacy/image", "next/dist/**/image*", "next/dist/**/image-*/**"],
+            "group": ["next/image.*", "next/legacy/image", "next/legacy/image.*", "next/dist/**/image*", "next/dist/**/image-*/**"],
             "message": "Bilder über @/components/AppImage einbinden, auch nicht über Umwege (#120)."
           }
         ]
@@ -21,11 +21,11 @@
     "no-restricted-syntax": [
       "error",
       {
-        "selector": "CallExpression[callee.name='require'][arguments.0.value=/^next\\u002F(legacy\\u002F)?image$|^next\\u002Fdist\\u002F.*image/]",
+        "selector": "CallExpression[callee.name='require'][arguments.0.value=/^next\\u002F(legacy\\u002F)?image([.]js)?$|^next\\u002Fdist\\u002F.*image/]",
         "message": "Bilder über @/components/AppImage einbinden, auch nicht per require (#120)."
       },
       {
-        "selector": "ImportExpression[source.value=/^next\\u002F(legacy\\u002F)?image$|^next\\u002Fdist\\u002F.*image/]",
+        "selector": "ImportExpression[source.value=/^next\\u002F(legacy\\u002F)?image([.]js)?$|^next\\u002Fdist\\u002F.*image/]",
         "message": "Bilder über @/components/AppImage einbinden, auch nicht per import() (#120)."
       }
     ]

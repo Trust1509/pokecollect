@@ -202,7 +202,7 @@ async def _fetch_image_bytes(url: str) -> bytes:
     prüfte nur die finale URL — die Zwischenstationen waren da schon
     abgerufen). Wirft; der Aufrufer (download_one) fängt das ab.
     """
-    return await fremdbild_abruf.bild_holen(url)
+    return await fremdbild_abruf.bild_holen(url, erlaubt=tcgdex.is_allowed_image_url)
 
 
 # Katalogbilder, deren Endung download_one nach dem echten PIL-Format wählt

@@ -147,6 +147,16 @@ test.describe("Kernflüsse", () => {
     const ohneFoto = einmalName("RT-Platzhalter");
     const idFoto = await karteAnlegen(request, t, { kartenname: mitFoto, pokedex_nr: 25 });
     const idPlatz = await karteAnlegen(request, t, { kartenname: ohneFoto, pokedex_nr: 26 });
+    // Kartenbild-URL (TCGdex) ist über die Karten-API nicht setzbar, über die
+    // Scan-Übernahme schon (dort host-geprüft) — so ist das Glied
+    // bild_karte_spiegel der Bild-Kette im Rauchtest (Gegenprüfer #120).
+    const kartenbild = "https://assets.tcgdex.net/de/swsh/swsh3/136/high.webp";
+    const scan = await request.post(`${API}/api/v1/scan/commit`, {
+      headers: { Authorization: `Bearer ${t}` },
+      data: { target: "pokedex", items: [{ kartenname: einmalName("RT-Kartenbild"), pokedex_nr: 27, bild_karte_url: kartenbild }] },
+    });
+    expect(scan.status(), await scan.text()).toBe(200);
+    const idKarte = (await scan.json()).card_ids[0] as number;
     try {
       const hoch = await request.post(`${API}/api/v1/cards/${idFoto}/image`, {
         headers: { Authorization: `Bearer ${t}` },
@@ -162,17 +172,25 @@ test.describe("Kernflüsse", () => {
         .toBeGreaterThan(0);
       expect(await foto.getAttribute("src")).not.toContain("/_next/image");
 
-      // Der Platzhalter kommt über den Bild-Spiegel der API, nie direkt vom
-      // fremden Host. Ob das Bild lädt, hängt am Netz des Stapels — geprüft
-      // wird der Weg, nicht das Bild.
+      // Der Platzhalter kommt signiert über den Bild-Spiegel der API, direkt
+      // vom Browser (nicht über den Optimizer, nie vom fremden Host). Ob das
+      // Bild lädt, hängt am Netz des Stapels — geprüft wird der Weg.
       const platz = page.locator(`a[href="/cards/${idPlatz}"] img`).first();
       await expect(platz).toBeAttached();
-      const src = decodeURIComponent((await platz.getAttribute("src")) ?? "");
-      expect(src).toContain("/bild-spiegel/pokedex/026.png");
-      expect(src).not.toContain("pokemon.com");
+      const src = (await platz.getAttribute("src")) ?? "";
+      expect(src.startsWith(`${API}/bild-spiegel/`), src).toBeTruthy();
+      expect(src).not.toContain("/_next/image");
+      const quelle = Buffer.from(src.split("/").pop() ?? "", "base64url").toString();
+      const karte = page.locator(`a[href="/cards/${idKarte}"] img`).first();
+      await expect(karte).toBeAttached();
+      const karteSrc = (await karte.getAttribute("src")) ?? "";
+      expect(karteSrc.startsWith(`${API}/bild-spiegel/`), karteSrc).toBeTruthy();
+      expect(Buffer.from(karteSrc.split("/").pop() ?? "", "base64url").toString()).toBe(kartenbild);
+      expect(quelle).toMatch(/^https:\/\/www\.pokemon\.com\/static-assets\/.*\/026\.png$/);
     } finally {
       await karteLoeschen(request, t, idFoto);
       await karteLoeschen(request, t, idPlatz);
+      await karteLoeschen(request, t, idKarte);
     }
   });
 

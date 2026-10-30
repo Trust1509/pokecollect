@@ -74,6 +74,7 @@ export type Card = {
   // null bei fehlender URL oder fremdem Host.
   bild_karte_spiegel?: string | null;
   bild_pokedex_spiegel?: string | null;
+  bild_platzhalter_spiegel?: string | null;  // Pokédex-Artwork (Platzhalter)
   bild_karte_pfad: string | null;
   bild_thumbnail_pfad: string | null;
   bild_original_pfad: string | null;

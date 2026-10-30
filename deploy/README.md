@@ -284,7 +284,7 @@ docker exec authelia authelia validate-config --config /config/configuration.yml
 > am Handy.
 
 **Architektur:** EIN Hostname `pokecollect.lan` für Web **und** API
-(`/api/*` und `/images/*` → API, Rest → Web). Dadurch:
+(`/api/*`, `/images/*` und `/bild-spiegel/*` → API, Rest → Web). Dadurch:
 
 - `NEXT_PUBLIC_API_URL=https://pokecollect.lan` passt exakt (der Web-Client
   hängt selbst `/api/v1` an).
@@ -410,7 +410,7 @@ Die Datei aufs Handy bringen (E-Mail an sich selbst, USB, Nextcloud, …).
 1. `https://pokecollect.lan/health` → `{"status":"ok", …}` mit Schloss.
 2. `https://pokecollect.lan` → Login-Seite, Anmelden funktioniert
    (wenn nicht: CORS_ORIGINS gesetzt + API neu gestartet? Web-Image neu gebaut?).
-3. Kartenbilder laden (`/images/*` läuft über den Proxy).
+3. Kartenbilder laden (`/images/*` und `/bild-spiegel/*` laufen über den Proxy).
 4. Handy-Browser: Menü → **App installieren / Zum Startbildschirm** → die
    PWA-Installation wird jetzt angeboten; der Scan darf die Kamera ohne
    Chrome-Flag öffnen.

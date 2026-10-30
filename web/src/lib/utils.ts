@@ -109,12 +109,6 @@ export function spiegelUrl(pfad: string | null | undefined, apiBase: string): st
   return pfad ? `${apiBase}${pfad}` : null;
 }
 
-/** Pokédex-Artwork als Platzhalter — über die feste Vorlage des Bild-Spiegels (#120). */
-export function pokemonPlaceholderUrl(pokedexNr: number | null | undefined, apiBase: string): string | null {
-  if (!pokedexNr || pokedexNr < 1 || pokedexNr > 1025) return null;
-  const nr = String(pokedexNr).padStart(3, "0");
-  return `${apiBase}/bild-spiegel/pokedex/${nr}.png`;
-}
 
 /**
  * "Paldeas Schicksale (PAF)" → "PAF"; null wenn kein Klammer-Kürzel.
@@ -137,7 +131,7 @@ type CardImageFields = {
   bild_thumbnail_pfad?: string | null;  // eigenes Foto als Thumbnail
   bild_pokedex_spiegel?: string | null;  // #120: bild_pokedex_url über die eigene API
   bild_karte_spiegel?: string | null;    // #120: bild_karte_url über die eigene API
-  pokedex_nr?: number | null;
+  bild_platzhalter_spiegel?: string | null;  // #120: Pokédex-Artwork, signiert vom Backend
   aktualisiert_am?: string | null;   // für Cache-Busting eigener Fotos
 };
 
@@ -170,7 +164,7 @@ export function cardImageSrc(
   const src = own
     ?? pokedex
     ?? karte
-    ?? (placeholderEnabled ? pokemonPlaceholderUrl(card.pokedex_nr, apiBase) : null);
+    ?? (placeholderEnabled ? spiegelUrl(card.bild_platzhalter_spiegel, apiBase) : null);
   const isPlaceholder = !own && !pokedex && !karte && !!src;
   return { src, isPlaceholder };
 }

@@ -28,6 +28,10 @@ pokecollect.yourdomain.com {
     handle /images/* {
         reverse_proxy 192.168.x.x:3010
     }
+    # Bild-Spiegel → Backend (#120, fremde Kartenbilder)
+    handle /bild-spiegel/* {
+        reverse_proxy 192.168.x.x:3010
+    }
     # Frontend (catch-all)
     handle {
         reverse_proxy 192.168.x.x:3011

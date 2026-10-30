@@ -13,7 +13,8 @@ import { expect, test } from "@playwright/test";
  *
  * KEINE Anmeldung/storageState nötig: /_next/image ist eine Next.js-interne
  * Route des Web-Containers, kein Fach-Router des Backends — der JWT-Zwang aus
- * CLAUDE.md („Sicherheit", auth-frei nur /auth/login, /health, /images) gilt
+ * CLAUDE.md („Sicherheit", auth-frei nur /auth/login, /health, /images,
+ * /bild-spiegel) gilt
  * für die FastAPI-Seite, nicht für diese Next.js-Route.
  */
 test.describe("Bild-Optimizer nimmt nur die erlaubten Hosts an (#91)", () => {

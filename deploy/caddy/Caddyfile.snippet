@@ -1,7 +1,7 @@
 # PokéCollect — HTTPS im LAN mit Caddy-eigener CA (tls internal), Issue #18
 #
 # ARCHITEKTUR: EIN Hostname (pokecollect.lan) für Web UND API.
-# Die API hängt unter /api/* und /images/* am selben Host, alles andere geht
+# Die API hängt unter /api/*, /images/* und /bild-spiegel/* am selben Host, alles andere geht
 # ans Web-Frontend. Vorteile:
 #   - NEXT_PUBLIC_API_URL=https://pokecollect.lan passt exakt (der Web-Client
 #     hängt selbst /api/v1 an — web/src/lib/api.ts).
@@ -47,6 +47,14 @@ pokecollect.lan {
 
 	# Kartenbilder — StaticFiles-Mount der API (auth-frei für <img>-Tags)
 	handle /images/* {
+		reverse_proxy <server-ip>:3010
+		# In-Stack / gemeinsames Docker-Netz stattdessen:
+		# reverse_proxy api:8000
+	}
+
+	# Bild-Spiegel der API (#120): fremde Kartenbilder, die das Backend holt —
+	# ohne diesen Block landen sie beim Web-Frontend und bleiben leer
+	handle /bild-spiegel/* {
 		reverse_proxy <server-ip>:3010
 		# In-Stack / gemeinsames Docker-Netz stattdessen:
 		# reverse_proxy api:8000
