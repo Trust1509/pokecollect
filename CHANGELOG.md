@@ -1,5 +1,46 @@
 # Changelog
 
+## [v1.11.0] – 2026-10-31 (Fremde Bilder über den eigenen Server) — gefahrlos
+
+**Keine Migration, keine Änderung an deinen Daten.** Kartenbilder von den
+Karten-Datenbanken holt jetzt dein PokéCollect-Server und legt sie bei sich ab;
+dein Browser spricht für diese Bilder nicht mehr mit den fremden Seiten.
+
+**Wichtig bei Caddy als Vorschaltung:** Dein Caddyfile braucht vor dem Update den
+neuen Block `handle /bild-spiegel/*` zur API (Vorlagen und Anleitung unter
+`deploy/`). Ohne ihn bleiben diese Bilder leer.
+
+### Geändert
+- **Kartenbilder, Pokédex-Platzhalter und Sealed-Bilder kommen vom eigenen
+  Server.** Beim ersten Aufruf erscheint ein Bild etwas verzögert, weil es erst
+  geholt wird; danach kommt es aus der Ablage.
+- **Diese Bilder kommen in Originalgröße**, nicht mehr verkleinert. Auf dem Handy
+  kostet das mehr Datenvolumen als in v1.10.0.
+- **Offline fehlen diese Bilder wahrscheinlich**, wenn der PokéCollect-Server unter
+  einer eigenen Adresse läuft: Die App speichert sie dann nicht für unterwegs.
+- **Von Hand eingetragene Bild-Adressen** werden nur noch von den bekannten
+  Karten-Datenbanken und von den Pokédex-Bildern auf pokemon.com angezeigt. Die
+  Karten-Detailseite nennt die erlaubten Seiten und warnt, wenn eine Adresse leer
+  bleiben wird.
+
+### Bekannte Grenzen
+- **Katalog, Soll-Ansicht und Scan laden Bilder weiterhin direkt** von den
+  Karten-Datenbanken.
+- **Die Bild-Ablage hat keine Größengrenze.** Sie gehört nicht ins Backup, weil
+  sich jedes Bild neu holen lässt.
+
+### Sicherheit
+- **Der Bild-Optimierer verarbeitet nur noch eigene Bilder.** Der neue Bild-Pfad
+  braucht keine Anmeldung, weil ein Bild-Tag keine mitschicken kann; er liefert
+  aber nur Adressen, die der Server selbst signiert hat, und nur von den festen
+  Bild-Seiten. Weiterleitungen folgt er nicht.
+
+### Intern
+- Mehrere Tests prüfen jetzt wirklich, was ihr Name sagt, die Selbstprobe des
+  Commit-Wächters ist strenger.
+- **`deploy.sh` lässt beim Setzen der Dateirechte den ZFS-Snapshot-Ordner `.zfs`
+  aus.**
+
 ## [v1.10.0] – 2026-10-26 (Sicherheits-Update, Bild-Optimierung wieder an) — gefahrlos
 
 **Keine Migration, keine Änderung an deinen Daten.** Dieses Update bringt das
