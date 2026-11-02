@@ -974,8 +974,8 @@ Muster-Brief und könnte ein fremdes Thema erfüllen.
 Die CI fährt `pytest` gegen echtes Postgres (SQLite ist ausgeschlossen),
 `tsc --noEmit`, `next lint --max-warnings 0`, `next build` und
 `npm run check:whatsnew`; `scripts/gates.sh all` deckt das ab und prüft
-darüber hinaus (Was-ist-neu-Parität, Paritäts-Prüfung Gate ↔ CI,
-Prozess-Werkzeuge — alle drei nur lokal).
+darüber hinaus Was-ist-neu-Parität und Paritäts-Prüfung Gate ↔ CI im Web-Gate
+(beide nur lokal). Die Prozess-Werkzeuge (Gate P) fährt seit #106 auch die CI.
 
 Alle drei Kommandos oben sind **schwere Läufe** (sie starten Container) und
 gehören zwischen die beiden Blöcke der Rechner-Sperre (Randbedingung

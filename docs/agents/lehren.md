@@ -213,7 +213,8 @@ anderen Projekt rutschte genau das durch, weil die Selbstprobe das Prüfskript
 prüfte, nicht seinen Aufruf. Bei uns gilt das für jede Zeile von Gate P in
 `scripts/gates.sh`: Fehlt eine, wird keine der Selbstproben rot. Seit #106
 zählt der CI-Job „Prozess (Gate P)" die Erfolgszeilen der Werkzeuge
-(`scripts/gate-p-erfolgszeilen.sh`); eine gestrichene Zeile macht dort rot.
+(`scripts/gate-p-erfolgszeilen.sh`); eine gestrichene Zeile oder eine Zahl
+unter ihrer Untergrenze macht dort rot.
 
 **Wer einen Mutanten für äquivalent erklärt, schuldet die Sonde, die ihm recht
 gäbe** (Vorlage §1, v1.18.2). Überlebt eine Mutation alle Tests, ist entweder
@@ -638,8 +639,8 @@ Rückdreh-Bedingung, kein stiller Verzicht.
   GENAU SO ausgeführt, wie der Job ihn ausführt?"** Ein Skript, das im Import
   grün ist, kann beim CI-Aufruf an `ModuleNotFoundError` scheitern. Hausbeleg
   mit ehrlicher Lücke: Unser Paritäts-Wächter (Gate ↔ CI, `scripts/gates.sh`)
-  wird von der CI GAR NICHT ausgeführt — die CI ruft `gates.sh` nicht auf. Er
-  ist damit ein rein lokaler Wächter; das ist bewusst (die CI spiegelt die
+  wird von der CI GAR NICHT ausgeführt — die CI ruft von `gates.sh` nur
+  `prozess` auf (#106), nicht das Web-Gate. Er ist damit ein rein lokaler Wächter; das ist bewusst (die CI spiegelt die
   Schritte selbst), aber es heißt: Fällt er, merkt es nur, wer lokal baut.
 - **Dritte Wächterfrage (Vorlage §21, v1.14.0; hier übernommen im Abgleich
   v1.17.2): „Wer liest das Rot — und woran merkt er es?"** Ein Wächter ohne

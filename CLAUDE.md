@@ -213,7 +213,7 @@ muss, ist deshalb Standard, nicht Option. Konkret:
   Paritäts-Prüfungen Gate ↔ CI im Web-Gate (`grep` auf `ci.yml`) — wer sie
   auslässt, macht nichts rot (`docs/agents/lehren.md` §10). Die
   Prozess-Werkzeuge (Gate P: Selbstprobe des commit-msg-Hooks, Brief-Selbstprobe,
-  Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) fährt
+  Selbstprobe der Zählung, Wächter-Selbstprobe, Selbstprobe von `ast-gleich.py`, Lehren-Verweise) fährt
   seit #106 auch die CI, als einzigen Teil über `gates.sh prozess` selbst.
 - **Rechner-Sperre für jeden schweren Lauf** — was als schwer gilt (auch
   `gates.sh prozess`: es startet einen Container) und der Wert: Schwellen-Inventar
@@ -424,7 +424,7 @@ Fund (Vorlage v1.17.0).
 | Panel-Untergrenze beim Verkürzen | Abschnitt „Review-Panel“ unten, Absatz „Verkürzen“ | **Portfolio** |
 | Prüftiefe je Risikoklasse | Risiko-Tabelle oben, Auslöser abschließend | **Portfolio** |
 | Release-Gate (ab wann eine Freigabe nötig ist) | **mindestens jedes Release mit Migration oder Geld-Logik** (Untergrenze, Owner-Dauerregel vom 02.09.2026: „wo das projekteigene Release-Gate ein Owner-Gate verlangt (Migrationen, Geld-Slices auf jeden Fall), VORHER fragen“); **dazu bei uns: R4-Auslöser** → vorher den Owner fragen. Geschichte: im v1.11.3-Abgleich auf R4 verengt (#78, veto-fähig vorgelegt, kein Veto), von der Dauerregel wieder erweitert | **Portfolio-Untergrenze** (2026-09-02), darüber **Projekt** |
-| Zeitlimit einzelner Befehle im Prüfauftrag | **15 Minuten** — dieselbe Grenze wie `timeout-minutes` beider CI-Jobs (`.github/workflows/ci.yml`) | **Projekt** |
+| Zeitlimit einzelner Befehle im Prüfauftrag | **15 Minuten** — dieselbe Grenze wie `timeout-minutes` der drei CI-Jobs (`.github/workflows/ci.yml`) | **Projekt** |
 | CI-Nebenläufigkeit (`concurrency`, `cancel-in-progress`) | **an** — `group: ci-${{ github.ref }}`, `cancel-in-progress` für alles außer Tag-Refs (`ci.yml`). Ausgenommen sind nach der Vorlage auch Läufe, die ausliefern — solche gibt es bei uns nicht (Deploy macht der Owner). Alle drei Workflows tragen sie (`security-scan.yml` und `smoke.yml` seit Abgleich v1.18.13, Gruppe je Workflow und Ref; vorher nur `ci.yml`). Sie hält die Zahl der Läufe unten, **ohne** dass jemand die Regel „ein Lauf je Slice“ einhält — ein abgebrochener Lauf ist kein eingesparter | **Portfolio** (Owner-Dauerregel 2026-09-02: Notbremse-Maßnahmen bleiben dauerhaft) |
 | CI-Tagesbudget über alle Repos | **100 Minuten** je Tag (Kontingent 3000 Min/Monat, geteilt) | **Portfolio** (2026-09-02) |
 | Übliche Dauer eines CI-Laufs (Meldeschwelle) | **2–4 Minuten** — ein Lauf deutlich darüber wird im Rückmeldungs-Issue der Vorlage gemeldet | **Portfolio** (Owner-Dauerregel 2026-09-02, Punkt „Budget“) |

@@ -2,7 +2,7 @@
 # [skip ci]; nach der Landung startet der Agent genau einen workflow_dispatch auf
 # dem HEAD. Der push-Trigger bleibt als Netz für Commits ohne Marker.
 # Spiegelt scripts/gates.sh — Backend-pytest gegen echtes Postgres, Web tsc +
-# lint + Was-ist-neu-Check (#99) + build.
+# lint + Was-ist-neu-Check (#99) + build; Gate P fährt gates.sh selbst (#106).
 name: CI
 
 # CI-Härtung (Best-Practice-Abgleich 2026-08, E1): Least Privilege — die Gates
@@ -102,15 +102,18 @@ jobs:
   # der Runner alles hat (kein Nachbau, also keine zweite Fassung). Exit 0
   # reicht nicht als Beleg: gate-p-erfolgszeilen.sh verlangt die Erfolgszeile
   # jedes Werkzeugs genau einmal (Begründung im Skriptkopf).
-  # GRENZE: Wie die anderen Jobs läuft er beim Push nicht für reine *.md-
-  # Commits (paths-ignore oben) — und Commits tragen ohnehin den
-  # Überspring-Marker. Wirksam ist er im workflow_dispatch nach der Landung.
+  # GRENZE: Commits tragen den Überspring-Marker, und paths-ignore oben nimmt
+  # *.md im Wurzelverzeichnis aus (CLAUDE.md, nicht docs/agents/*.md). Wirksam ist
+  # der Job im workflow_dispatch nach der Landung. Das Protokoll erscheint erst
+  # nach dem Ende von gates.sh: Bei einem Abbruch am timeout steht es nicht im Job.
   prozess:
     name: Prozess (Gate P)
     runs-on: ubuntu-latest
-    timeout-minutes: 15   # siehe backend-Job; lokal gemessen 27–35 s
+    timeout-minutes: 15   # siehe backend-Job
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false   # das Arbeitsverzeichnis geht in einen Container
       - name: Gate P
         run: |
           set +e
