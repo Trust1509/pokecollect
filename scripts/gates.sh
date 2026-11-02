@@ -134,20 +134,9 @@ prozess_gate() {
   else
     echo "Modus des commit-msg-Hooks NICHT geprüft: kein Git-Arbeitsbaum"
   fi
-  # #106: Ohne diese drei Stellen in ci.yml prüft der CI-Job nichts mehr. Die
-  # Zählung sähe das nicht, sie läuft dann ja nicht. grep-Exit 2 zählt als rot.
-  ci_datei="$ROOT/.github/workflows/ci.yml"
-  grep -qE '^ +sh scripts/gates\.sh prozess > "\$RUNNER_TEMP/gate-p\.log" 2>&1$' "$ci_datei" \
-    || { echo "FEHLER: ci.yml fährt 'gates.sh prozess' nicht mehr ins Protokoll"; exit 1; }
-  grep -qE '^ +run: sh scripts/gate-p-erfolgszeilen\.sh "\$RUNNER_TEMP/gate-p\.log"$' "$ci_datei" \
-    || { echo "FEHLER: ci.yml zählt die Erfolgszeilen von Gate P nicht mehr"; exit 1; }
-  ci_rc=0
-  grep -qE '^[ -]*continue-on-error:' "$ci_datei" || ci_rc=$?
-  if [ "$ci_rc" -ne 1 ]; then
-    echo "FEHLER: continue-on-error in ci.yml (oder grep rc=$ci_rc): ein roter Job bliebe folgenlos"
-    exit 1
-  fi
-  echo "ci.yml faehrt Gate P und die Zaehlung"
+  # #106: Ohne Job, Lauf und Zählung in ci.yml prüft die CI nichts mehr; die Zählung
+  # sähe das nicht, sie läuft dann ja nicht.
+  sh "$ROOT/scripts/ci-gate-p-pruefen.sh" "$ROOT/.github/workflows/ci.yml" || exit 1
   MSYS_NO_PATHCONV=1 docker run --rm -v "$(host_path "$ROOT")":/w -w //w python:3.12-slim sh -eu -c '
     sh scripts/bau-brief-pruefen-selbsttest.sh
     sh scripts/gate-p-erfolgszeilen-selbsttest.sh

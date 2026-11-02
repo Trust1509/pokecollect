@@ -18,16 +18,17 @@
 # Die Erwartungen stehen HIER, nicht in gates.sh: Wer dort eine Werkzeug-Zeile
 # streicht, muss sie auch hier streichen, sonst wird die CI rot. Kommt ein
 # Werkzeug zu Gate P dazu, gehört seine Erfolgszeile hierher; nichts erzwingt
-# das. Die Untergrenzen sind am 02.11.2026 gemessene Werte (Verweise mit Luft,
-# weil Doku Verweise verlieren darf; die Wächter-Selbstprobe nur ihr fester
-# Anteil, der Rest hängt von der Umgebung ab). Ändert sich ein Werkzeug, das
-# legitim weniger prüft, wird hier bewusst nachgezogen.
+# das. Die Untergrenzen sind am 02.11.2026 gemessene Werte; nur die Verweise haben
+# Luft, weil Doku Verweise verlieren darf. Von der Wächter-Selbstprobe zählt der
+# feste Anteil, der Rest hängt von der Umgebung ab. Ändert sich ein Werkzeug, das
+# legitim weniger prüft, wird hier bewusst nachgezogen. Getauschte Dateien im
+# Verweis-Lauf fängt die Dateizahl nicht, nur fehlende.
 #
 # GRENZEN: Die Zählung liest ein Protokoll; sie sieht nicht, wer es schrieb.
 # Ein `echo` der erwarteten Zeile statt des Werkzeugs bleibt grün (Fremdprüfer
 # #106, gemessen). Das geht nur mit Absicht; gegen Absicht schützt hier nichts.
 # Ein Werkzeug, das NACH seiner Erfolgszeile scheitert, fängt sie nur zusammen
-# mit `sh -eu` in gates.sh (gemessen 25.10.2026: mit `sh -u` und angehängtem
+# mit dem `-e` in gates.sh, im Container wie auf dem Host (gemessen 25.10.2026: mit `sh -u` und angehängtem
 # `exit 1` bleiben Gate und Zählung grün; ein rotes Werkzeug ohne Erfolgszeile
 # macht die Zählung rot, auch unter `sh -u`).
 
@@ -79,11 +80,12 @@ erwarte "commit-msg-Selbstprobe"        '^commit-msg-Selbstprobe gruen: ([0-9]+)
 erwarte "Modus des commit-msg-Hooks"    '^commit-msg-Hook in Index und HEAD ausführbar \(100755\)$'
 erwarte "Parität ci.yml"                '^ci\.yml faehrt Gate P und die Zaehlung$'
 erwarte "Brief-Selbstprobe"             '^Selbstprobe gruen: ([0-9]+) Laeufe\. .*\(Kodierungen: utf8 cp1252 crlf\)\.$' 201
-erwarte "Zähl-Selbstprobe"              '^Zaehl-Selbstprobe gruen: ([0-9]+) Faelle\.$' 60
-erwarte "Wächter-Selbstprobe"           '^Waechter-Selbstprobe gruen: ([0-9]+) Erwartungen .*Vollstaendigkeit der Werkzeugliste\.$' 597
+erwarte "Zähl-Selbstprobe"              '^Zaehl-Selbstprobe gruen: ([0-9]+) Faelle\.$' 85
+erwarte "Wächter-Selbstprobe"           '^Waechter-Selbstprobe gruen: [0-9]+ Erwartungen = ([0-9]+) feste .*Vollstaendigkeit der Werkzeugliste\.$' 597
 erwarte "ast-gleich --selbstprobe"      '^ast-gleich Selbstprobe gruen: ([0-9]+) Erwartungen .*Nicht geprueft: ob ein Kopftext WAHR ist\.$' 38
 erwarte "Lehren-Verweise --selbstprobe" '^Selbstprobe gruen: ([0-9]+) Erwartungen \(Abschnitts- .*das kann dieses Skript nicht\.$' 242
 erwarte "Lehren-Verweise über die Doku" '^Verweise gruen: ([0-9]+) Verweise in ([0-9]+) Datei\(en\), .*Nicht geprueft: ob ein Verweis die GEMEINTE Lehre trifft\.$' 30 10
+erwarte "Schlusszeile von gates.sh"     '^✓ Gates grün \(prozess\)$'
 
 if [ "$FEHLER" -ne 0 ]; then
     echo "Gate P ROT: $FEHLER Abweichung(en) bei $ZEILEN erwarteten Erfolgszeilen in $LOG"
